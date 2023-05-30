@@ -1,0 +1,150 @@
+Id,Designator,Footprint,Quantity,Designation,Supplier and Ref,JLCPCB Part #
+1,"CH1,CH2,CH3",edg:JlcToolingHole_1.152mm,3,,,
+2,"CJ1,CJ3",Connector_JST:JST_PH_B2B-PH-K_1x02_P2.00mm_Vertical,2,,,
+3,CTP1,edg:TestPoint_TE_RCT_0805,1,pwr,,C5199798
+4,CTP2,edg:TestPoint_TE_RCT_0805,1,gnd,,C5199798
+5,CU1,Package_TO_SOT_SMD:SOT-223-3_TabPin2,1,,,C435835
+6,"CC1,CC4,CC6,CC7,CC8,CC10,CC12",Capacitor_SMD:C_0603_1608Metric,7,50V 100nF X7R ±10% 0603 Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C14663
+7,"CC2,CC13",Capacitor_SMD:C_0805_2012Metric,2,25V 4.7uF X5R ±10% 0805 Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C1779
+8,CTP3,edg:TestPoint_TE_RCT_0805,1,v3v3,,C5199798
+9,CD1,Diode_SMD:D_SOD-123,1,5μA@1V 90Ω Single 3.6V~3.8V 350mW 3.4V SOD-123 Zener Diodes ROHS,,C499796
+10,CU2,RF_Module:ESP32-S3-WROOM-1,1,,,C2913202
+11,CC3,Capacitor_SMD:C_1206_3216Metric,1,10V 22uF X5R ±10% 1206 Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C5672
+12,"CR1,CR11,CR12",Resistor_SMD:R_0603_1608Metric,3,±1% 1/10W Thick Film Resistors 75V ±100ppm/℃ -55℃~+155℃ 10kΩ 0603 Chip Resistor - Surface Mount ROHS,,C25804
+13,"CC5,CC9,CC14,CC15",Capacitor_SMD:C_0603_1608Metric,4,50V 1uF X5R ±10% 0603 Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C15849
+14,CJ2,Connector:Tag-Connect_TC2030-IDC-FP_2x03_P1.27mm_Vertical,1,,,
+15,CD2,LED_SMD:LED_0603_1608Metric,1,Red 615~630nm 1.9~2.2V 0603 Light Emitting Diodes (LED) RoHS,,C2286
+16,"CR2,CR3,CR4,CR7,CR8",Resistor_SMD:R_0603_1608Metric,5,±1% 1/10W Thick Film Resistors 75V ±100ppm/℃ -55℃~+155℃ 1kΩ 0603 Chip Resistor - Surface Mount ROHS,,C21190
+17,CD3,LED_SMD:LED_0603_1608Metric,1,20mA 285mcd 3.3V 518nm Colorless transparence -40℃~+85℃ 520nm~535nm Emerald 120° 110mW 0603 Light Emitting Diodes (LED) ROHS,,C72043
+18,CD4,LED_SMD:LED_0603_1608Metric,1,5mA 28.5mcd 3.1V 468nm Colorless transparence -40℃~+85℃ 465nm~475nm blue 120° 110mW 0603 Light Emitting Diodes (LED) ROHS,,C72041
+19,"CSW1,CSW2,CSW3,CSW4",Button_Switch_SMD:SW_Push_1P1T-MP_NO_Horizontal_Alps_SKRTLAE010,4,,,C110293
+20,"CR5,CR6",Resistor_SMD:R_0603_1608Metric,2,±1% 1/10W Thick Film Resistors 75V ±100ppm/℃ -55℃~+155℃ 4.7kΩ 0603 Chip Resistor - Surface Mount ROHS,,C23162
+21,CTP4,edg:TestPoint_TE_RCT_0805,1,i2c_chain_0.scl,,C5199798
+22,CTP5,edg:TestPoint_TE_RCT_0805,1,i2c_tp._io_sda_link,,C5199798
+23,CU3,Package_LGA:Bosch_LGA-8_3x3mm_P0.8mm_ClockwisePinNumbering,1,,,C125972
+24,CU4,Package_TO_SOT_SMD:HVSOF6,1,,,C78960
+25,CU5,Package_TO_SOT_SMD:SOT-23-5,1,,,C842287
+26,CTP6,edg:TestPoint_TE_RCT_0805,1,_rgb_shift_output_link,,C5199798
+27,"CD5,CD6,CD7,CD8,CD9,CD10,CD11,CD12,CD13,CD14,CD15,CD16,CD17,CD18,CD19,CD20,CD21,CD22,CD23,CD24,CD25,CD26,CD27,CD28,CD29,CD30,CD31,CD32,CD33,CD34,CD35,CD36,CD37,CD38,CD39,CD40,CD41,CD42,CD43,CD44,CD45,CD46,CD47,CD48,CD49,CD50,CD51,CD52,CD53,CD54,CD55,CD56,CD57,CD58,CD59,CD60,CD61,CD62,CD63,CD64",LED_SMD:LED_SK6812_EC15_1.5x1.5mm,60,,,C2890035
+28,CC11,Capacitor_SMD:C_0603_1608Metric,1,50V 47nF X7R ±10% 0603 Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C1622
+29,CTP7,edg:TestPoint_TE_RCT_0805,1,spk_chain_1,,C5199798
+30,CU6,Package_SO:MSOP-8-1EP_3x3mm_P0.65mm_EP1.68x1.88mm_ThermalVias,1,,,C113367
+31,"CR9,CR10",Resistor_SMD:R_0603_1608Metric,2,±1% 1/10W Thick Film Resistors 75V ±100ppm/℃ -55℃~+155℃ 30kΩ 0603 Chip Resistor - Surface Mount ROHS,,C22984
+32,"CH4,CH5",MountingHole:MountingHole_2.7mm_M2.5_Pad_Via,2,M2.5,,
+1,"DH1,DH2,DH3",edg:JlcToolingHole_1.152mm,3,,,
+2,DJ1,Connector_USB:USB_C_Receptacle_XKB_U262-16XN-4BVC11,1,,,C165948
+3,"DR1,DR2",Resistor_SMD:R_0603_1608Metric,2,±1% 1/10W Thick Film Resistors 75V ±100ppm/℃ -55℃~+155℃ 5.1kΩ 0603 Chip Resistor - Surface Mount ROHS,,C23186
+4,DJ2,Connector_JST:JST_PH_B2B-PH-K_1x02_P2.00mm_Vertical,1,,,
+5,"DR3,DR7,DR8",Resistor_SMD:R_0603_1608Metric,3,±1% 1/10W Thick Film Resistors 75V ±100ppm/℃ -55℃~+155℃ 10kΩ 0603 Chip Resistor - Surface Mount ROHS,,C25804
+6,DD1,Diode_SMD:D_SOD-123,1,40V 600mV@1A 1A SOD-123 Schottky Barrier Diodes (SBD) ROHS,,C8598
+7,DQ1,Package_TO_SOT_SMD:SOT-23,1,"30V 4A 44mΩ@10V,4.3A 1.4W 1.3V@250μA P Channel SOT-23-3L MOSFETs ROHS",,C15127
+8,DTP1,edg:TestPoint_TE_RCT_0805,1,pwr,,C5199798
+9,DTP2,edg:TestPoint_TE_RCT_0805,1,gnd,,C5199798
+10,DU1,Package_TO_SOT_SMD:SOT-23-5,1,,,C424093
+11,"DC1,DC2,DC4,DC5,DC13,DC18",Capacitor_SMD:C_0805_2012Metric,6,25V 4.7uF X5R ±10% 0805 Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C1779
+12,DR4,Resistor_SMD:R_0603_1608Metric,1,±1% 1/10W Thick Film Resistors 75V ±100ppm/℃ -55℃~+155℃ 4.99kΩ 0603 Chip Resistor - Surface Mount ROHS,,C23046
+13,DD2,LED_SMD:LED_0603_1608Metric,1,20mA 180mcd 2.3V 591nm Colorless transparence -40℃~+85℃ 585.5nm~591.5nm yellow 120° 60mW 0603 Light Emitting Diodes (LED) ROHS,,C72038
+14,"DR5,DR9,DR10,DR11",Resistor_SMD:R_0603_1608Metric,4,±1% 1/10W Thick Film Resistors 75V ±100ppm/℃ -55℃~+155℃ 1kΩ 0603 Chip Resistor - Surface Mount ROHS,,C21190
+15,DU2,Package_TO_SOT_SMD:SOT-223-3_TabPin2,1,,,C435835
+16,"DC3,DC8,DC11,DC12,DC14,DC17,DC19",Capacitor_SMD:C_0603_1608Metric,7,50V 100nF X7R ±10% 0603 Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C14663
+17,DTP3,edg:TestPoint_TE_RCT_0805,1,v3v3,,C5199798
+18,DD3,Diode_SMD:D_SOD-323,1,5μA@1V 90Ω Single 3.53V~3.67V 200mW 3.6V SOD-323 Zener Diodes ROHS,,C493210
+19,DU3,Package_TO_SOT_SMD:SOT-23-5,1,,,C460356
+20,DR6,Resistor_SMD:R_0603_1608Metric,1,±1% 1/10W Thick Film Resistors 75V ±100ppm/℃ -55℃~+155℃ 100kΩ 0603 Chip Resistor - Surface Mount ROHS,,C25803
+21,DL1,Inductor_SMD:L_1210_3225Metric,1,390mA 47uH ±10% 871mΩ 1210 Inductors (SMD) ROHS,,C90318
+22,"DC6,DC15,DC20",Capacitor_SMD:C_0805_2012Metric,3,50V 10uF X5R ±10% 0805 Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C440198
+23,"DD4,DD8,DD9,DD10,DD11,DD12",Diode_SMD:D_SOD-123,6,20V 390mV@500mA 500mA SOD-123 Schottky Barrier Diodes (SBD) ROHS,,C475609
+24,DTP4,edg:TestPoint_TE_RCT_0805,1,v12,,C5199798
+25,DU4,RF_Module:ESP32-S3-WROOM-1,1,,,C2913202
+26,DC7,Capacitor_SMD:C_1206_3216Metric,1,10V 22uF X5R ±10% 1206 Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C5672
+27,"DC9,DC21,DC22,DC23,DC24,DC25,DC26,DC27,DC31",Capacitor_SMD:C_0603_1608Metric,9,50V 1uF X5R ±10% 0603 Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C15849
+28,DJ3,Connector:Tag-Connect_TC2030-IDC-FP_2x03_P1.27mm_Vertical,1,,,
+29,DU5,Package_TO_SOT_SMD:SOT-23,1,,,C456094
+30,DD5,LED_SMD:LED_0603_1608Metric,1,Red 615~630nm 1.9~2.2V 0603 Light Emitting Diodes (LED) RoHS,,C2286
+31,DD6,LED_SMD:LED_0603_1608Metric,1,20mA 285mcd 3.3V 518nm Colorless transparence -40℃~+85℃ 520nm~535nm Emerald 120° 110mW 0603 Light Emitting Diodes (LED) ROHS,,C72043
+32,DD7,LED_SMD:LED_0603_1608Metric,1,5mA 28.5mcd 3.1V 468nm Colorless transparence -40℃~+85℃ 465nm~475nm blue 120° 110mW 0603 Light Emitting Diodes (LED) ROHS,,C72041
+33,"DSW1,DSW2,DSW3",Button_Switch_SMD:SW_SPST_SKQG_WithoutStem,3,,,C318884
+34,DJ4,Connector_FFC-FPC:Hirose_FH12-30S-0.5SH_1x30-1MP_P0.50mm_Horizontal,1,,,C262645
+35,DU6,edg:Lcd_Er_Oled028_1_Outline,1,,,
+36,DR12,Resistor_SMD:R_0603_1608Metric,1,±1% 1/10W Thick Film Resistors 75V ±100ppm/℃ -55℃~+155℃ 680kΩ 0603 Chip Resistor - Surface Mount ROHS,,C25822
+37,"DC10,DC16,DC28,DC29,DC30",Capacitor_SMD:C_1206_3216Metric,5,50V 4.7uF X7R ±10% 1206 Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C29823
+38,DR13,Resistor_SMD:R_0603_1608Metric,1,±1% 1/10W Thick Film Resistors 75V ±100ppm/℃ -55℃~+155℃ 51kΩ 0603 Chip Resistor - Surface Mount ROHS,,C23196
+39,"DJ5,DJ6",Connector_FFC-FPC:Hirose_FH12-24S-0.5SH_1x24-1MP_P0.50mm_Horizontal,2,,,C262643
+40,DU7,edg:Lcd_Er_Oled022_1_Outline,1,,,
+41,DR14,Resistor_SMD:R_0603_1608Metric,1,±1% 1/10W Thick Film Resistors 75V ±100ppm/℃ -55℃~+155℃ 750kΩ 0603 Chip Resistor - Surface Mount ROHS,,C23240
+42,DU8,edg:Lcd_Er_Epd027_2_Outline,1,,,
+43,DQ2,Package_TO_SOT_SMD:SOT-23,1,"30V 5.7A 26.5mΩ@10V,5.7A 1.4W 1.5V@250μA N Channel SOT-23-3L MOSFETs ROHS",,C20917
+44,DL2,Inductor_SMD:L_1210_3225Metric,1,390mA 47uH ±10% 1Ω 1210 Power Inductors ROHS,,C524993
+45,DR15,Resistor_SMD:R_0603_1608Metric,1,±1% 1/10W Thick Film Resistors 75V ±400ppm/℃ -55℃~+155℃ 2.2Ω 0603 Chip Resistor - Surface Mount ROHS,,C22939
+1,RJ1,Connector_JST:JST_PH_B2B-PH-K_1x02_P2.00mm_Vertical,1,,,
+2,"RJ2,RJ3,RJ4,RJ5",Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical,4,,,
+3,RU1,Package_LGA:Bosch_LGA-14_3x2.5mm_P0.5mm,1,,,C967633
+4,"RC1,RC2,RC3,RC6,RC13,RC21,RC23",Capacitor_SMD:C_0603_1608Metric,7,50V 100nF X7R ±10% 0603 Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C14663
+5,RU2,Package_LGA:LGA-16_3x3mm_P0.5mm,1,,,C976032
+6,RC4,Capacitor_SMD:C_0603_1608Metric,1,25V 220nF X7R ±10% 0603 Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C21120
+7,"RC5,RC7,RC17",Capacitor_SMD:C_0805_2012Metric,3,25V 4.7uF X5R ±10% 0805 Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C1779
+8,"RH1,RH2,RH3",edg:JlcToolingHole_1.152mm,3,,,
+9,RTP1,edg:TestPoint_TE_RCT_0805,1,vbatt,,C5199798
+10,RTP2,edg:TestPoint_TE_RCT_0805,1,gnd,,C5199798
+11,RU3,Package_TO_SOT_SMD:SOT-223-3_TabPin2,1,,,C435835
+12,RTP3,edg:TestPoint_TE_RCT_0805,1,v3v3,,C5199798
+13,RU4,Package_TO_SOT_SMD:SOT-23,1,,,C15906
+14,"RC8,RC9,RC10,RC11,RC14,RC15,RC16,RC18,RC19",Capacitor_SMD:C_0603_1608Metric,9,50V 1uF X5R ±10% 0603 Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C15849
+15,RU5,Package_TO_SOT_SMD:SOT-23,1,,,C424699
+16,RU6,RF_Module:ESP32-S3-WROOM-1,1,,,C2913202
+17,RC12,Capacitor_SMD:C_1206_3216Metric,1,10V 22uF X5R ±10% 1206 Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C5672
+18,"RR1,RR8",Resistor_SMD:R_0603_1608Metric,2,±1% 1/10W Thick Film Resistors 75V ±100ppm/℃ -55℃~+155℃ 10kΩ 0603 Chip Resistor - Surface Mount ROHS,,C25804
+19,RJ6,Connector:Tag-Connect_TC2030-IDC-FP_2x03_P1.27mm_Vertical,1,,,
+20,"RR2,RR3",Resistor_SMD:R_0603_1608Metric,2,±1% 1/10W Thick Film Resistors 75V ±100ppm/℃ -55℃~+155℃ 4.7kΩ 0603 Chip Resistor - Surface Mount ROHS,,C23162
+21,RTP4,edg:TestPoint_TE_RCT_0805,1,i2c_chain_0.scl,,C5199798
+22,RTP5,edg:TestPoint_TE_RCT_0805,1,i2c_tp._io_sda_link,,C5199798
+23,RD1,LED_SMD:LED_0603_1608Metric,1,Red 615~630nm 1.9~2.2V 0603 Light Emitting Diodes (LED) RoHS,,C2286
+24,"RR4,RR5,RR6",Resistor_SMD:R_0603_1608Metric,3,±1% 1/10W Thick Film Resistors 75V ±100ppm/℃ -55℃~+155℃ 1kΩ 0603 Chip Resistor - Surface Mount ROHS,,C21190
+25,RD2,LED_SMD:LED_0603_1608Metric,1,20mA 285mcd 3.3V 518nm Colorless transparence -40℃~+85℃ 520nm~535nm Emerald 120° 110mW 0603 Light Emitting Diodes (LED) ROHS,,C72043
+26,RD3,LED_SMD:LED_0603_1608Metric,1,5mA 28.5mcd 3.1V 468nm Colorless transparence -40℃~+85℃ 465nm~475nm blue 120° 110mW 0603 Light Emitting Diodes (LED) ROHS,,C72041
+27,RJ7,Connector_FFC-FPC:Hirose_FH12-30S-0.5SH_1x30-1MP_P0.50mm_Horizontal,1,,,C262671
+28,RU7,edg:Lcd_Er_Oled0.96_1.1_Outline,1,,,
+29,RR7,Resistor_SMD:R_0603_1608Metric,1,±1% 1/10W Thick Film Resistors 75V ±100ppm/℃ -55℃~+155℃ 390kΩ 0603 Chip Resistor - Surface Mount ROHS,,C23150
+30,RC20,Capacitor_SMD:C_1206_3216Metric,1,50V 2.2uF X7R ±10% 1206 Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C50254
+31,RJ8,Connector_FFC-FPC:Hirose_FH12-24S-0.5SH_1x24-1MP_P0.50mm_Horizontal,1,,,C262669
+32,RC22,Capacitor_SMD:C_0603_1608Metric,1,50V 15pF C0G ±5% 0603 Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C1644
+33,"RD4,RD5,RD6,RD7",LED_SMD:LED_SK6812_EC15_1.5x1.5mm,4,,,C2890035
+1,"UH1,UH2,UH3",edg:JlcToolingHole_1.152mm,3,,,
+2,UJ1,Connector_USB:USB_C_Receptacle_XKB_U262-16XN-4BVC11,1,,,C165948
+3,"UR1,UR2",Resistor_SMD:R_0402_1005Metric,2,±1% 1/16W Thick Film Resistors 50V ±100ppm/℃ -55℃~+155℃ 5.1kΩ 0402 Chip Resistor - Surface Mount ROHS,,C25905
+4,UD1,Diode_SMD:D_SOD-323,1,100nA@1V 40Ω Single 5.49V~5.71V 200mW 5.6V SOD-323 Zener Diodes ROHS,,C263152
+5,UU1,Package_DFN_QFN:QFN-28-1EP_5x5mm_P0.5mm_EP3.35x3.35mm,1,,,C6568
+6,"UC1,UC3,UC4",Capacitor_SMD:C_0402_1005Metric,3,25V 1uF X5R ±10% 0402 Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C52923
+7,UC2,Capacitor_SMD:C_0402_1005Metric,1,16V 100nF X7R ±10% 0402 Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C1525
+8,UU2,Package_TO_SOT_SMD:SOT-23,1,,,C456094
+9,UU3,Package_TO_SOT_SMD:SOT-23-5,1,,,C112032
+10,UC5,Capacitor_SMD:C_0805_2012Metric,1,25V 4.7uF X5R ±10% 0805 Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C1779
+11,UJ2,edg:PinHeader_2x03_P2.54mm_EdgeInline,1,,,
+12,"UQ1,UQ2",Package_TO_SOT_SMD:SOT-323_SC-70,2,"65V 330mW 100mA 290@2mA,5V 250MHz 200mV@100mA,5mA NPN +150℃@(Tj) SOT-323-3 Bipolar Transistors - BJT ROHS",,C2836071
+13,"UR3,UR4",Resistor_SMD:R_0402_1005Metric,2,±1% 1/16W Thick Film Resistors 50V ±100ppm/℃ -55℃~+155℃ 10kΩ 0402 Chip Resistor - Surface Mount ROHS,,C25744
+14,UD2,LED_SMD:LED_0603_1608Metric,1,White 0603 Light Emitting Diodes (LED) RoHS,,C2290
+15,"UR5,UR6",Resistor_SMD:R_0402_1005Metric,2,±1% 1/16W Thick Film Resistors 50V ±100ppm/℃ -55℃~+155℃ 2.4kΩ 0402 Chip Resistor - Surface Mount ROHS,,C25882
+16,UD3,LED_SMD:LED_0603_1608Metric,1,Red 615~630nm 1.9~2.2V 0603 Light Emitting Diodes (LED) RoHS,,C2286
+1,"SH1,SH2,SH3",edg:JlcToolingHole_1.152mm,3,,,
+2,SJ1,Connector_USB:USB_C_Receptacle_XKB_U262-16XN-4BVC11,1,,,C165948
+3,"SR1,SR2",Resistor_SMD:R_0402_1005Metric,2,±1% 1/16W Thick Film Resistors 50V ±100ppm/℃ -55℃~+155℃ 5.1kΩ 0402 Chip Resistor - Surface Mount ROHS,,C25905
+4,SD1,Diode_SMD:D_SOD-323,1,100nA@1V 40Ω Single 5.49V~5.71V 200mW 5.6V SOD-323 Zener Diodes ROHS,,C263152
+5,"SU1,SU2",Package_TO_SOT_SMD:SOT-23-5,2,,,C112032
+6,"SC1,SC3,SC10",Capacitor_SMD:C_0402_1005Metric,3,25V 1uF X5R ±10% 0402 Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C52923
+7,"SC2,SC4,SC5",Capacitor_SMD:C_0805_2012Metric,3,25V 4.7uF X5R ±10% 0805 Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C1779
+8,SJ2,Connector:Tag-Connect_TC2030-IDC-NL_2x03_P1.27mm_Vertical,1,,,
+9,SU3,Package_QFP:LQFP-48_7x7mm_P0.5mm,1,,,C8734
+10,"SC6,SC7,SC8",Capacitor_SMD:C_0402_1005Metric,3,16V 100nF X7R ±10% 0402 Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C1525
+11,SC9,Capacitor_SMD:C_0402_1005Metric,1,50V 10nF X7R ±10% 0402 Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C15195
+12,SR3,Resistor_SMD:R_0402_1005Metric,1,±1% 1/16W Thick Film Resistors 50V ±100ppm/℃ -55℃~+155℃ 1.5kΩ 0402 Chip Resistor - Surface Mount ROHS,,C25867
+13,SX1,Crystal:Crystal_SMD_3225-4Pin_3.2x2.5mm,1,8MHz SMD Crystal Resonator 12pF ±10ppm ±30ppm -40℃~+85℃ SMD3225-4P Crystals ROHS,,C2682775
+14,"SC11,SC12",Capacitor_SMD:C_0402_1005Metric,2,50V 18pF C0G ±5% 0402 Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C1549
+15,SU4,Package_TO_SOT_SMD:SOT-23,1,,,C456094
+16,SD2,LED_SMD:LED_0603_1608Metric,1,20mA 180mcd 2.3V 591nm Colorless transparence -40℃~+85℃ 585.5nm~591.5nm yellow 120° 60mW 0603 Light Emitting Diodes (LED) ROHS,,C72038
+17,"SR4,SR5,SR12",Resistor_SMD:R_0402_1005Metric,3,±1% 1/16W Thick Film Resistors 50V ±100ppm/℃ -55℃~+155℃ 2.4kΩ 0402 Chip Resistor - Surface Mount ROHS,,C25882
+18,SD3,LED_SMD:LED_0603_1608Metric,1,White 0603 Light Emitting Diodes (LED) RoHS,,C2290
+19,"SR6,SR13,SR14",Resistor_SMD:R_0402_1005Metric,3,±1% 1/16W Thick Film Resistors 50V ±100ppm/℃ -55℃~+155℃ 4.7kΩ 0402 Chip Resistor - Surface Mount ROHS,,C25900
+20,"SR7,SR8,SR9,SR11",Resistor_SMD:R_0402_1005Metric,4,±1% 1/16W Thick Film Resistors 50V ±200ppm/℃ -55℃~+155℃ 22Ω 0402 Chip Resistor - Surface Mount ROHS,,C25092
+21,SR10,Resistor_SMD:R_0402_1005Metric,1,±1% 1/16W Thick Film Resistors 50V ±200ppm/℃ -55℃~+155℃ 100Ω 0402 Chip Resistor - Surface Mount ROHS,,C25076
+22,SJ3,edg:PinHeader_2x03_P2.54mm_EdgeInline,1,,,
+23,SD4,LED_SMD:LED_0603_1608Metric,1,20mA 285mcd 3.3V 518nm Colorless transparence -40℃~+85℃ 520nm~535nm Emerald 120° 110mW 0603 Light Emitting Diodes (LED) ROHS,,C72043
