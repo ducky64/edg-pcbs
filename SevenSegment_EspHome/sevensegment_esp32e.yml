@@ -3,6 +3,13 @@ esphome:
   name_add_mac_suffix: true
   platform: esp32
   board: esp32dev
+  on_boot:
+    - light.turn_on:
+        id: led
+        brightness: 15%
+        effect: "Time"
+  includes:
+    - digit.h
 
 wifi:
   ssid: "TODO"
@@ -29,6 +36,10 @@ logger:
 web_server:
     port: 80
 
+time:
+  - platform: sntp
+    id: sntp_time
+
 light:
   - platform: fastled_clockless
     id: led
@@ -38,6 +49,30 @@ light:
     num_leds: 60
     name: "SevenSegment Clock"
     effects:
+      - addressable_lambda:
+          name: "Time"
+          update_interval: 500ms
+          lambda: |-  # inspired by https://www.thingiverse.com/thing:4689116
+            const int kLedsPerSegment = 2;
+            const int kDigitOffsets[4] = {0, 14, 32, 46};
+            const int kMetaOffset = 28;  // PM, AL
+            const int kColonOffset = 30;
+                        
+            it.all() = Color(0,0,0,0);
+            
+            auto time = id(sntp_time).now();
+            
+            if (time.hour > 0) {  // don't render zero
+              setDigit(it, current_color, time.hour / 10, kDigitOffsets[0], kLedsPerSegment);
+            }
+            setDigit(it, current_color, time.hour % 10, kDigitOffsets[1], kLedsPerSegment);
+            setDigit(it, current_color, time.minute / 10, kDigitOffsets[2], kLedsPerSegment);
+            setDigit(it, current_color, time.minute % 10, kDigitOffsets[3], kLedsPerSegment);
+            
+            if (time.second % 2) {
+              it[kColonOffset] = current_color;
+              it[kColonOffset + 1] = current_color;
+            }
       - addressable_flicker:
           name: Flicker (Custom, high)
           intensity: 25%
