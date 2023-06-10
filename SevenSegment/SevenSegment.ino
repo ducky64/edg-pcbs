@@ -65,6 +65,10 @@ void hsv_to_rgb_uint8(uint16_t h_cdeg, uint8_t s, uint8_t v,
 
 
 void setup() {
+    pinMode(kPinSw0, INPUT_PULLUP);
+    pinMode(kPinSw1, INPUT_PULLUP);
+    pinMode(kPinSw3, INPUT_PULLUP);
+
     Neopixels.begin();
     Neopixels.setBrightness(25);
 
@@ -81,6 +85,8 @@ int counter = 0;
 
 
 void loop() {
+  Neopixels.setBrightness(5);
+
   while(!digitalRead(kPinSw0) || !digitalRead(kPinSw1) || !digitalRead(kPinSw3));  // freeze when switch is down
 
   for (int i = 0; i < kLedsCount; i++) {
