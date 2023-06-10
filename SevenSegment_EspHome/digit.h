@@ -12,15 +12,14 @@ const int kSegmentCoding[10][7] = {
   {  1, 1, 1, 1, 0, 1, 1 },  // 9
 };
           
-void setDigit(AddressableLight& it, Color& color, int digit, int offset, int ledsPerSegment) {
+void setDigit(AddressableLight& it, Color& color, int digit, int offset, int ledsLit, int ledsPerSegment) {
   const int* thisDigitSegments = kSegmentCoding[digit % 10];
-  int ledIndex = offset;
   for (int segment=0; segment < 7; segment++) {
-    for (int led=0; led < ledsPerSegment; led++) {
+    int segmentOffset = offset + segment * ledsPerSegment;
+    for (int led=0; led < ledsLit; led++) {
       if (thisDigitSegments[segment]) {
-        it[ledIndex] = color;
+        it[segmentOffset + led] = color;
       }
-      ledIndex++;
     }
   }
 }

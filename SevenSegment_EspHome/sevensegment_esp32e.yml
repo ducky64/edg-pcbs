@@ -12,6 +12,7 @@ esphome:
     - digit.h
 
 wifi:
+  fast_connect: true
   ssid: "TODO"
   password: "TODO"
   use_address: ducky-sevensegment.lan
@@ -41,17 +42,16 @@ time:
     id: sntp_time
 
 light:
-  - platform: fastled_clockless
+  - platform: neopixelbus
     id: led
-    chipset: sk6812       
-    rgb_order: GRB
+    variant: sk6812
     pin: GPIO27
     num_leds: 60
     name: "SevenSegment Clock"
     effects:
       - addressable_lambda:
           name: "Time"
-          update_interval: 500ms
+          update_interval: 250ms
           lambda: |-  # inspired by https://www.thingiverse.com/thing:4689116
             const int kLedsPerSegment = 2;
             const int kDigitOffsets[4] = {0, 14, 32, 46};
@@ -62,12 +62,12 @@ light:
             
             auto time = id(sntp_time).now();
             
-            if (time.hour > 0) {  // don't render zero
-              setDigit(it, current_color, time.hour / 10, kDigitOffsets[0], kLedsPerSegment);
+            if ((time.hour / 10) > 0) {  // don't render zero
+              setDigit(it, current_color, time.hour / 10, kDigitOffsets[0], 1, kLedsPerSegment);
             }
-            setDigit(it, current_color, time.hour % 10, kDigitOffsets[1], kLedsPerSegment);
-            setDigit(it, current_color, time.minute / 10, kDigitOffsets[2], kLedsPerSegment);
-            setDigit(it, current_color, time.minute % 10, kDigitOffsets[3], kLedsPerSegment);
+            setDigit(it, current_color, time.hour % 10, kDigitOffsets[1], 1, kLedsPerSegment);
+            setDigit(it, current_color, time.minute / 10, kDigitOffsets[2], 1, kLedsPerSegment);
+            setDigit(it, current_color, time.minute % 10, kDigitOffsets[3], 1, kLedsPerSegment);
             
             if (time.second % 2) {
               it[kColonOffset] = current_color;
