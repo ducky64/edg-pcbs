@@ -1,0 +1,74 @@
+esphome:
+  name: ducky-crawler
+  name_add_mac_suffix: true
+  platform: esp32
+  board: esp32s3camlcd
+  platformio_options:
+    board_build.boot: qio
+    board_build.arduino.memory_type: qio_opi
+
+wifi:
+  fast_connect: true
+  ssid: "TODO"
+  password: "TODO"
+  use_address: ducky-crawler.lan
+
+# HASS API
+api:
+
+# Allow API
+ota:
+
+# Print Updates
+logger:
+
+# WebServer component, displays some information
+web_server:
+    port: 80
+
+esp32_camera:
+  name: Crawler Camera
+  external_clock:
+    pin: GPIO9
+    frequency: 20MHz
+  i2c_pins:
+    sda: GPIO16
+    scl: GPIO17
+  data_pins: [GPIO14, GPIO47, GPIO48, GPIO21, GPIO13, GPIO11, GPIO10, GPIO3]  # Y2 ... Y9, order matters
+  vsync_pin: GPIO19
+  href_pin: GPIO20
+  pixel_clock_pin: GPIO12
+  resolution: 320x240  
+  jpeg_quality: 10
+  agc_mode: manual
+  agc_value: 1
+  # agc_gain_ceiling: 16x
+  wb_mode: home
+
+esp32_camera_web_server:
+  - port: 8080
+    mode: stream
+  - port: 8081
+    mode: snapshot
+ 
+light:
+  - platform: binary
+    name: "Crawler Red"
+    output: led_red
+  - platform: binary
+    name: "Crawler Green"
+    output: led_green
+  - platform: binary
+    name: "Crawler Blue"
+    output: led_blue
+
+output:
+  - id: led_red
+    platform: gpio
+    pin: GPIO40
+  - id: led_green
+    platform: gpio
+    pin: GPIO41
+  - id: led_blue
+    platform: gpio
+    pin: GPIO42
