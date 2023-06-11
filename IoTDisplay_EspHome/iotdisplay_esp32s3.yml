@@ -1,0 +1,122 @@
+esphome:
+  name: ducky-iotdisplay
+  name_add_mac_suffix: true
+  platform: esp32
+  # board: adafruit_feather_esp32s3  # 4MB flash with PSRAM
+  board: esp32-s3-devkitc-1  # 4MB flash with PSRAM
+
+wifi:
+  fast_connect: true
+  ssid: "TODO"
+  password: "TODO"
+  use_address: ducky-iotdisplay.lan
+
+# HASS API
+api:
+
+# Allow API
+ota:
+
+# Print Updates
+logger:
+
+# WebServer component, displays some information
+web_server:
+    port: 80
+
+time:
+  - platform: sntp
+    id: sntp_time
+
+spi:
+  clk_pin: GPIO40
+  mosi_pin: GPIO41
+
+font:
+  - file: "gfonts://Roboto"
+    id: roboto9
+    size: 9
+  - file: "resources/4x6.bdf"  # characters actually 3x5 plus 1px descender
+    id: bdf4x6
+  - file: "resources/5x7.bdf"  # characters actually 4x6 plus 1px descender, kind of iffy
+    id: bdf5x7
+  - file: "resources/6x10.bdf"  # characters actually 5x7 plus 2px descender
+    id: bdf6x10
+    
+display:
+  - platform: ssd1306_spi
+    model: "SSD1305 128x32"
+    offset_x: 4  # for SSD1305 128x32 deices
+    
+#  - platform: ssd1306_spi    
+#    model: "SSD1306 128x64"  # for transparent OLED 128x56
+
+#  - platform: ssd1322_spi    
+#    model: "SSD1322 256x64"  # for transparent OLED 128x56
+ 
+#  - platform: waveshare_epaper  # doesn't work, possibly bad config or circuit
+#    model: 2.90in-b
+#    busy_pin: GPIO42
+ 
+    cs_pin: GPIO38
+    dc_pin: GPIO39
+    reset_pin: GPIO2
+    lambda: |-
+      it.print(0, 0, id(bdf6x10), "Hello World! Quick jump");
+      it.print(0, 10, id(bdf5x7), "The quick brown fox jumps over the lazy dog");
+      it.print(0, 17, id(bdf4x6), "The quick brown fox jumps over the lazy dog");
+      it.strftime(0, 24, id(bdf4x6), "%H:%M:%S", id(sntp_time).now());
+      
+light:
+  - platform: binary
+    name: "IoTDisplay Red"
+    output: led_red
+  - platform: binary
+    name: "IoTDisplay Green"
+    output: led_green
+  - platform: binary
+    name: "IoTDisplay Blue"
+    output: led_blue
+
+output:
+  - id: led_red
+    platform: gpio
+    pin: GPIO7
+  - id: led_green
+    platform: gpio
+    pin: GPIO15
+  - id: led_blue
+    platform: gpio
+    pin: GPIO16
+
+binary_sensor:
+  - platform: gpio
+    name: "IoTDisplay Sw0"
+    pin: 
+      number: GPIO8
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    filters:
+      - delayed_on: 10ms
+  - platform: gpio
+    name: "IoTDisplay Sw1"
+    pin: 
+      number: GPIO18
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    filters:
+      - delayed_on: 10ms
+  - platform: gpio
+    name: "IoTDisplay Sw2"
+    pin: 
+      number: GPIO17
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    filters:
+      - delayed_on: 10ms
