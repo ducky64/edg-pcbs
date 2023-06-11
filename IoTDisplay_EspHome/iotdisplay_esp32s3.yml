@@ -2,8 +2,7 @@ esphome:
   name: ducky-iotdisplay
   name_add_mac_suffix: true
   platform: esp32
-  # board: adafruit_feather_esp32s3  # 4MB flash with PSRAM
-  board: esp32-s3-devkitc-1  # 4MB flash with PSRAM
+  board: esp32-s3-devkitc-1  # 8MB flash without PSRAM
 
 wifi:
   fast_connect: true
