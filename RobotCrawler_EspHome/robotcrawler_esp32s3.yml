@@ -8,10 +8,7 @@ esphome:
     board_build.arduino.memory_type: qio_opi
 
 wifi:
-  fast_connect: true
-  ssid: "TODO"
-  password: "TODO"
-  use_address: ducky-crawler.lan
+  <<: !include ../wifi_config.yaml
 
 # HASS API
 api:

@@ -1,0 +1,69 @@
+esphome:
+  name: owlbot
+  name_add_mac_suffix: true
+  platform: esp32
+  board: esp32-s3-devkitc-1  # 8MB flash without PSRAM
+
+wifi:
+  <<: !include ../wifi_config.yaml
+
+# HASS API
+api:
+
+# Allow API
+ota:
+
+# Print Updates
+logger:
+
+# WebServer component, displays some information
+web_server:
+    port: 80
+
+time:
+  - platform: sntp
+    id: sntp_time
+
+i2c:
+  sda: GPIO4
+  scl: GPIO5
+  frequency: 400kHz
+
+font:
+  - file: "gfonts://Roboto"
+    id: roboto9
+    size: 9
+  - file: "../IoTDisplay_EspHome/resources/4x6.bdf"  # characters actually 3x5 plus 1px descender
+    id: bdf4x6
+  - file: "../IoTDisplay_EspHome/resources/5x7.bdf"  # characters actually 4x6 plus 1px descender, kind of iffy
+    id: bdf5x7
+  - file: "../IoTDisplay_EspHome/resources/6x10.bdf"  # characters actually 5x7 plus 2px descender
+    id: bdf6x10
+    
+display:  
+  - platform: ssd1306_i2c
+    model: "SSD1306 128x64"  # for OLED 128x64
+    address: 0x3c
+    lambda: |-
+      it.print(0, 0, id(bdf6x10), "Hello World! Quick jump");
+      it.print(0, 10, id(bdf5x7), "The quick brown fox jumps over the lazy dog");
+      it.print(0, 17, id(bdf4x6), "The quick brown fox jumps over the lazy dog");
+      it.strftime(0, 24, id(bdf4x6), "%H:%M:%S", id(sntp_time).now());
+
+light:
+  - platform: neopixelbus
+    id: led
+    variant: WS2812
+    pin: GPIO48
+    num_leds: 12
+    name: "OwlBot Neopixels"
+    effects:
+      - addressable_rainbow:
+          name: Rainbow
+
+
+sensor:
+  - platform: adc
+    pin: GPIO1
+    name: "OwlBot Brightness"
+    update_interval: 60s

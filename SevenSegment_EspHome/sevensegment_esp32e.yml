@@ -12,10 +12,7 @@ esphome:
     - digit.h
 
 wifi:
-  fast_connect: true
-  ssid: "TODO"
-  password: "TODO"
-  use_address: ducky-sevensegment.lan
+  <<: !include ../wifi_config.yaml
 
 # HASS API
 api:

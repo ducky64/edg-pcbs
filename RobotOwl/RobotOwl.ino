@@ -1,6 +1,10 @@
 #include <Freenove_WS2812_Lib_for_ESP32.h>
 #include <ESP32Servo.h>
 
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+
 // "speaker=I2S0",
 // "speaker.sck=GPIO41, 35",
 // "speaker.ws=GPIO2, 37",
@@ -25,6 +29,16 @@ Servo Servo1;
 
 Freenove_ESP32_WS2812 Neopixels(kLedsCount, kPinNeopixel, 0, TYPE_GRB);
 
+int kScreenWidth = 128;
+int kScreenHeight = 64;
+int kScreenAddress = 0x3c;
+int kSccbScl = 5;
+int kSccbSda = 4;
+
+// OLED code based on
+// https://github.com/adafruit/Adafruit_SSD1306/blob/master/examples/ssd1306_128x64_i2c/ssd1306_128x64_i2c.ino
+Adafruit_SSD1306 display(kScreenWidth, kScreenHeight, &Wire, -1);
+
 
 void setup() {
   // put your setup code here, to run once:
@@ -44,14 +58,22 @@ void setup() {
   Servo1.attach(21, 1000, 2000);
   // Servo1.attach(21, 600, 2300);
 
-    Neopixels.begin();
-    Neopixels.setBrightness(25);
+  Neopixels.begin();
+  Neopixels.setBrightness(25);
 
-    // start up with all lights white
-    for (int i = 0; i < kLedsCount; i++) {
-      Neopixels.setLedColorData(i, 255, 255, 255);
-    }
-    Neopixels.show();
+  // start up with all lights white
+  for (int i = 0; i < kLedsCount; i++) {
+    Neopixels.setLedColorData(i, 255, 255, 255);
+  }
+  Neopixels.show();
+
+  Wire.begin(kSccbSda, kSccbScl);
+  // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
+  if(!display.begin(SSD1306_SWITCHCAPVCC, kScreenAddress)) {
+    Serial.println("SSD1306 allocation failed");
+    for(;;); // Don't proceed, loop forever
+  }
+  display.display();
 }
 
 void loop() {
