@@ -5,6 +5,16 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
+#include "AudioFileSourcePROGMEM.h"
+#include "AudioGeneratorRTTTL.h"
+#include "AudioOutputI2S.h"
+
+const char testRtttl[] = "scale_up:d=32,o=5,b=100:c,c#,d#,e,f#,g#,a#,b";
+
+AudioGeneratorRTTTL *rtttl;
+AudioFileSourcePROGMEM *file;
+AudioOutputI2S *out;
+
 // "speaker=I2S0",
 // "speaker.sck=GPIO41, 35",
 // "speaker.ws=GPIO2, 37",
@@ -23,6 +33,10 @@ int kPinOnboardLed = 2;
 int kPinNeopixel = 48;
 int kLedsCount = 12;
 int kPhotodiodePin = 1;
+
+int kPinI2sSck = 41;
+int kPinI2sWs = 2;
+int kPinI2sSd = 42;
 
 Servo Servo0;
 Servo Servo1;
@@ -59,7 +73,7 @@ void setup() {
   // Servo1.attach(21, 600, 2300);
 
   Neopixels.begin();
-  Neopixels.setBrightness(25);
+  Neopixels.setBrightness(15);
 
   // start up with all lights white
   for (int i = 0; i < kLedsCount; i++) {
@@ -68,32 +82,49 @@ void setup() {
   Neopixels.show();
 
   Wire.begin(kSccbSda, kSccbScl);
-  // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
-  if(!display.begin(SSD1306_SWITCHCAPVCC, kScreenAddress)) {
+
+  display.ssd1306_command(0xe4);
+  if(!display.begin(SSD1306_EXTERNALVCC, kScreenAddress)) {
     Serial.println("SSD1306 allocation failed");
     for(;;); // Don't proceed, loop forever
   }
   display.display();
+
+  Serial.printf("RTTTL start\n");
+
+  file = new AudioFileSourcePROGMEM(testRtttl, strlen_P(testRtttl));
+  out = new AudioOutputI2S();
+  out->SetPinout(kPinI2sSck, kPinI2sWs, kPinI2sSd);
+  rtttl = new AudioGeneratorRTTTL();
+  rtttl->begin(file, out);
 }
 
 void loop() {
+  if (rtttl->isRunning()) {
+    if (!rtttl->loop()) rtttl->stop();
+  } else {
+    Serial.printf("RTTTL done\n");
+  }
+
   // put your main code here, to run repeatedly:
   Serial.println(analogRead(kPhotodiodePin));
 
-  digitalWrite(kPinOnboardLed, 1);
-  delay(100);
-  digitalWrite(kPinOnboardLed, 0);
-  delay(100);
+  // digitalWrite(kPinOnboardLed, 1);
+  // delay(100);
+  // digitalWrite(kPinOnboardLed, 0);
+  // delay(100);
 
-  Neopixels.setLedColorData(0, 255, 0, 0);
-  Neopixels.setLedColorData(11, 255, 0, 0);
-  Neopixels.show();
-  Servo0.write(45);
-  delay(500);
+  // Neopixels.setLedColorData(0, 255, 0, 0);
+  // Neopixels.setLedColorData(11, 255, 0, 0);
+  // Neopixels.show();
+  // Servo0.write(45);
+  // delay(500);
 
-  Neopixels.setLedColorData(0, 0, 255, 0);
-  Neopixels.setLedColorData(11, 0, 255, 0);
-  Neopixels.show();
-  Servo0.write(135);
-  delay(500);
+  // Neopixels.setLedColorData(0, 0, 255, 0);
+  // Neopixels.setLedColorData(11, 0, 255, 0);
+  // Neopixels.show();
+  // Servo0.write(135);
+  // delay(500);
+
+  // display.ssd1306_command(SSD1306_DISPLAYOFF);
 }
