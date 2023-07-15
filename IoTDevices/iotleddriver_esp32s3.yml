@@ -1,0 +1,100 @@
+esphome:
+  name: ducky-iotleddriver
+  name_add_mac_suffix: true
+  platform: esp32
+  board: esp32-s3-devkitc-1  # 8MB flash without PSRAM
+
+wifi:
+  <<: !include ../wifi_config.yaml
+
+# HASS API
+api:
+
+# Allow API
+ota:
+
+# Print Updates
+logger:
+
+# WebServer component, displays some information
+web_server:
+    port: 80
+
+time:
+  - platform: sntp
+    id: sntp_time
+
+light:
+  - platform: binary
+    name: "IoTLedDriver DbgRed"
+    output: led_red
+  - platform: neopixelbus
+    id: led
+    variant: sk6812
+    pin: GPIO5
+    num_leds: 18
+    name: "IoTLedDriver Neopixels"
+    effects:
+      - addressable_rainbow:
+          name: Rainbow
+  - platform: monochromatic
+    name: "IoTLedDriver White"
+    output: ledw_out
+  - platform: rgb
+    name: "IoTLedDriver RGB"
+    red: ledr_out
+    green: ledg_out
+    blue: ledb_out
+
+output:
+  - id: led_red
+    platform: gpio
+    pin: GPIO20
+  - platform: ledc
+    pin: GPIO1
+    id: ledw_out
+  - platform: ledc
+    pin: GPIO2
+    id: ledr_out
+  - platform: ledc
+    pin: GPIO42
+    id: ledg_out
+  - platform: ledc
+    pin: GPIO40
+    id: ledb_out
+
+binary_sensor:
+  - platform: gpio
+    name: "IoTLedDriver Encoder Sw"
+    pin: 
+      number: GPIO6
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    filters:
+      - delayed_on: 10ms
+
+sensor:
+  - platform: adc
+    name: "IoTLedDriver Vin"
+    pin: GPIO4
+    accuracy_decimals: 2
+    update_interval: 60s
+    attenuation: 11dB
+    filters:
+      - multiply: 4.29
+  - platform: rotary_encoder
+    name: "IoTLedDriver Encoder"
+    pin_a:
+      number: GPIO15
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    pin_b:
+      number: GPIO7
+      inverted: true
+      mode:
+        input: true
+        pullup: true
