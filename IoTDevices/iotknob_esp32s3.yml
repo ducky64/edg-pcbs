@@ -1,0 +1,179 @@
+esphome:
+  name: ducky-iotknob
+  name_add_mac_suffix: true
+  platform: esp32
+  board: esp32-s3-devkitc-1  # 8MB flash without PSRAM
+
+wifi:
+  <<: !include ../wifi_config.yaml
+
+# HASS API
+api:
+
+# Allow API
+ota:
+
+# Print Updates
+logger:
+
+# WebServer component, displays some information
+web_server:
+    port: 80
+
+time:
+  - platform: sntp
+    id: sntp_time
+
+light:
+  - platform: binary
+    name: "IoTKnob DbgRed"
+    output: led_red
+  - platform: binary
+    name: "IoTKnob DbgYellow"
+    output: led_yellow
+  - platform: neopixelbus
+    id: led
+    variant: sk6812
+    pin: GPIO17
+    num_leds: 34  # 4 + 24 + 6
+    name: "IoTKnob Neopixels"
+    effects:
+      - addressable_rainbow:
+          name: Rainbow
+
+output:
+  - id: led_red
+    platform: gpio
+    pin: GPIO48
+  - id: led_yellow
+    platform: gpio
+    pin: GPIO47
+  - platform: ledc
+    pin: GPIO16
+    id: rtttl_out
+
+rtttl:
+  output: rtttl_out
+  on_finished_playback:
+    - logger.log: 'Song ended!'
+
+i2c:
+  scl: GPIO40
+  sda: GPIO39
+  scan: True
+
+font:
+  - file: "../IoTDisplay_EspHome/resources/4x6.bdf"  # characters actually 3x5 plus 1px descender
+    id: bdf4x6
+  - file: "../IoTDisplay_EspHome/resources/6x10.bdf"  # characters actually 5x7 plus 2px descender
+    id: bdf6x10
+    
+display:  
+  - platform: ssd1306_i2c
+    model: "SSD1306 128x64"
+    address: 0x3c
+    reset_pin: GPIO15
+    lambda: |-
+      it.print(0, 0, id(bdf6x10), "Hello World! Quick jump");
+      it.print(0, 10, id(bdf4x6), "The quick brown fox jumps over the lazy dog");
+      it.strftime(0, 17, id(bdf4x6), "%H:%M:%S", id(sntp_time).now());
+
+binary_sensor:
+  - platform: gpio
+    name: "IoTKnob Encoder Sw"
+    pin: 
+      number: GPIO38
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    filters:
+      - delayed_on: 10ms
+  - platform: gpio
+    name: "IoTKnob Sw0"
+    pin: 
+      number: GPIO4
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    filters:
+      - delayed_on: 10ms
+  - platform: gpio
+    name: "IoTKnob Sw1"
+    pin:
+      number: GPIO6
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    filters:
+      - delayed_on: 10ms
+  - platform: gpio
+    name: "IoTKnob Sw2"
+    pin:
+      number: GPIO7
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    filters:
+      - delayed_on: 10ms
+  - platform: gpio
+    name: "IoTKnob Sw3"
+    pin:
+      number: GPIO42
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    filters:
+      - delayed_on: 10ms
+  - platform: gpio
+    name: "IoTKnob Sw4"
+    pin:
+      number: GPIO2
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    filters:
+      - delayed_on: 10ms
+  - platform: gpio
+    name: "IoTKnob Sw5"
+    pin:
+      number: GPIO1
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    filters:
+      - delayed_on: 10ms
+
+sensor:
+  - platform: adc
+    name: "IoTKnob Vin"
+    pin: GPIO5
+    accuracy_decimals: 2
+    update_interval: 60s
+    attenuation: 11dB
+    filters:
+      - multiply: 1.666
+  - platform: rotary_encoder
+    name: "IoTKnob Encoder"
+    pin_a:
+      number: GPIO8
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    pin_b:
+      number: GPIO18
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+  - platform: bh1750
+    name: "IoTKnob BH1750 Illuminance"
+    address: 0x23
+    update_interval: 60s
