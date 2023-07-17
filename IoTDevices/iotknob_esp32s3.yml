@@ -177,3 +177,8 @@ sensor:
     name: "IoTKnob BH1750 Illuminance"
     address: 0x23
     update_interval: 60s
+  - platform: vl53l0x
+    name: "IoTKnob VL53L0x Distance"
+    address: 0x29
+    update_interval: 5s
+    long_range: true
