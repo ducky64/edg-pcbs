@@ -1,0 +1,108 @@
+esphome:
+  name: ducky-iotfandriver
+  name_add_mac_suffix: true
+  platform: esp32
+  board: esp32-c3-devkitm-1
+
+wifi:
+  <<: !include ../wifi_config.yaml
+
+# HASS API
+api:
+
+# Allow API
+ota:
+
+# Print Updates
+logger:
+
+# WebServer component, displays some information
+web_server:
+    port: 80
+
+light:
+  - platform: neopixelbus
+    id: led
+    variant: sk6812
+    pin: GPIO5
+    num_leds: 18
+    name: "IoTFanDriver Neopixels"
+    effects:
+      - addressable_rainbow:
+          name: Rainbow
+
+output:
+  - platform: ledc
+    id: fan0_pwr
+    pin: GPIO10
+    frequency: 1 kHz
+  - platform: ledc
+    id: fan0_ctl
+    pin: GPIO18
+    inverted: true
+    frequency: 25 kHz
+  - platform: ledc
+    id: fan1_pwr
+    pin: GPIO3
+    inverted: true
+    frequency: 1 kHz
+  - platform: ledc
+    id: fan1_ctl
+    pin: GPIO1
+    inverted: true
+    frequency: 25 kHz
+
+fan:
+  - platform: speed
+    output: fan0_pwr
+    name: "IoTFanDriver Fan0 Driver"
+  - platform: speed
+    output: fan0_ctl
+    name: "IoTFanDriver Fan0 Control"
+  - platform: speed
+    output: fan1_pwr
+    name: "IoTFanDriver Fan1 Driver"
+  - platform: speed
+    output: fan1_ctl
+    name: "IoTFanDriver Fan1 Control"
+    
+sensor:
+  - platform: adc
+    name: "IoTFanDriver Vin"
+    pin: GPIO4
+    accuracy_decimals: 2
+    update_interval: 60s
+    attenuation: 11dB
+    filters:
+      - multiply: 4.29
+  - platform: rotary_encoder
+    name: "IoTFanDriver Encoder"
+    pin_a:
+      number: GPIO7
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    pin_b:
+      number: GPIO6
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+  - platform: pulse_counter
+    pin: 
+      number: GPIO19
+      mode:
+        input: true
+        pullup: true
+    name: "IotFanDriver Fan0 Tach"
+    update_interval: 1s
+  - platform: pulse_counter
+    pin:
+      number: GPIO0
+      mode:
+        input: true
+        pullup: true
+    name: "IotFanDriver Fan1 Tach"
+    update_interval: 1s
+
