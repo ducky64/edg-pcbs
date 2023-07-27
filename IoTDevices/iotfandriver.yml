@@ -35,7 +35,7 @@ output:
   - platform: ledc
     id: fan0_pwr
     pin: GPIO10
-    frequency: 1 kHz
+    frequency: 10 Hz
   - platform: ledc
     id: fan0_ctl
     pin: GPIO18
@@ -45,7 +45,7 @@ output:
     id: fan1_pwr
     pin: GPIO3
     inverted: true
-    frequency: 1 kHz
+    frequency: 10 Hz
   - platform: ledc
     id: fan1_ctl
     pin: GPIO1
@@ -96,7 +96,7 @@ sensor:
         input: true
         pullup: true
     name: "IotFanDriver Fan0 Tach"
-    update_interval: 1s
+    update_interval: 5s
   - platform: pulse_counter
     pin:
       number: GPIO0
@@ -104,5 +104,5 @@ sensor:
         input: true
         pullup: true
     name: "IotFanDriver Fan1 Tach"
-    update_interval: 1s
+    update_interval: 5s
 
