@@ -32,7 +32,17 @@ const int kOledMosiPin = 41;
 #include <GxEPD2_3C.h>
 #include <GxEPD2_7C.h>
 #include <Fonts/FreeMonoBold9pt7b.h>
-GxEPD2_BW<GxEPD2_290_I6FD, GxEPD2_290_I6FD::HEIGHT> display(GxEPD2_290_I6FD(kOledCsPin, kOledDcPin, kOledRstPin, kEpdBusyPin)); // GDEW029I6FD 128x296, UC8151D
+// Full displays list at
+// https://github.com/ZinggJM/GxEPD2/tree/master/examples/GxEPD2_Example
+// GxEPD2_BW<GxEPD2_290_I6FD, GxEPD2_290_I6FD::HEIGHT> display(GxEPD2_290_I6FD(kOledCsPin, kOledDcPin, kOledRstPin, kEpdBusyPin)); // compatible w/ Waveshare 2.9 flexible
+
+// These in concept should support ER-EPD-027-1/2 but don't work =()
+// #include <epd3c/GxEPD2_270c.h>  // default include file is broken
+// GxEPD2_BW<GxEPD2_270, GxEPD2_270::HEIGHT> display(GxEPD2_270(kOledCsPin, kOledDcPin, kOledRstPin, kEpdBusyPin)); // GDEW027W3 176x264, EK79652 (IL91874)
+// GxEPD2_3C<GxEPD2_270c, GxEPD2_270c::HEIGHT> display(GxEPD2_270c(kOledCsPin, kOledDcPin, kOledRstPin, kEpdBusyPin)); // GDEW027C44 176x264, IL91874
+
+GxEPD2_3C<GxEPD2_290_C90c, GxEPD2_290_C90c::HEIGHT> display(GxEPD2_290_C90c(kOledCsPin, kOledDcPin, kOledRstPin, kEpdBusyPin));  // SSD1680, compatible w/ ER-EPD-029-2R
+
 SPIClass hspi(HSPI);  // for ESP32
 
 
@@ -55,9 +65,9 @@ void setup() {
   display.init(115200);
   digitalWrite(kLedR, 0);
   einkHelloWorld();
-  display.hibernate();
-
   digitalWrite(kLedG, 1);
+
+  display.hibernate();
 }
 
 const char kHelloWorld[] = "Hello World!";
