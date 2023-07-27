@@ -1,3 +1,6 @@
+// Requires the GxEPD2 library: https://github.com/ZinggJM/GxEPD2
+// (available on Arduino library manager)
+
 // "spi=SPI2",
 // "spi.sck=GPIO40, 33",
 // "spi.mosi=GPIO41, 34",
@@ -14,11 +17,28 @@
 // "0=USB",
 // "0.dp=GPIO20, 14",
 // "0.dm=GPIO19, 13"
+const int kSw0Pin = 8;
+const int kSw1Pin = 18;
+const int kSw2Pin = 17;
+const int kOledRstPin = 2;
+const int kOledDcPin = 39;
+const int kOledCsPin = 38;
+const int kEpdBusyPin = 42;
+
+const int kOledSckPin = 40;
+const int kOledMosiPin = 41;
+
+#include <GxEPD2_BW.h>
+#include <GxEPD2_3C.h>
+#include <GxEPD2_7C.h>
+#include <Fonts/FreeMonoBold9pt7b.h>
+GxEPD2_BW<GxEPD2_290_I6FD, GxEPD2_290_I6FD::HEIGHT> display(GxEPD2_290_I6FD(kOledCsPin, kOledDcPin, kOledRstPin, kEpdBusyPin)); // GDEW029I6FD 128x296, UC8151D
+SPIClass hspi(HSPI);  // for ESP32
 
 
-int kLedR = 7;
-int kLedG = 15;
-int kLedB = 16;
+const int kLedR = 7;
+const int kLedG = 15;
+const int kLedB = 16;
 
 void setup() {
   // put your setup code here, to run once:
@@ -26,9 +46,40 @@ void setup() {
   pinMode(kLedG, OUTPUT);
   pinMode(kLedB, OUTPUT);
 
-  digitalWrite(kLedR, 0);
+  digitalWrite(kLedR, 1);
   digitalWrite(kLedG, 0);
   digitalWrite(kLedB, 0);
+
+  hspi.begin(kOledSckPin, -1, kOledMosiPin, -1);
+  display.epd2.selectSPI(hspi, SPISettings(4000000, MSBFIRST, SPI_MODE0));
+  display.init(115200);
+  digitalWrite(kLedR, 0);
+  einkHelloWorld();
+  display.hibernate();
+
+  digitalWrite(kLedG, 1);
+}
+
+const char kHelloWorld[] = "Hello World!";
+
+void einkHelloWorld() {
+  display.setRotation(1);
+  display.setFont(&FreeMonoBold9pt7b);
+  display.setTextColor(GxEPD_BLACK);
+  int16_t tbx, tby; uint16_t tbw, tbh;
+  display.getTextBounds(kHelloWorld, 0, 0, &tbx, &tby, &tbw, &tbh);
+  // center the bounding box by transposition of the origin:
+  uint16_t x = ((display.width() - tbw) / 2) - tbx;
+  uint16_t y = ((display.height() - tbh) / 2) - tby;
+  display.setFullWindow();
+  display.firstPage();
+  do
+  {
+    display.fillScreen(GxEPD_WHITE);
+    display.setCursor(x, y);
+    display.print(kHelloWorld);
+  }
+  while (display.nextPage());
 }
 
 void loop() {
