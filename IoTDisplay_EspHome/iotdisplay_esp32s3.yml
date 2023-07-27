@@ -50,10 +50,15 @@ display:
 #  - platform: ssd1322_spi    
 #    model: "SSD1322 256x64"  # for transparent OLED 128x56
  
-#  - platform: waveshare_epaper  # doesn't work, possibly bad config or circuit
-#    model: 2.90in-b
+#  - platform: waveshare_epaper
 #    busy_pin: GPIO42
- 
+#    rotation: 90
+#    update_interval: 10s
+#    model: 2.90inv2  # works for ER-EPD029-2R, using SSD1680 controller; red channel has random data and overwrites black channel
+#    full_update_every: 1  # for ER-EPD029-2R, otherwise black channel is corrupted
+    
+#    model: 2.90in-b  # similar protocol to Waveshare 2.9 D (flexible) = GDEW029I6F, does not produce an image
+    
     cs_pin: GPIO38
     dc_pin: GPIO39
     reset_pin: GPIO2
