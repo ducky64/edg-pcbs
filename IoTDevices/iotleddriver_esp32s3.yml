@@ -1,3 +1,6 @@
+substitutions:
+  name: "DeskLamp"
+
 esphome:
   name: ducky-iotleddriver
   name_add_mac_suffix: true
@@ -22,22 +25,25 @@ web_server:
 
 light:
   - platform: binary
-    name: "IoTLedDriver DbgRed"
+    name: "${name} DbgRed"
+    internal: true
     output: led_red
   - platform: neopixelbus
-    id: led
+    id: pixels
     variant: sk6812
     pin: GPIO5
     num_leds: 18
-    name: "IoTLedDriver Neopixels"
+    name: "${name} Neopixels"
     effects:
       - addressable_rainbow:
           name: Rainbow
   - platform: monochromatic
-    name: "IoTLedDriver White"
+    id: led_w
+    name: "${name} White"
     output: ledw_out
   - platform: rgb
-    name: "IoTLedDriver RGB"
+    id: led_rgb
+    name: "${name} RGB"
     red: ledr_out
     green: ledg_out
     blue: ledb_out
@@ -61,7 +67,7 @@ output:
 
 binary_sensor:
   - platform: gpio
-    name: "IoTLedDriver Encoder Sw"
+    name: "${name} Encoder Sw"
     pin: 
       number: GPIO6
       inverted: true
@@ -70,10 +76,21 @@ binary_sensor:
         pullup: true
     filters:
       - delayed_on: 10ms
+    on_click:
+    - then:
+        - lambda: |-
+            auto ledw = id(led_w);
+            auto ledrgb = id(led_rgb);
+            if (!ledw->remote_values.is_on() && !ledrgb->remote_values.is_on()) {  // currently off, turn on
+              ledw->turn_on().perform();
+            } else {  // any light on, turn off all
+              ledw->turn_off().perform();
+              ledrgb->turn_off().perform();
+            }
 
 sensor:
   - platform: adc
-    name: "IoTLedDriver Vin"
+    name: "${name} Vin"
     pin: GPIO4
     accuracy_decimals: 2
     update_interval: 60s
@@ -81,7 +98,7 @@ sensor:
     filters:
       - multiply: 4.29
   - platform: rotary_encoder
-    name: "IoTLedDriver Encoder"
+    name: "${name} Encoder"
     pin_a:
       number: GPIO15
       inverted: true
@@ -94,3 +111,23 @@ sensor:
       mode:
         input: true
         pullup: true
+    on_clockwise:
+    - then:
+        - lambda: |-
+            auto ledw = id(led_w);
+            auto call = ledw->turn_on();
+            if (ledw->remote_values.is_on()) {  // first turn when off only turns on without changing level
+              call.set_brightness(ledw->remote_values.get_brightness() + 0.1);
+            }
+            call.perform();
+    on_anticlockwise:
+    - then:
+        - lambda: |-
+            auto ledw = id(led_w);
+            if (ledw->remote_values.get_brightness() <= 0.1) {
+              ledw->turn_off().perform();
+            } else {
+              auto call = ledw->turn_on();
+              call.set_brightness(ledw->remote_values.get_brightness() - 0.1);
+              call.perform();
+            }

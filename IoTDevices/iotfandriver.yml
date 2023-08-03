@@ -35,20 +35,19 @@ light:
           name: Rainbow
 
 output:
-  - platform: ledc
+  - platform: gpio
     id: fan0_pwr
     pin: GPIO10
-    frequency: 10 Hz
+    inverted: false
   - platform: ledc
     id: fan0_ctl
     pin: GPIO18
     inverted: true
     frequency: 25 kHz
-  - platform: ledc
+  - platform: gpio
     id: fan1_pwr
     pin: GPIO3
-    inverted: true
-    frequency: 10 Hz
+    inverted: false
   - platform: ledc
     id: fan1_ctl
     pin: GPIO1
@@ -56,7 +55,7 @@ output:
     frequency: 25 kHz
 
 fan:
-  - platform: speed
+  - platform: binary
     id: fan0_fan_pwr
     output: fan0_pwr
     name: "${name} Ch0 Drv"
@@ -64,7 +63,7 @@ fan:
     id: fan0_fan_ctl
     output: fan0_ctl
     name: "${name} Ch0 Ctl"
-  - platform: speed
+  - platform: binary
     id: fan1_fan_pwr
     output: fan1_pwr
     name: "${name} Ch1 Drv"
