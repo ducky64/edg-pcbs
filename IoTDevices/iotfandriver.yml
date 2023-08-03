@@ -63,6 +63,12 @@ fan:
     id: fan0_fan_ctl
     output: fan0_ctl
     name: "${name} Ch0 Ctl"
+    on_turn_on:
+    - then:
+      - fan.turn_on: fan0_fan_pwr
+    on_turn_off:
+    - then:
+      - fan.turn_off: fan0_fan_pwr
   - platform: binary
     id: fan1_fan_pwr
     output: fan1_pwr
@@ -71,7 +77,13 @@ fan:
     id: fan1_fan_ctl
     output: fan1_ctl
     name: "${name} Ch1 Ctl"
-    
+    on_turn_on:
+    - then:
+      - fan.turn_on: fan1_fan_pwr
+    on_turn_off:
+    - then:
+      - fan.turn_off: fan1_fan_pwr
+      
 sensor:
   - platform: adc
     name: "${name} Vin"
@@ -98,38 +110,26 @@ sensor:
     on_clockwise:
     - then:
         - lambda: |-
-            esphome::fan::Fan* pwr_channels[] = {id(fan0_fan_pwr), id(fan1_fan_pwr)};
             esphome::fan::Fan* ctl_channels[] = {id(fan0_fan_ctl), id(fan1_fan_ctl)};
-            for (int i=0; i<sizeof(pwr_channels)/sizeof(pwr_channels[0]); i++) {
-              auto pwr = pwr_channels[i];
-              auto ctl = ctl_channels[i];
-              auto ctl_call = ctl->turn_on();
+            for (auto ctl: ctl_channels) {
+              auto call = ctl->turn_on();
               if (ctl->state != false) {  // first turn when off only turns on the fan
-                ctl_call.set_speed(ctl->speed + 1);
+                call.set_speed(ctl->speed + 1);
               }
-              ctl_call.perform();
-              if (pwr->state == false || pwr->speed <= 0) {
-                pwr->turn_on().perform();
-              }
+              call.perform();
             }
     on_anticlockwise:
     - then:
         - lambda: |-
-            esphome::fan::Fan* pwr_channels[] = {id(fan0_fan_pwr), id(fan1_fan_pwr)};
             esphome::fan::Fan* ctl_channels[] = {id(fan0_fan_ctl), id(fan1_fan_ctl)};
-            for (int i=0; i<sizeof(pwr_channels)/sizeof(pwr_channels[0]); i++) {
-              auto pwr = pwr_channels[i];
-              auto ctl = ctl_channels[i];
+            for (auto ctl: ctl_channels) {
               if (ctl->speed <= 1) {
-                auto ctl_call = ctl->turn_off();
-                ctl_call.perform();
+                auto call = ctl->turn_off();
+                call.perform();
               } else {
-                auto ctl_call = ctl->turn_on();
-                ctl_call.set_speed(ctl->speed - 1);
-                ctl_call.perform();
-              }
-              if (ctl->state == false && pwr->state == true) {
-                pwr->turn_off().perform();
+                auto call = ctl->turn_on();
+                call.set_speed(ctl->speed - 1);
+                call.perform();
               }
             }
 
