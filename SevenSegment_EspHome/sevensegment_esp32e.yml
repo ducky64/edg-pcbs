@@ -1,3 +1,6 @@
+substitutions:
+  name: "SevenSegment"
+
 esphome:
   name: ducky-sevensegment
   name_add_mac_suffix: true
@@ -44,7 +47,7 @@ light:
     variant: sk6812
     pin: GPIO27
     num_leds: 60
-    name: "SevenSegment Clock"
+    name: "${name} Clock"
     effects:
       - addressable_lambda:
           name: "Time"
@@ -123,7 +126,7 @@ i2c:
 
 binary_sensor:
   - platform: gpio
-    name: "SevenSegment SwSet"
+    name: "${name} SwSet"
     pin: 
       number: GPIO18
       inverted: true
@@ -133,7 +136,7 @@ binary_sensor:
     filters:
       - delayed_on: 10ms
   - platform: gpio
-    name: "SevenSegment SwUp"
+    name: "${name} SwUp"
     pin: 
       number: GPIO19
       inverted: true
@@ -143,7 +146,7 @@ binary_sensor:
     filters:
       - delayed_on: 10ms
   - platform: gpio
-    name: "SevenSegment SwRst"
+    name: "${name} SwRst"
     pin: 
       number: GPIO21
       inverted: true
@@ -155,7 +158,7 @@ binary_sensor:
 
 sensor:
   - platform: adc
-    name: "SevenSegment Vin"
+    name: "${name} Vin"
     pin: GPIO35
     accuracy_decimals: 2
     update_interval: 60s
@@ -164,47 +167,47 @@ sensor:
       - multiply: 2
       
   - platform: bh1750
-    name: "SevenSegment BH1750 Illuminance"
+    name: "${name} BH1750 Illuminance"
     address: 0x23
     update_interval: 60s
     
   - platform: bme680_bsec
     temperature:
       # Temperature in °C
-      name: "SevenSegment BME680 Temperature"
+      name: "${name} BME680 Temperature"
       filters:
         - median
     pressure:
       # Pressure in hPa
-      name: "SevenSegment BME680 Pressure"
+      name: "${name} BME680 Pressure"
       filters:
         - median
     humidity:
       # Relative humidity %
-      name: "SevenSegment BME680 Humidity"
+      name: "${name} BME680 Humidity"
       filters:
         - median
     gas_resistance:
       # Gas resistance in Ω
-      name: "SevenSegment BME680 Gas Resistance"
+      name: "${name} BME680 Gas Resistance"
       filters:
         - median
     iaq:
       # Indoor air quality value
-      name: "SevenSegment BME680 IAQ"
+      name: "${name} BME680 IAQ"
       filters:
         - median
     iaq_accuracy:
       # IAQ accuracy as a numeric value of 0, 1, 2, 3
-      name: "SevenSegment BME680 Numeric IAQ Accuracy"
+      name: "${name} BME680 Numeric IAQ Accuracy"
     co2_equivalent:
       # CO2 equivalent estimate in ppm
-      name: "SevenSegment BME680 CO2 Equivalent"
+      name: "${name} BME680 CO2 Equivalent"
       filters:
         - median
     breath_voc_equivalent:
       # Volatile organic compounds equivalent estimate in ppm
-      name: "SevenSegment BME680 Breath VOC Equivalent"
+      name: "${name} BME680 Breath VOC Equivalent"
       filters:
         - median
 
@@ -219,7 +222,7 @@ rtttl:
     - logger.log: 'Song ended!'
 
 text_sensor:
-  - platform: bme680_bsec  # in custom_components?
+  - platform: bme680_bsec
     iaq_accuracy:
       # IAQ accuracy as a text value of Stabilizing, Uncertain, Calibrating, Calibrated
-      name: "SevenSegment BME680 IAQ Accuracy"
+      name: "${name} BME680 IAQ Accuracy"
