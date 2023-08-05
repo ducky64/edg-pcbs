@@ -1,0 +1,12 @@
+# WebServer component, displays some information
+web_server:
+    port: 80
+
+# HASS API
+api:
+
+# Allow API
+ota:
+
+# Print Updates
+logger:

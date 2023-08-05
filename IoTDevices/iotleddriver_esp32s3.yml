@@ -6,28 +6,19 @@ esphome:
   name_add_mac_suffix: true
   platform: esp32
   board: esp32-s3-devkitc-1  # 8MB flash without PSRAM
+  on_boot:
+    - light.turn_on:  # set default brightness
+        id: light_white
+        brightness: 70%
+    - light.turn_off:  # but don't turn on
+        id: light_white
 
 wifi:
   <<: !include ../wifi_config.yaml
 
-# HASS API
-api:
-
-# Allow API
-ota:
-
-# Print Updates
-logger:
-
-# WebServer component, displays some information
-web_server:
-    port: 80
+<<: !include ../common_config.yaml
 
 light:
-  - platform: binary
-    name: "${name} DbgRed"
-    internal: true
-    output: led_red
   - platform: neopixelbus
     id: pixels
     variant: sk6812
@@ -38,32 +29,32 @@ light:
       - addressable_rainbow:
           name: Rainbow
   - platform: monochromatic
-    id: led_w
+    id: light_white
     name: "${name} White"
-    output: ledw_out
+    output: output_white
   - platform: rgb
-    id: led_rgb
+    id: light_rgb
     name: "${name} RGB"
-    red: ledr_out
-    green: ledg_out
-    blue: ledb_out
+    red: output_red
+    green: output_green
+    blue: output_blue
 
 output:
-  - id: led_red
+  - id: output_debug_red
     platform: gpio
     pin: GPIO20
   - platform: ledc
     pin: GPIO1
-    id: ledw_out
+    id: output_white
   - platform: ledc
     pin: GPIO2
-    id: ledr_out
+    id: output_red
   - platform: ledc
     pin: GPIO42
-    id: ledg_out
+    id: output_green
   - platform: ledc
     pin: GPIO40
-    id: ledb_out
+    id: output_blue
 
 binary_sensor:
   - platform: gpio
@@ -79,13 +70,13 @@ binary_sensor:
     on_click:
     - then:
         - lambda: |-
-            auto ledw = id(led_w);
-            auto ledrgb = id(led_rgb);
-            if (!ledw->remote_values.is_on() && !ledrgb->remote_values.is_on()) {  // currently off, turn on
-              ledw->turn_on().perform();
+            auto white = id(light_white);
+            auto rgb = id(light_rgb);
+            if (!white->remote_values.is_on() && !rgb->remote_values.is_on()) {  // currently off, turn on
+              white->turn_on().perform();
             } else {  // any light on, turn off all
-              ledw->turn_off().perform();
-              ledrgb->turn_off().perform();
+              white->turn_off().perform();
+              rgb->turn_off().perform();
             }
 
 sensor:
@@ -114,20 +105,20 @@ sensor:
     on_clockwise:
     - then:
         - lambda: |-
-            auto ledw = id(led_w);
-            auto call = ledw->turn_on();
-            if (ledw->remote_values.is_on()) {  // first turn when off only turns on without changing level
-              call.set_brightness(ledw->remote_values.get_brightness() + 0.1);
+            auto white = id(light_white);
+            auto call = white->turn_on();
+            if (white->remote_values.is_on()) {  // first turn when off only turns on without changing level
+              call.set_brightness(white->remote_values.get_brightness() + 0.1);
             }
             call.perform();
     on_anticlockwise:
     - then:
         - lambda: |-
-            auto ledw = id(led_w);
-            if (ledw->remote_values.get_brightness() <= 0.1) {
-              ledw->turn_off().perform();
+            auto white = id(light_white);
+            if (white->remote_values.get_brightness() <= 0.1) {
+              white->turn_off().perform();
             } else {
-              auto call = ledw->turn_on();
-              call.set_brightness(ledw->remote_values.get_brightness() - 0.1);
+              auto call = white->turn_on();
+              call.set_brightness(white->remote_values.get_brightness() - 0.1);
               call.perform();
             }

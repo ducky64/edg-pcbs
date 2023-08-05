@@ -10,18 +10,7 @@ esphome:
 wifi:
   <<: !include ../wifi_config.yaml
 
-# HASS API
-api:
-
-# Allow API
-ota:
-
-# Print Updates
-logger:
-
-# WebServer component, displays some information
-web_server:
-    port: 80
+<<: !include ../common_config.yaml
 
 light:
   - platform: neopixelbus
@@ -36,53 +25,53 @@ light:
 
 output:
   - platform: gpio
-    id: fan0_pwr
+    id: output_fan0_pwr
     pin: GPIO10
     inverted: false
   - platform: ledc
-    id: fan0_ctl
+    id: output_fan0_ctl
     pin: GPIO18
     inverted: true
     frequency: 25 kHz
   - platform: gpio
-    id: fan1_pwr
+    id: output_fan1_pwr
     pin: GPIO3
     inverted: false
   - platform: ledc
-    id: fan1_ctl
+    id: output_fan1_ctl
     pin: GPIO1
     inverted: true
     frequency: 25 kHz
 
 fan:
   - platform: binary
-    id: fan0_fan_pwr
-    output: fan0_pwr
+    id: fan0_pwr
+    output: output_fan0_pwr
     name: "${name} Ch0 Drv"
   - platform: speed
-    id: fan0_fan_ctl
-    output: fan0_ctl
+    id: fan0_ctl
+    output: output_fan0_ctl
     name: "${name} Ch0 Ctl"
     on_turn_on:
     - then:
-      - fan.turn_on: fan0_fan_pwr
+      - fan.turn_on: fan0_pwr
     on_turn_off:
     - then:
-      - fan.turn_off: fan0_fan_pwr
+      - fan.turn_off: fan0_pwr
   - platform: binary
-    id: fan1_fan_pwr
-    output: fan1_pwr
+    id: fan1_pwr
+    output: output_fan1_pwr
     name: "${name} Ch1 Drv"
   - platform: speed
-    id: fan1_fan_ctl
-    output: fan1_ctl
+    id: fan1_ctl
+    output: output_fan1_ctl
     name: "${name} Ch1 Ctl"
     on_turn_on:
     - then:
-      - fan.turn_on: fan1_fan_pwr
+      - fan.turn_on: fan1_pwr
     on_turn_off:
     - then:
-      - fan.turn_off: fan1_fan_pwr
+      - fan.turn_off: fan1_pwr
       
 sensor:
   - platform: adc
@@ -110,7 +99,7 @@ sensor:
     on_clockwise:
     - then:
         - lambda: |-
-            esphome::fan::Fan* ctl_channels[] = {id(fan0_fan_ctl), id(fan1_fan_ctl)};
+            esphome::fan::Fan* ctl_channels[] = {id(fan0_ctl), id(fan1_ctl)};
             for (auto ctl: ctl_channels) {
               auto call = ctl->turn_on();
               if (ctl->state != false) {  // first turn when off only turns on the fan
@@ -121,7 +110,7 @@ sensor:
     on_anticlockwise:
     - then:
         - lambda: |-
-            esphome::fan::Fan* ctl_channels[] = {id(fan0_fan_ctl), id(fan1_fan_ctl)};
+            esphome::fan::Fan* ctl_channels[] = {id(fan0_ctl), id(fan1_ctl)};
             for (auto ctl: ctl_channels) {
               if (ctl->speed <= 1) {
                 auto call = ctl->turn_off();
