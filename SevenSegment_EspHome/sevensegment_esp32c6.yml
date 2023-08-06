@@ -1,0 +1,179 @@
+# TO BUILD (as of 23-08-06), THIS REQUIRES A CUSTOM ESPHOME BRANCH: https://github.com/stintel/esphome/tree/esp32c6
+# Clone and install locally (python setup.py install).
+# You may need to uninstall any ESPHome versions installed by pip.
+# If esphome no longer runs, you may have to run it from python: python -m esphome run ...
+
+substitutions:
+  name: "SevenSegment-C6"
+
+esphome:
+  name: ducky-sevensegment-c6
+  name_add_mac_suffix: true
+  platformio_options:
+    board_upload.flash_size: 4MB
+    build_flags:
+      - -Wno-format
+
+esp32:
+  board: esp32-c6-devkitc-1
+  variant: ESP32C6
+  framework:
+    platform_version: https://github.com/stintel/platform-espressif32#esp32-c6-test
+    type: esp-idf
+    version: 5.1.0
+
+wifi:
+  <<: !include ../wifi_config.yaml
+
+# HASS API
+api:
+  services:
+    - service: play_rtttl
+      variables:
+        song_str: string
+      then:
+        - rtttl.play:
+            rtttl: !lambda 'return song_str;'
+
+# Allow API
+ota:
+
+# Print Updates
+logger:
+
+# WebServer component, displays some information
+web_server:
+    port: 80
+
+time:
+#  - platform: sntp  # broken on ESP32C6 branch
+#    id: sntp_time
+  - platform: homeassistant # doesn't work either
+    id: homeassistant_time
+
+light:
+  - platform: binary
+    name: "${name} DbgRed"
+    output: output_debug_red
+  - platform: binary
+    name: "${name} DbgGreen"
+    output: output_debug_green
+  - platform: binary
+    name: "${name} DbgBlue"
+    output: output_debug_blue
+#  - platform: neopixelbus  # requires Arduino
+#    id: led
+#    variant: sk6812
+#    pin: GPIO11
+#    num_leds: 60
+#    name: "${name} Clock"
+
+i2c:
+  sda: GPIO0
+  scl: GPIO1
+  scan: True
+
+#bme680_bsec:  # requires Arduino
+#    address: 0x76
+#    temperature_offset: 0
+#    iaq_mode: static
+#    sample_rate: lp
+#    state_save_interval: 6h
+
+binary_sensor:
+  - platform: gpio
+    name: "${name} SwSet"
+    pin: 
+      number: GPIO22
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    filters:
+      - delayed_on: 10ms
+  - platform: gpio
+    name: "${name} SwUp"
+    pin: 
+      number: GPIO23
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    filters:
+      - delayed_on: 10ms
+  - platform: gpio
+    name: "${name} SwRst"
+    pin: 
+      number: GPIO15
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    filters:
+      - delayed_on: 10ms
+
+sensor:
+#  - platform: adc  # broken on ESP32C6 branch, also a non-ADC IO pin =(
+#    name: "${name} Vin"
+#    pin: GPIO7
+#    accuracy_decimals: 2
+#    update_interval: 60s
+#    attenuation: 11dB
+#    filters:
+#      - multiply: 2
+      
+  - platform: bh1750
+    name: "${name} BH1750 Illuminance"
+    address: 0x23
+    update_interval: 60s
+
+#  - platform: bme680_bsec
+#    temperature:
+#      name: "${name} BME680 Temperature"
+#      filters:
+#        - median
+#    pressure:
+#      name: "${name} BME680 Pressure"
+#      filters:
+#        - median
+#    humidity:
+#      name: "${name} BME680 Humidity"
+#      filters:
+#        - median
+#    gas_resistance:
+#      name: "${name} BME680 Gas Resistance"
+#      filters:
+#        - median
+#    iaq:
+#      name: "${name} BME680 IAQ"
+#      filters:
+#        - median
+#    iaq_accuracy:
+#      name: "${name} BME680 Numeric IAQ Accuracy"
+#    co2_equivalent:
+#      name: "${name} BME680 CO2 Equivalent"
+#      filters:
+#        - median
+#    breath_voc_equivalent:
+#      name: "${name} BME680 Breath VOC Equivalent"
+#      filters:
+#        - median
+
+output:
+  - platform: ledc
+    pin: GPIO21
+    id: rtttl_out
+  - id: output_debug_red
+    platform: gpio
+    pin: GPIO4
+  - id: output_debug_green
+    platform: gpio
+    pin: GPIO5
+  - id: output_debug_blue
+    platform: gpio
+    pin: GPIO6
+
+rtttl:
+  output: rtttl_out
+  on_finished_playback:
+    - logger.log: 'Song ended!'

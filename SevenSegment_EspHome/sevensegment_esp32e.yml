@@ -170,7 +170,7 @@ sensor:
     name: "${name} BH1750 Illuminance"
     address: 0x23
     update_interval: 60s
-    
+
   - platform: bme680_bsec
     temperature:
       # Temperature in °C
