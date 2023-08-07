@@ -10,7 +10,6 @@ esphome:
     - light.turn_on:
         id: led
         brightness: 15%
-        effect: "Time"
   includes:
     - digit.h
 
@@ -57,17 +56,17 @@ light:
             const int kDigitOffsets[4] = {0, 14, 32, 46};
             const int kMetaOffset = 28;  // PM, AL
             const int kColonOffset = 30;
-                        
-            it.all() = Color(0,0,0,0);
             
             auto time = id(sntp_time).now();
-            
+                                              
+            it.all() = Color(0,0,0,0);            
+
             if ((time.hour / 10) > 0) {  // don't render zero
-              setDigit(it, current_color, time.hour / 10, kDigitOffsets[0], 1, kLedsPerSegment);
+              setDigit(it, current_color, time.hour / 10, kDigitOffsets[0], kLedsPerSegment, kLedsPerSegment);
             }
-            setDigit(it, current_color, time.hour % 10, kDigitOffsets[1], 1, kLedsPerSegment);
-            setDigit(it, current_color, time.minute / 10, kDigitOffsets[2], 1, kLedsPerSegment);
-            setDigit(it, current_color, time.minute % 10, kDigitOffsets[3], 1, kLedsPerSegment);
+            setDigit(it, current_color, time.hour % 10, kDigitOffsets[1], kLedsPerSegment, kLedsPerSegment);
+            setDigit(it, current_color, time.minute / 10, kDigitOffsets[2], kLedsPerSegment, kLedsPerSegment);
+            setDigit(it, current_color, time.minute % 10, kDigitOffsets[3], kLedsPerSegment, kLedsPerSegment);
             
             if (time.second % 2) {
               it[kColonOffset] = current_color;
@@ -82,41 +81,16 @@ light:
           name: Scan (Custom)
       - addressable_rainbow:
           name: Rainbow
-
+    on_turn_on:
+      - light.turn_on:
+          id: led
+          effect: "Time"
+        
 bme680_bsec:
-    # i2c address
-    # -----------
-    # Common values are:
-    # - 0x76
-    # - 0x77
-    # Default: 0x76
     address: 0x76
-
-    # Temperature offset
-    # ------------------
-    # Useful if device is in enclosure and reads too high
-    # Default: 0
     temperature_offset: 0
-
-    # IAQ calculation mode
-    # --------------------
-    # Available options:
-    # - static (for fixed position devices)
-    # - mobile (for on person or other moveable devices)
-    # Default: static
     iaq_mode: static
-
-    # Sample rate
-    # -----------
-    # Available options:
-    # - lp (low power - samples every 3 seconds)
-    # - ulp (ultra low power - samples every 5 minutes)
-    # Default: lp
     sample_rate: lp
-
-    # Interval at which to save BSEC state
-    # ------------------------------------
-    # Default: 6h
     state_save_interval: 6h
   
 i2c:
@@ -135,6 +109,10 @@ binary_sensor:
         pullup: true
     filters:
       - delayed_on: 10ms
+    on_click:
+      - then:
+        - light.toggle:
+            id: led
   - platform: gpio
     name: "${name} SwUp"
     pin: 
@@ -145,6 +123,16 @@ binary_sensor:
         pullup: true
     filters:
       - delayed_on: 10ms
+    on_click:
+      - then:
+        - lambda: |-
+            auto light = id(led);
+            auto call = light->turn_on();
+            if (light->remote_values.is_on()) {  // first turn when off only turns on without changing level
+              call.set_brightness(light->remote_values.get_brightness() + 0.05);
+            }
+            call.perform();
+  # where IO20 should be is NC on the ESP32E module
   - platform: gpio
     name: "${name} SwRst"
     pin: 
@@ -170,43 +158,48 @@ sensor:
     name: "${name} BH1750 Illuminance"
     address: 0x23
     update_interval: 60s
+    on_value:
+      - then:
+        - lambda: |-
+            auto pixels = id(led);
+            if (pixels->remote_values.is_on()) {  // only update brightness if light is on
+              auto call = pixels->turn_on();
+              float brightness = x / 64.0;  // arbitrarily 64 is full brightness
+              if (brightness < 0.11) {
+                brightness = 0.11;  // minimum for pixels to light up at all
+              }
+              call.set_brightness(brightness);
+              call.perform();
+            }
 
   - platform: bme680_bsec
     temperature:
-      # Temperature in °C
       name: "${name} BME680 Temperature"
       filters:
         - median
     pressure:
-      # Pressure in hPa
       name: "${name} BME680 Pressure"
       filters:
         - median
     humidity:
-      # Relative humidity %
       name: "${name} BME680 Humidity"
       filters:
         - median
     gas_resistance:
-      # Gas resistance in Ω
       name: "${name} BME680 Gas Resistance"
       filters:
         - median
     iaq:
-      # Indoor air quality value
       name: "${name} BME680 IAQ"
       filters:
         - median
     iaq_accuracy:
-      # IAQ accuracy as a numeric value of 0, 1, 2, 3
       name: "${name} BME680 Numeric IAQ Accuracy"
     co2_equivalent:
-      # CO2 equivalent estimate in ppm
       name: "${name} BME680 CO2 Equivalent"
       filters:
         - median
     breath_voc_equivalent:
-      # Volatile organic compounds equivalent estimate in ppm
       name: "${name} BME680 Breath VOC Equivalent"
       filters:
         - median
@@ -224,5 +217,4 @@ rtttl:
 text_sensor:
   - platform: bme680_bsec
     iaq_accuracy:
-      # IAQ accuracy as a text value of Stabilizing, Uncertain, Calibrating, Calibrated
       name: "${name} BME680 IAQ Accuracy"
