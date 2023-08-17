@@ -1,0 +1,32 @@
+%TF.GenerationSoftware,KiCad,Pcbnew,7.0.2*%
+%TF.CreationDate,2023-08-17T13:15:17-07:00*%
+%TF.ProjectId,Fpc24Coupler,46706332-3443-46f7-9570-6c65722e6b69,rev?*%
+%TF.SameCoordinates,Original*%
+%TF.FileFunction,Soldermask,Bot*%
+%TF.FilePolarity,Negative*%
+%FSLAX46Y46*%
+G04 Gerber Fmt 4.6, Leading zero omitted, Abs format (unit mm)*
+G04 Created by KiCad (PCBNEW 7.0.2) date 2023-08-17 13:15:17*
+%MOMM*%
+%LPD*%
+G01*
+G04 APERTURE LIST*
+%ADD10C,2.500000*%
+%ADD11C,1.152000*%
+G04 APERTURE END LIST*
+D10*
+%TO.C,UU4*%
+X151250000Y-100000000D02*
+G75*
+G03*
+X151250000Y-100000000I-1250000J0D01*
+G01*
+%TD*%
+D11*
+%TO.C,*%
+X154500000Y-92500000D03*
+%TD*%
+%TO.C,*%
+X154500000Y-107500000D03*
+%TD*%
+M02*
