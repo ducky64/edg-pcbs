@@ -33,11 +33,11 @@ font:
   - file: "gfonts://Roboto"
     id: roboto9
     size: 9
-  - file: "../IoTDisplay_EspHome/resources/4x6.bdf"  # characters actually 3x5 plus 1px descender
+  - file: "../IoTDevices/resources/4x6.bdf"  # characters actually 3x5 plus 1px descender
     id: bdf4x6
-  - file: "../IoTDisplay_EspHome/resources/5x7.bdf"  # characters actually 4x6 plus 1px descender, kind of iffy
+  - file: "../IoTDevices/resources/5x7.bdf"  # characters actually 4x6 plus 1px descender, kind of iffy
     id: bdf5x7
-  - file: "../IoTDisplay_EspHome/resources/6x10.bdf"  # characters actually 5x7 plus 2px descender
+  - file: "../IoTDevices/resources/6x10.bdf"  # characters actually 5x7 plus 2px descender
     id: bdf6x10
     
 display:  
