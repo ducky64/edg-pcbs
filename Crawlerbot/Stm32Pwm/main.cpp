@@ -26,19 +26,31 @@ DigitalOut ServoCam1(A8);
 
 I2CSlave i2c(B11, B10);  // sda, scl
 
+DigitalOut* Servos[] = {
+  &Servo4,
+  &Servo5,
+  &Servo6,
+  &Servo7,
+  &Servo8,
+  &Servo9,
+  &Servo10,
+  &Servo11,
+  &ServoCam0,
+  &ServoCam1,
+};
+constexpr int ServosCount = sizeof(Servos) / sizeof(Servos[0]);
 
-RawSerial serial(B6, A10);  // need to give it a dummy RX, internally mbed_asserts RX isn't NC
-Timer timer;
+RawSerial SwoSerial(B6, A10, 115200);  // need to give it a dummy RX, internally mbed_asserts RX isn't NC
+Timer SysTimer;
 
 int main() {
   Led = 1;
-  serial.baud(115200);
-  serial.printf("\r\n\n\nStart\r\n");
-  timer.start();
+  SwoSerial.printf("\r\n\n\nStart\r\n");
+  SysTimer.start();
 
   while (1) {
-    while (timer.read_ms() < 250);  // clock is fast by 1.5x
-    timer.reset();
+    while (SysTimer.read_ms() < 250);  // clock is fast by 1.5x
+    SysTimer.reset();
 
     Led = !Led;
   }
