@@ -164,7 +164,7 @@ sensor:
             auto pixels = id(led);
             if (pixels->remote_values.is_on()) {  // only update brightness if light is on
               auto call = pixels->turn_on();
-              float brightness = x / 64.0;  // arbitrarily 64 is full brightness
+              float brightness = x / 16.0 + 0.10;  // arbitrary full brightness scaling
               if (brightness < 0.11) {
                 brightness = 0.11;  // minimum for pixels to light up at all
               }
