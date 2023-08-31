@@ -26,10 +26,18 @@ DigitalOut ServoCam1(A8);
 
 
 #include "stm32f1xx_hal_i2c.h"
-class I2CSlaveExtension: public I2CSlave {
+class I2CSlaveAsync: public I2CSlave {
 public:
-  I2CSlaveExtension(PinName sda, PinName scl): I2CSlave(sda, scl) {
+  I2CSlaveAsync(PinName sda, PinName scl): I2CSlave(sda, scl) {
   };
+
+  int receive() {
+    if (!asyncReadRunning_ && !asyncWriteRunning_) {
+      return I2CSlave::receive();
+    } else {
+      return I2CSlave::NoData;
+    }
+  }
 
   // same as read(...), except nonblocking (returns immediately)
   // returns true if successfully started
@@ -40,23 +48,33 @@ public:
     int ret = 0;
 
     ret = HAL_I2C_Slave_Sequential_Receive_IT(handle, (uint8_t *) data, length, I2C_NEXT_FRAME);
-    return ret == HAL_OK;
+    if (ret == HAL_OK) {
+      asyncReadRunning_ = true;
+      return true;
+    } else {
+      return false;
+    }
   }
 
-  // after readAsyncStart, returns the same value as read(), or -1 if not yet finished
+  // after readAsyncStart, returns the same value as read(), -1 if not yet finished, or -2 if was not running
+  // TODO: support timeouts?
   int readAsyncPoll() {
     struct i2c_s *obj_s = (struct i2c_s *) (&((&_i2c)->i2c));
-    if (obj_s->pending_slave_rx_maxter_tx) {
+    if (!asyncReadRunning_) {
+      return -2;
+    } else if (obj_s->pending_slave_rx_maxter_tx) {
       return -1;
+    } else {
+      asyncReadRunning_ = false;
+      return 0;
     }
-    return 0;
   }
 
 protected:
-  
+  bool asyncReadRunning_ = false, asyncWriteRunning_ = false;
 };
 
-I2CSlaveExtension I2cTarget(B11, B10);  // sda, scl
+I2CSlaveAsync I2cTarget(B11, B10);  // sda, scl
 const int kI2cAddress = 0x42;
 
 DigitalOut * const Servos[] = {
@@ -93,8 +111,10 @@ const uint16_t kServoPeriodUs = 2100;  // each servo allocated this time period
 const uint16_t kServosScanTimeUs = 25000;  // time between scanning all servos
 
 // updated by host processor
-uint8_t ServoValues[kServosCount] = {0};
-uint16_t ServoFbValues[kServosCount] = {0};
+const uint8_t kIndexSetReadIndex = 0x80;  // when this is the servo index, the next byte is the feedback index to dead
+uint8_t I2cServoReadIndex = 0;
+uint8_t I2cServoValues[kServosCount] = {0};
+uint16_t I2cServoFbValues[kServosCount] = {0};
 
 RawSerial SwoSerial(B6, A10, 115200);  // need to give it a dummy RX, internally mbed_asserts RX isn't NC
 Timer SysTimer;
@@ -102,30 +122,28 @@ Timer ServoTimer;
 
 
 // TODO encapsulate into a class
-bool i2cReadRunning = false;
 uint8_t I2cBuffer[16];
 void processI2c() {
-  if (!i2cReadRunning) {
-    switch (I2cTarget.receive()) {
-      case I2CSlave::ReadAddressed: break;  // ignored
-      case I2CSlave::WriteGeneral: break;  // ignored
-      case I2CSlave::WriteAddressed:
-        i2cReadRunning = true;
-        I2cTarget.readAsyncStart((char*)I2cBuffer, 2);  // address, data bytes
-        break;
-    }
+  switch (I2cTarget.receive()) {
+    case I2CSlave::ReadAddressed: break;  // ignored
+    case I2CSlave::WriteGeneral: break;  // ignored
+    case I2CSlave::WriteAddressed:
+      I2cTarget.readAsyncStart((char*)I2cBuffer, 2);  // address, data bytes
+      Led = 1;
+      break;
   }
-  if (i2cReadRunning && I2cTarget.readAsyncPoll() == 0) {
+  if (I2cTarget.readAsyncPoll() == 0) {
     uint8_t index = I2cBuffer[0];
     if (index < kServosCount) {
-      ServoValues[index] = I2cBuffer[1];
+      I2cServoValues[index] = I2cBuffer[1];
+    } else if (index == kIndexSetReadIndex) {
+      I2cServoReadIndex = I2cBuffer[1];
     }
-    i2cReadRunning = false;
+    Led = 0;
   }
 }
 
 int main() {
-  Led = 1;
   I2cTarget.address(kI2cAddress << 1);
   SwoSerial.printf("\r\n\n\nStart\r\n");
   SysTimer.start();
@@ -140,9 +158,9 @@ int main() {
 
       // during the minimum PWM time, calculate the target time and read the ADC
       uint16_t timerTargetUs = kServoTimeMinUs + 
-        ((uint32_t)ServoValues[servoIndex] * (kServoTimeMaxUs - kServoTimeMinUs) / 255);
+        ((uint32_t)I2cServoValues[servoIndex] * (kServoTimeMaxUs - kServoTimeMinUs) / 255);
       
-      ServoFbValues[servoIndex] = ServoFbs[servoIndex]->read_u16();
+      I2cServoFbValues[servoIndex] = ServoFbs[servoIndex]->read_u16();
 
       while (ServoTimer.read_us() < timerTargetUs) {
         processI2c();
@@ -157,8 +175,6 @@ int main() {
       processI2c();
     }
     SysTimer.reset();
-
-    Led = !Led;
   }
 
   return 0;
