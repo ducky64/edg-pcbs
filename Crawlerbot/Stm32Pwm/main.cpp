@@ -24,9 +24,42 @@ DigitalOut Servo11(B15);
 DigitalOut ServoCam0(B9);
 DigitalOut ServoCam1(A8);
 
-I2CSlave i2c(B11, B10);  // sda, scl
 
-DigitalOut* Servos[] = {
+#include "stm32f1xx_hal_i2c.h"
+class I2CSlaveExtension: public I2CSlave {
+public:
+  I2CSlaveExtension(PinName sda, PinName scl): I2CSlave(sda, scl) {
+  };
+
+  // same as read(...), except nonblocking (returns immediately)
+  // returns true if successfully started
+  // based on i2c_slave_read in i2c_api.c
+  bool readAsyncStart(char *data, int length) {
+    struct i2c_s *obj_s = (struct i2c_s *) (&((&_i2c)->i2c));
+    I2C_HandleTypeDef *handle = &(obj_s->handle);
+    int ret = 0;
+
+    ret = HAL_I2C_Slave_Sequential_Receive_IT(handle, (uint8_t *) data, length, I2C_NEXT_FRAME);
+    return ret == HAL_OK;
+  }
+
+  // after readAsyncStart, returns the same value as read(), or -1 if not yet finished
+  int readAsyncPoll() {
+    struct i2c_s *obj_s = (struct i2c_s *) (&((&_i2c)->i2c));
+    if (obj_s->pending_slave_rx_maxter_tx) {
+      return -1;
+    }
+    return 0;
+  }
+
+protected:
+  
+};
+
+I2CSlaveExtension I2cTarget(B11, B10);  // sda, scl
+const int kI2cAddress = 0x42;
+
+DigitalOut * const Servos[] = {
   &Servo4,
   &Servo5,
   &Servo6,
@@ -40,7 +73,7 @@ DigitalOut* Servos[] = {
 };
 constexpr int kServosCount = sizeof(Servos) / sizeof(Servos[0]);
 
-AnalogIn* ServoFbs[] = {
+AnalogIn * const ServoFbs[] = {
   &Servo4Fb,
   &Servo5Fb,
   &Servo6Fb,
@@ -54,10 +87,10 @@ AnalogIn* ServoFbs[] = {
 };
 static_assert(sizeof(ServoFbs) / sizeof(ServoFbs[0]) == kServosCount);
 
-uint16_t kServoTimeMinUs = 1000;
-uint16_t kServoTimeMaxUs = 2000;
-uint16_t kServoPeriodUs = 2100;  // each servo allocated this time period
-uint16_t kServosScanTimeUs = 25000;  // time between scanning all servos
+const uint16_t kServoTimeMinUs = 1000;
+const uint16_t kServoTimeMaxUs = 2000;
+const uint16_t kServoPeriodUs = 2100;  // each servo allocated this time period
+const uint16_t kServosScanTimeUs = 25000;  // time between scanning all servos
 
 // updated by host processor
 uint8_t ServoValues[kServosCount] = {0};
@@ -67,8 +100,30 @@ RawSerial SwoSerial(B6, A10, 115200);  // need to give it a dummy RX, internally
 Timer SysTimer;
 Timer ServoTimer;
 
+
+// TODO encapsulate into a class
+bool i2cReadRunning = false;
+uint8_t I2cBuffer[16];
+void processI2c() {
+  switch (I2cTarget.receive()) {
+    case I2CSlave::ReadAddressed: break;  // ignored
+    case I2CSlave::WriteGeneral: break;  // ignored
+    case I2CSlave::WriteAddressed:
+      i2cReadRunning = true;
+      I2cTarget.readAsyncStart((char*)I2cBuffer, 2);  // address, data bytes
+      break;
+  }
+  if (i2cReadRunning && I2cTarget.readAsyncPoll() == 0) {
+    uint8_t index = I2cBuffer[0];
+    if (index < kServosCount) {
+      ServoValues[index] = I2cBuffer[1];
+    }
+  }
+}
+
 int main() {
   Led = 1;
+  I2cTarget.address(kI2cAddress);
   SwoSerial.printf("\r\n\n\nStart\r\n");
   SysTimer.start();
   ServoTimer.start();
@@ -86,14 +141,22 @@ int main() {
       
       ServoFbValues[servoIndex] = ServoFbs[servoIndex]->read_u16();
 
-      while (ServoTimer.read_us() < timerTargetUs);
-      servo = 0;
+      while (ServoTimer.read_us() < timerTargetUs) {
+        processI2c();
+      }
+      *servo = 0;
 
-      while (ServoTimer.read_us() < kServoPeriodUs);
+      while (ServoTimer.read_us() < kServoPeriodUs) {
+        processI2c();
+      }
     }
-    while (SysTimer.read_us() < kServosScanTimeUs);
+    while (SysTimer.read_us() < kServosScanTimeUs) {
+      processI2c();
+    }
     SysTimer.reset();
 
     Led = !Led;
   }
+
+  return 0;
 }
