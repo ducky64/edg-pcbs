@@ -38,18 +38,41 @@ DigitalOut* Servos[] = {
   &ServoCam0,
   &ServoCam1,
 };
-constexpr int ServosCount = sizeof(Servos) / sizeof(Servos[0]);
+constexpr int kServosCount = sizeof(Servos) / sizeof(Servos[0]);
+
+
+uint16_t kServoTimeMinUs = 1000;
+uint16_t kServoTimeMaxUs = 2000;
+uint16_t kServoPeriodUs = 2100;  // each servo allocated this time period
+uint16_t kServosScanTimeUs = 25000;  // time between scanning all servos
+
+// updated by host processor
+uint8_t ServoValues[kServosCount] = {0};
 
 RawSerial SwoSerial(B6, A10, 115200);  // need to give it a dummy RX, internally mbed_asserts RX isn't NC
 Timer SysTimer;
+Timer ServoTimer;
 
 int main() {
   Led = 1;
   SwoSerial.printf("\r\n\n\nStart\r\n");
   SysTimer.start();
+  ServoTimer.start();
 
   while (1) {
-    while (SysTimer.read_ms() < 250);  // clock is fast by 1.5x
+    for (int servoIndex=0; servoIndex<kServosCount; servoIndex++) {
+      DigitalOut* servo = Servos[servoIndex];
+      uint16_t timerTargetUs = 0;
+
+      ServoTimer.reset();
+      servo = 1;
+
+      while (ServoTimer.read_us() < timerTargetUs);
+      servo = 0;
+
+      while (ServoTimer.read_us() < kServoPeriodUs);
+    }
+    while (SysTimer.read_us() < kServosScanTimeUs);
     SysTimer.reset();
 
     Led = !Led;
