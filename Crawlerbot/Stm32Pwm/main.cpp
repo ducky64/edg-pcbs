@@ -57,6 +57,7 @@ public:
   }
 
   // after readAsyncStart, returns the same value as read(), -1 if not yet finished, or -2 if was not running
+  // must be called regularly to clear the internal async status
   // TODO: support timeouts?
   int readAsyncPoll() {
     struct i2c_s *obj_s = (struct i2c_s *) (&((&_i2c)->i2c));
@@ -66,6 +67,37 @@ public:
       return -1;
     } else {
       asyncReadRunning_ = false;
+      return 0;
+    }
+  }
+
+  // same as write(...), except nonblocking (returns immediately)
+  // returns true if successfully started
+  // based on i2c_slave_write in i2c_api.c
+  bool writeAsyncStart(const char* data, int length) {
+    struct i2c_s *obj_s = (struct i2c_s *) (&((&_i2c)->i2c));
+    I2C_HandleTypeDef *handle = &(obj_s->handle);
+    int ret = 0;
+
+    ret = HAL_I2C_Slave_Sequential_Transmit_IT(handle, (uint8_t *) data, length, I2C_NEXT_FRAME);
+    if (ret == HAL_OK) {
+      asyncWriteRunning_ = true;
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  // after writeAsyncStart, returns the same value as read(), -1 if not yet finished, or -2 if was not running
+  // must be called regularly to clear the internal async status
+  int writeAsyncPoll() {
+    struct i2c_s *obj_s = (struct i2c_s *) (&((&_i2c)->i2c));
+    if (!asyncWriteRunning_) {
+      return -2;
+    } else if (obj_s->pending_slave_tx_master_rx) {
+      return -1;
+    } else {
+      asyncWriteRunning_ = false;
       return 0;
     }
   }
@@ -125,7 +157,18 @@ Timer ServoTimer;
 uint8_t I2cBuffer[16];
 void processI2c() {
   switch (I2cTarget.receive()) {
-    case I2CSlave::ReadAddressed: break;  // ignored
+    case I2CSlave::ReadAddressed:
+      if (I2cServoReadIndex < kServosCount) {
+        uint16_t servoValue = I2cServoFbValues[I2cServoReadIndex];
+        I2cBuffer[0] = (servoValue >> 8) & 0xff;  // MSByte first
+        I2cBuffer[1] = servoValue & 0xff;
+      } else {
+        I2cBuffer[0] = 0xff;  // invalid
+        I2cBuffer[1] = 0xff;  // invalid
+      }
+      I2cTarget.writeAsyncStart((char*)I2cBuffer, 2);  // address, data bytes
+      Led = 1;
+      break;
     case I2CSlave::WriteGeneral: break;  // ignored
     case I2CSlave::WriteAddressed:
       I2cTarget.readAsyncStart((char*)I2cBuffer, 2);  // address, data bytes
@@ -139,6 +182,9 @@ void processI2c() {
     } else if (index == kIndexSetReadIndex) {
       I2cServoReadIndex = I2cBuffer[1];
     }
+    Led = 0;
+  }
+  if (I2cTarget.writeAsyncPoll() == 0) {
     Led = 0;
   }
 }

@@ -61,11 +61,28 @@ void loop() {
   Serial.println("Loop\r\n");
 
   digitalWrite(kPinLed, 1);
+
+  // write servo value transaction
   Wire.beginTransmission(kI2cAddress);
-  Wire.write(0);  // servo index
+  Wire.write(4);  // servo index
   Wire.write(127);  // value
-  int success = !Wire.endTransmission();
-  if (!success) {
+  int writeSuccess = !Wire.endTransmission();
+
+  // read feedback value transaction
+  Wire.beginTransmission(kI2cAddress);
+  Wire.write(0x80);  // set read index
+  Wire.write(4);  // read feedback servo index
+  Wire.endTransmission();
+
+  Wire.requestFrom(kI2cAddress, 2);
+  uint8_t msb = Wire.read();
+  uint8_t lsb = Wire.read();
+  int readSuccess = Wire.endTransmission();
+  uint16_t data = (msb << 8) | lsb;
+
+  Serial.printf("Read %u\n", data);
+
+  if (!writeSuccess || !readSuccess) {
     delay(50);  // short LED pulse on failure
     digitalWrite(kPinLed, 0);
   } else {
