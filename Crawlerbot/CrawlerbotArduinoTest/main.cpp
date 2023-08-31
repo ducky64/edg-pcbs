@@ -34,7 +34,6 @@ int kPinI2cScl = 17;
 int kPinI2cSda = 16;
 
 #include <Wire.h>
-const int kI2cAddress = 0x42;
 
 #include <NeoPixelBrightnessBus.h>
 const int kNeoPixelCount = 10;
@@ -57,43 +56,80 @@ void setup() {
   Serial.println("Setup complete\r\n");
 }
 
+class PwmCoprocessor {
+public:
+  bool writeServoValue(uint8_t index, uint8_t value) {
+    Wire.beginTransmission(kI2cAddress);
+    Wire.write(index);  // servo index
+    Wire.write(value);  // value
+    return !Wire.endTransmission();
+  }
+
+  bool readServoFeedback(uint8_t index, uint16_t* valueOut) {
+    Wire.beginTransmission(kI2cAddress);
+    Wire.write(0x80);  // set read index
+    Wire.write(index);  // read feedback servo index
+    if (Wire.endTransmission()) {  // if failed
+      return false;
+    }
+
+    Wire.requestFrom(kI2cAddress, 2);
+    uint8_t msb = Wire.read();
+    uint8_t lsb = Wire.read();
+    if (Wire.endTransmission()) {
+      return false;
+    }
+    *valueOut = (msb << 8) | lsb;
+    return true;
+  }
+
+protected:
+  const int kI2cAddress = 0x42;
+};
+
+PwmCoprocessor Stm32;
+
+int servoUpdateIndex = 0;
+int lastServoValueMillis = 0;
+const int kServoUpdateMs = 500;
+
+int lastFbReadMillis = 0;
+const int kFbReadMs = 50;
+
 void loop() {
   Serial.println("Loop\r\n");
 
-  digitalWrite(kPinLed, 1);
+  int thisMillis = millis();
+  if (thisMillis - lastServoValueMillis >= kServoUpdateMs) {
+    digitalWrite(kPinLed, 1);
 
-  // write servo value transaction
-  Wire.beginTransmission(kI2cAddress);
-  Wire.write(4);  // servo index
-  Wire.write(127);  // value
-  int writeSuccess = !Wire.endTransmission();
+    uint8_t servoValue = 0;  // rotate through servo positions
+    if (servoUpdateIndex % 3 == 1) {
+      servoValue = 127;
+    } else if (servoUpdateIndex % 3 == 2) {
+      servoValue = 255;
+    }
 
-  // read feedback value transaction
-  Wire.beginTransmission(kI2cAddress);
-  Wire.write(0x80);  // set read index
-  Wire.write(4);  // read feedback servo index
-  Wire.endTransmission();
-
-  Wire.requestFrom(kI2cAddress, 2);
-  uint8_t msb = Wire.read();
-  uint8_t lsb = Wire.read();
-  int readSuccess = Wire.endTransmission();
-  uint16_t data = (msb << 8) | lsb;
-
-  Serial.printf("Read %u\n", data);
-
-  if (!writeSuccess || !readSuccess) {
-    delay(50);  // short LED pulse on failure
+    if (Stm32.writeServoValue(0, servoValue)) {
+      NeoPixels.SetPixelColor(0, RgbColor(0, 255, 0));
+    } else {  // failure
+      NeoPixels.SetPixelColor(0, RgbColor(255, 0, 0));
+    }
     digitalWrite(kPinLed, 0);
-  } else {
-    delay(250);
-  }
-  
+    NeoPixels.Show();
 
-  digitalWrite(kPinLed, 0);
-  NeoPixels.SetPixelColor(0, RgbColor(255, 0, 0));
-  NeoPixels.SetPixelColor(1, RgbColor(0, 255, 0));
-  NeoPixels.SetPixelColor(2, RgbColor(0, 0, 255));
-  NeoPixels.Show();
-  delay(750);
+    servoUpdateIndex++;
+    lastServoValueMillis = lastServoValueMillis + kServoUpdateMs;
+  }
+
+  if (thisMillis - lastFbReadMillis >= kFbReadMs) {
+    uint16_t fbValue;
+    if (Stm32.readServoFeedback(0, &fbValue)) {
+      uint8_t ledValue = fbValue / 256;
+      NeoPixels.SetPixelColor(4, RgbColor(ledValue, ledValue, ledValue));
+    } else {
+      NeoPixels.SetPixelColor(4, RgbColor(0, 0, 0));
+    }
+    NeoPixels.Show();
+  }
 }
