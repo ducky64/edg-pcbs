@@ -1,0 +1,82 @@
+// pin assigns from HDL
+// "servo0_fb=ADC1_CH1, 38",
+// "servo1_fb=ADC1_CH0, 39",
+// "servo2_fb=ADC1_CH4, 5",
+// "servo3_fb=ADC1_CH6, 7",
+// "i2c=I2CEXT0",
+// "i2c.scl=GPIO17, 10",
+// "i2c.sda=GPIO16, 9",
+// "led=GPIO40, 33",
+// "oled_reset=GPIO15, 8",
+// "servo0=GPIO41, 34",
+// "servo1=GPIO42, 35",
+// "servo2=GPIO4, 4",
+// "servo3=GPIO6, 6",
+// "rgb=GPIO39, 32",
+// "cam=DVP",
+// "cam.xclk=GPIO9, 17",
+// "cam.pclk=GPIO12, 20",
+// "cam.href=GPIO20, 14",
+// "cam.vsync=GPIO19, 13",
+// "cam.y0=GPIO14, 22",
+// "cam.y1=GPIO47, 24",
+// "cam.y2=GPIO48, 25",
+// "cam.y3=GPIO21, 23",
+// "cam.y4=GPIO13, 21",
+// "cam.y5=GPIO11, 19",
+// "cam.y6=GPIO10, 18",
+// "cam.y7=GPIO3, 15",
+// "srv_rst=GPIO8, 12"
+
+int kPinLed = 40;
+int kPinNeoPixel = 39;
+int kPinI2cScl = 17;
+int kPinI2cSda = 16;
+
+#include <Wire.h>
+const int kI2cAddress = 0x42;
+
+#include <NeoPixelBrightnessBus.h>
+const int kNeoPixelCount = 10;
+NeoPixelBrightnessBus<NeoGrbFeature, NeoEsp32Rmt0Ws2812xMethod> NeoPixels(kNeoPixelCount, kPinNeoPixel);
+
+
+void setup() {
+  digitalWrite(kPinLed, 0);
+
+  Serial.begin(115200);
+  Serial.println("\r\n\n\nStart\r\n");
+
+  Wire.begin(kPinI2cSda, kPinI2cScl);
+
+  NeoPixels.Begin();
+  NeoPixels.SetBrightness(32);
+
+  pinMode(kPinLed, OUTPUT);
+  digitalWrite(kPinLed, 1);
+  Serial.println("Setup complete\r\n");
+}
+
+void loop() {
+  Serial.println("Loop\r\n");
+
+  digitalWrite(kPinLed, 1);
+  Wire.beginTransmission(kI2cAddress);
+  Wire.write(0);  // servo index
+  Wire.write(127);  // value
+  int success = !Wire.endTransmission();
+  if (!success) {
+    delay(50);  // short LED pulse on failure
+    digitalWrite(kPinLed, 0);
+  } else {
+    delay(250);
+  }
+  
+
+  digitalWrite(kPinLed, 0);
+  NeoPixels.SetPixelColor(0, RgbColor(255, 0, 0));
+  NeoPixels.SetPixelColor(1, RgbColor(0, 255, 0));
+  NeoPixels.SetPixelColor(2, RgbColor(0, 0, 255));
+  NeoPixels.Show();
+  delay(750);
+}

@@ -105,25 +105,28 @@ Timer ServoTimer;
 bool i2cReadRunning = false;
 uint8_t I2cBuffer[16];
 void processI2c() {
-  switch (I2cTarget.receive()) {
-    case I2CSlave::ReadAddressed: break;  // ignored
-    case I2CSlave::WriteGeneral: break;  // ignored
-    case I2CSlave::WriteAddressed:
-      i2cReadRunning = true;
-      I2cTarget.readAsyncStart((char*)I2cBuffer, 2);  // address, data bytes
-      break;
+  if (!i2cReadRunning) {
+    switch (I2cTarget.receive()) {
+      case I2CSlave::ReadAddressed: break;  // ignored
+      case I2CSlave::WriteGeneral: break;  // ignored
+      case I2CSlave::WriteAddressed:
+        i2cReadRunning = true;
+        I2cTarget.readAsyncStart((char*)I2cBuffer, 2);  // address, data bytes
+        break;
+    }
   }
   if (i2cReadRunning && I2cTarget.readAsyncPoll() == 0) {
     uint8_t index = I2cBuffer[0];
     if (index < kServosCount) {
       ServoValues[index] = I2cBuffer[1];
     }
+    i2cReadRunning = false;
   }
 }
 
 int main() {
   Led = 1;
-  I2cTarget.address(kI2cAddress);
+  I2cTarget.address(kI2cAddress << 1);
   SwoSerial.printf("\r\n\n\nStart\r\n");
   SysTimer.start();
   ServoTimer.start();
