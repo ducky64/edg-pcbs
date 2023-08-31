@@ -40,6 +40,19 @@ DigitalOut* Servos[] = {
 };
 constexpr int kServosCount = sizeof(Servos) / sizeof(Servos[0]);
 
+AnalogIn* ServoFbs[] = {
+  &Servo4Fb,
+  &Servo5Fb,
+  &Servo6Fb,
+  &Servo7Fb,
+  &Servo8Fb,
+  &Servo9Fb,
+  &Servo10Fb,
+  &Servo11Fb,
+  &ServoCam0Fb,
+  &ServoCam1Fb,
+};
+static_assert(sizeof(ServoFbs) / sizeof(ServoFbs[0]) == kServosCount);
 
 uint16_t kServoTimeMinUs = 1000;
 uint16_t kServoTimeMaxUs = 2000;
@@ -48,6 +61,7 @@ uint16_t kServosScanTimeUs = 25000;  // time between scanning all servos
 
 // updated by host processor
 uint8_t ServoValues[kServosCount] = {0};
+uint16_t ServoFbValues[kServosCount] = {0};
 
 RawSerial SwoSerial(B6, A10, 115200);  // need to give it a dummy RX, internally mbed_asserts RX isn't NC
 Timer SysTimer;
@@ -62,10 +76,15 @@ int main() {
   while (1) {
     for (int servoIndex=0; servoIndex<kServosCount; servoIndex++) {
       DigitalOut* servo = Servos[servoIndex];
-      uint16_t timerTargetUs = 0;
 
       ServoTimer.reset();
-      servo = 1;
+      *servo = 1;
+
+      // during the minimum PWM time, calculate the target time and read the ADC
+      uint16_t timerTargetUs = kServoTimeMinUs + 
+        ((uint32_t)ServoValues[servoIndex] * (kServoTimeMaxUs - kServoTimeMinUs) / 255);
+      
+      ServoFbValues[servoIndex] = ServoFbs[servoIndex]->read_u16();
 
       while (ServoTimer.read_us() < timerTargetUs);
       servo = 0;
