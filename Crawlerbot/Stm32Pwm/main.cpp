@@ -29,6 +29,7 @@ DigitalOut ServoCam1(A8);
 class I2CSlaveAsync: public I2CSlave {
 public:
   I2CSlaveAsync(PinName sda, PinName scl): I2CSlave(sda, scl) {
+    asyncTimeout_.start();
   };
 
   int receive() {
@@ -49,6 +50,7 @@ public:
 
     ret = HAL_I2C_Slave_Sequential_Receive_IT(handle, (uint8_t *) data, length, I2C_NEXT_FRAME);
     if (ret == HAL_OK) {
+      asyncTimeout_.reset();
       asyncReadRunning_ = true;
       return true;
     } else {
@@ -64,7 +66,12 @@ public:
     if (!asyncReadRunning_) {
       return -2;
     } else if (obj_s->pending_slave_rx_maxter_tx) {
-      return -1;
+      if (asyncTimeout_.read_ms() >= kAsyncTimeoutMs) {
+        asyncReadRunning_ = false;
+        return 1;
+      } else {
+        return -1;
+      }
     } else {
       asyncReadRunning_ = false;
       return 0;
@@ -81,6 +88,7 @@ public:
 
     ret = HAL_I2C_Slave_Sequential_Transmit_IT(handle, (uint8_t *) data, length, I2C_NEXT_FRAME);
     if (ret == HAL_OK) {
+      asyncTimeout_.reset();
       asyncWriteRunning_ = true;
       return true;
     } else {
@@ -95,6 +103,12 @@ public:
     if (!asyncWriteRunning_) {
       return -2;
     } else if (obj_s->pending_slave_tx_master_rx) {
+      if (asyncTimeout_.read_ms() >= kAsyncTimeoutMs) {
+        asyncWriteRunning_ = false;
+        return 1;
+      } else {
+        return -1;
+      }
       return -1;
     } else {
       asyncWriteRunning_ = false;
@@ -104,6 +118,9 @@ public:
 
 protected:
   bool asyncReadRunning_ = false, asyncWriteRunning_ = false;
+  Timer asyncTimeout_;
+
+  const int kAsyncTimeoutMs = 20;  // arbitrary
 };
 
 I2CSlaveAsync I2cTarget(B11, B10);  // sda, scl
