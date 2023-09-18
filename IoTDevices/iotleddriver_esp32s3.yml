@@ -10,8 +10,10 @@ esphome:
     - light.turn_on:  # set default brightness
         id: light_white
         brightness: 70%
+        transition_length: 0s
     - light.turn_off:  # but don't turn on
         id: light_white
+        transition_length: 0s
 
 wifi:
   <<: !include ../wifi_config.yaml
@@ -32,12 +34,27 @@ light:
     id: light_white
     name: "${name} White"
     output: output_white
+    effects:
+      - flicker:
+          name: Flicker
+          alpha: 95%
+          intensity: 2%
+        
   - platform: rgb
     id: light_rgb
     name: "${name} RGB"
     red: output_red
     green: output_green
     blue: output_blue
+    effects:
+      - flicker:
+          name: Flicker
+          alpha: 95%
+          intensity: 2%
+      - random:
+          name: Random
+          transition_length: 5s
+          update_interval: 5s
 
 output:
   - id: output_debug_red
