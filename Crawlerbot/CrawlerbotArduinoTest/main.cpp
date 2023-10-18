@@ -40,6 +40,110 @@ const int kNeoPixelCount = 10;
 NeoPixelBrightnessBus<NeoGrbFeature, NeoEsp32Rmt0Ws2812xMethod> NeoPixels(kNeoPixelCount, kPinNeoPixel);
 
 
+const int kOledReset = 15;
+
+class Ssd1357 {
+public:
+  bool begin() {
+    pinMode(kOledReset, OUTPUT);
+    digitalWrite(kOledReset, 0);
+    delay(10);
+    digitalWrite(kOledReset, 1);
+    delay(10);
+
+    bool success = true;
+    success &= command(kCmdSetCommandLock, kDataUnlockOledDriver);
+    success &= command(kCmdSetSleepModeOn);
+    success &= command(kCmdSetRemap, 0x71, 0x00);
+    success &= command(kCmdSetDisplayStart, 0x00);
+    success &= command(kCmdSetDisplayOffset, 0x00);
+    success &= command(kCmdSetResetPrecharge, 0x84);
+    success &= command(kCmdSetClock, 0x20);  // 105Hz
+    success &= command(kCmdSetSecondPrecharge, 0x01);
+    success &= command(kCmdSetPrechargeVoltage, 0x00);
+    success &= command(kCmdSetVcomh, 0x07);  // 0.86*VCC
+    success &= command(kCmdMasterContrastCurrent, 0x0f);  // Vcc=15v
+    success &= command(kCmdSetContrastCurrent, 0x32, 0x29, 0x53);  // 0.86*VCC
+    success &= command(kCmdSetMuxRatio, 0x7f);
+    success &= command(kCmdSetSleepModeOff);
+    return success;
+  }
+
+  bool test() {
+    return command(0xa7);
+  }
+
+  bool command(uint8_t value) {
+    return command_data(value, 0, NULL);
+  }
+
+  bool command(uint8_t value, uint8_t data0) {
+    return command_data(value, 1, &data0);
+  }
+
+  bool command(uint8_t value, uint8_t data0, uint8_t data1) {
+    uint8_t data[2];
+    data[0] = data0;
+    data[1] = data1;
+    return command_data(value, 2, data);
+  }
+
+  bool command(uint8_t value, uint8_t data0, uint8_t data1, uint8_t data2) {
+    uint8_t data[3];
+    data[0] = data0;
+    data[1] = data1;
+    data[2] = data2;
+    return command_data(value, 3, data);
+  }
+
+  bool command_data(uint8_t value, size_t len = 0, const uint8_t *data = NULL) {
+    Wire.beginTransmission(kI2cAddress);
+    Wire.write(0x80);  // Co=1 (non-continunation), DC=0 (command)
+    Wire.write(value);
+    if (len > 0) {
+      Wire.write(0x40);  // Co=0 (continunation), DC=1 (data)
+      for (size_t i=0; i<len; i++) {
+        Wire.write(*data);
+        data++;
+      }
+    }
+    return !Wire.endTransmission();
+  }
+
+  bool data(uint8_t value) {
+    Wire.beginTransmission(kI2cAddress);
+    Wire.write(0xC0);  // Co=1 (non-continunation), DC=1 (data)
+    Wire.write(value);
+    return !Wire.endTransmission();
+  }
+
+protected:
+  const uint8_t kI2cAddress = 0x3c;
+
+  const uint8_t kCmdSetDisplayStart = 0xa1;
+  const uint8_t kCmdSetDisplayOffset = 0xa2;
+  const uint8_t kCmdSetRemap = 0xa0;
+  const uint8_t kCmdSetSleepModeOn = 0xae;
+  const uint8_t kCmdSetSleepModeOff = 0xaf;
+  const uint8_t kCmdSetResetPrecharge = 0xb1;
+  const uint8_t kCmdSetClock = 0xb3;
+  const uint8_t kCmdSetSecondPrecharge = 0xb6;
+  const uint8_t kCmdSetPrechargeVoltage = 0xbb;
+  const uint8_t kCmdSetVcomh = 0xbb;
+  const uint8_t kCmdMasterContrastCurrent = 0xc7;
+  const uint8_t kCmdSetContrastCurrent = 0xc1;
+  const uint8_t kCmdSetMuxRatio = 0xca;
+  const uint8_t kCmdSetCommandLock = 0xfd;
+  const uint8_t kDataUnlockOledDriver = 0x12;
+
+  const uint8_t kCmdDisplayAllOff = 0xa4;
+  const uint8_t kCmdDisplayAllOn = 0xa5;
+  const uint8_t kCmdDisplayNormal = 0xa6;
+};
+
+Ssd1357 Oled;
+
+
 void setup() {
   digitalWrite(kPinLed, 0);
 
@@ -54,6 +158,8 @@ void setup() {
   pinMode(kPinLed, OUTPUT);
   digitalWrite(kPinLed, 1);
   Serial.println("Setup complete\r\n");
+
+  Oled.begin();
 }
 
 class PwmCoprocessor {
@@ -110,7 +216,8 @@ void loop() {
       servoValue = 255;
     }
 
-    if (Stm32.writeServoValue(0, servoValue)) {
+    // if (Stm32.writeServoValue(0, servoValue)) {
+    if (Oled.test()) {
       NeoPixels.SetPixelColor(0, RgbColor(0, 255, 0));
     } else {  // failure
       NeoPixels.SetPixelColor(0, RgbColor(255, 0, 0));
