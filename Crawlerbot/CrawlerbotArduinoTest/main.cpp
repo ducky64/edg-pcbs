@@ -54,7 +54,7 @@ public:
     bool success = true;
     success &= command(kCmdSetCommandLock, kDataUnlockOledDriver);
     success &= command(kCmdSetSleepModeOn);
-    success &= command(kCmdSetRemap, 0x71, 0x00);
+    success &= command(kCmdSetRemap, 0x71, 0x00);  // 65k color depth
     success &= command(kCmdSetDisplayStart, 0x00);
     success &= command(kCmdSetDisplayOffset, 0x00);
     success &= command(kCmdSetResetPrecharge, 0x84);
@@ -70,7 +70,18 @@ public:
   }
 
   bool test() {
-    return command(0xa7);
+    bool success = true;
+    for (uint8_t i=0; i<32; i++) {
+      success &= drawPoint(0, i, 255, 0, 0);
+      success &= drawPoint(1, i, 0, 255, 0);
+      success &= drawPoint(2, i, 0, 0, 255);
+      success &= drawPoint(3, i, 255, 255, 0);
+      success &= drawPoint(4, i, 0, 255, 255);
+      success &= drawPoint(5, i, 255, 0, 255);
+      success &= drawPoint(6, i, 0, 0, 0);
+      success &= drawPoint(7, i, 255, 255, 255);
+    }
+    return success;
   }
 
   bool command(uint8_t value) {
@@ -110,15 +121,37 @@ public:
     return !Wire.endTransmission();
   }
 
-  bool data(uint8_t value) {
+  bool data(size_t len, const uint8_t *values) {
     Wire.beginTransmission(kI2cAddress);
-    Wire.write(0xC0);  // Co=1 (non-continunation), DC=1 (data)
-    Wire.write(value);
+    Wire.write(0x40);  // Co=0 (continunation), DC=1 (data)
+      for (size_t i=0; i<len; i++) {
+        Wire.write(*values);
+        values++;
+      }
     return !Wire.endTransmission();
+  }
+
+  bool drawPoint(uint8_t x, uint8_t y, uint8_t r, uint8_t g, uint8_t b) {
+    bool success = true;
+    success &= command(kCmdSetColAddr, y+32, y+32);
+    success &= command(kCmdSetRowAddr, x, x);
+    uint16_t values16 = (((uint16_t)r * 31 / 255) << 11) |
+                      (((uint16_t)g * 63 / 255)) << 5 |
+                      ((uint16_t)b * 31 / 255);
+    uint8_t values[2];
+    values[0] = (values16 >> 8) & 0xff;
+    values[1] = values16 & 0xff;
+    success &= command(kCmdWriteRam);
+    success &= data(2, values);
+    return success;
   }
 
 protected:
   const uint8_t kI2cAddress = 0x3c;
+
+  const uint8_t kCmdSetColAddr = 0x15;
+  const uint8_t kCmdSetRowAddr = 0x75;
+  const uint8_t kCmdWriteRam = 0x5c;
 
   const uint8_t kCmdSetDisplayStart = 0xa1;
   const uint8_t kCmdSetDisplayOffset = 0xa2;
@@ -239,4 +272,6 @@ void loop() {
     }
     NeoPixels.Show();
   }
+
+  delay(100);
 }
