@@ -1,0 +1,184 @@
+substitutions:
+  name: "FanDriver2"
+
+esphome:
+  name: ducky-iotfandriver
+  name_add_mac_suffix: true
+  platform: esp32
+  board: esp32-c3-devkitm-1
+  on_boot:
+    - light.turn_on:
+        id: led
+        brightness: 20%
+    - light.turn_off:  # set default color
+        id: led
+
+wifi:
+  <<: !include ../wifi_config.yaml
+
+<<: !include ../common_config.yaml
+
+light:
+  - platform: neopixelbus
+    id: led
+    variant: sk6812
+    pin: GPIO2
+    num_leds: 18
+    name: "${name} Neopixels"
+    effects:
+      - addressable_rainbow:
+          name: Rainbow
+
+output:
+  - platform: gpio
+    id: output_fan0_pwr
+    pin: GPIO1
+    inverted: false
+  - platform: ledc
+    id: output_fan0_ctl
+    pin: GPIO3
+    inverted: true
+    frequency: 25 kHz
+  - platform: gpio
+    id: output_fan1_pwr
+    pin: GPIO5
+    inverted: false
+  - platform: ledc
+    id: output_fan1_ctl
+    pin: GPIO3
+    inverted: true
+    frequency: 25 kHz
+  - id: output_debug_red
+    platform: gpio
+    pin: GPIO9
+    inverted: true
+
+fan:
+  - platform: binary
+    id: fan0_pwr
+    output: output_fan0_pwr
+    name: "${name} Ch0 Drv"
+  - platform: speed
+    id: fan0_ctl
+    output: output_fan0_ctl
+    name: "${name} Ch0 Ctl"
+    on_turn_on:
+    - then:
+      - fan.turn_on: fan0_pwr
+    on_turn_off:
+    - then:
+      - fan.turn_off: fan0_pwr
+  - platform: binary
+    id: fan1_pwr
+    output: output_fan1_pwr
+    name: "${name} Ch1 Drv"
+  - platform: speed
+    id: fan1_ctl
+    output: output_fan1_ctl
+    name: "${name} Ch1 Ctl"
+    on_turn_on:
+    - then:
+      - fan.turn_on: fan1_pwr
+    on_turn_off:
+    - then:
+      - fan.turn_off: fan1_pwr
+      
+binary_sensor:
+  - platform: gpio
+    name: "${name} Encoder Sw"
+    pin: 
+      number: GPIO18
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    filters:
+      - delayed_on: 10ms
+    on_click:
+    - then:
+        - lambda: |-
+            esphome::fan::Fan* ctl_channels[] = {id(fan0_ctl), id(fan1_ctl)};
+            bool anyOn = false;
+            for (auto ctl: ctl_channels) {
+              anyOn |= ctl->state;
+            }
+            if (!anyOn) {  // currently off, turn on
+              for (auto ctl: ctl_channels) {
+                ctl->turn_on().perform();
+              }
+            } else {  // any on, turn off all
+              for (auto ctl: ctl_channels) {
+                ctl->turn_off().perform();
+              }
+            }
+
+sensor:
+  - platform: adc
+    name: "${name} Vin"
+    pin: GPIO0
+    accuracy_decimals: 2
+    update_interval: 60s
+    attenuation: 11dB
+    filters:
+      - multiply: 5.714
+  - platform: rotary_encoder
+    name: "${name} Encoder"
+    pin_a:
+      number: GPIO19
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    pin_b:
+      number: GPIO10
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    on_clockwise:
+    - then:
+        - lambda: |-
+            esphome::fan::Fan* ctl_channels[] = {id(fan0_ctl), id(fan1_ctl)};
+            for (auto ctl: ctl_channels) {
+              auto call = ctl->turn_on();
+              if (ctl->state != false) {  // first turn when off only turns on the fan
+                call.set_speed(ctl->speed + 1);
+              }
+              call.perform();
+            }
+    on_anticlockwise:
+    - then:
+        - lambda: |-
+            esphome::fan::Fan* ctl_channels[] = {id(fan0_ctl), id(fan1_ctl)};
+            for (auto ctl: ctl_channels) {
+              if (ctl->speed <= 1) {
+                auto call = ctl->turn_off();
+                call.perform();
+              } else {
+                auto call = ctl->turn_on();
+                call.set_speed(ctl->speed - 1);
+                call.perform();
+              }
+            }
+
+  - platform: pulse_counter
+    pin: 
+      number: GPIO4
+      mode:
+        input: true
+        pullup: true
+    name: "${name} Ch0 Tach"
+    update_interval: 5s
+  - platform: pulse_counter
+    pin:
+      number: GPIO6
+      mode:
+        input: true
+        pullup: true
+    name: "${name} Ch1 Tach"
+    update_interval: 5s
+
+  - platform: wifi_signal
+    name: "${name} WiFi Signal"
+    update_interval: 5s
+    
