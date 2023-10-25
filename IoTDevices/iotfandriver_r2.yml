@@ -45,7 +45,7 @@ output:
     inverted: false
   - platform: ledc
     id: output_fan1_ctl
-    pin: GPIO3
+    pin: GPIO7
     inverted: true
     frequency: 25 kHz
   - id: output_debug_red
