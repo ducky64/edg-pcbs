@@ -158,10 +158,13 @@ const uint16_t kServoTimeMinUs = 1000;
 const uint16_t kServoTimeMaxUs = 2000;
 const uint16_t kServoPeriodUs = 2100;  // each servo allocated this time period
 const uint16_t kServosScanTimeUs = 25000;  // time between scanning all servos
+const uint32_t kServoTimeoutUs = 500*1000;  // must receive a command this often (per servo) otherwise times out
 
 // updated by host processor
 const uint8_t kIndexSetReadIndex = 0x80;  // when this is the servo index, the next byte is the feedback index to dead
 uint8_t I2cServoReadIndex = 0;
+Timer I2cServoTimeout[kServosCount];
+bool I2cServoValid[kServosCount] = {false};
 uint8_t I2cServoValues[kServosCount] = {0};
 uint16_t I2cServoFbValues[kServosCount] = {0};
 
@@ -196,6 +199,8 @@ void processI2c() {
     uint8_t index = I2cBuffer[0];
     if (index < kServosCount) {
       I2cServoValues[index] = I2cBuffer[1];
+      I2cServoTimeout[index].reset();
+      I2cServoValid[index] = true;
     } else if (index == kIndexSetReadIndex) {
       I2cServoReadIndex = I2cBuffer[1];
     }
@@ -211,13 +216,19 @@ int main() {
   SwoSerial.printf("\r\n\n\nStart\r\n");
   SysTimer.start();
   ServoTimer.start();
+  for (int servoIndex=0; servoIndex<kServosCount; servoIndex++) {
+    I2cServoTimeout[servoIndex].start();
+  }
 
   while (1) {
     for (int servoIndex=0; servoIndex<kServosCount; servoIndex++) {
       DigitalOut* servo = Servos[servoIndex];
-
+      bool runServo = I2cServoValid[servoIndex] && (I2cServoTimeout[servoIndex].read_ms() < kServoTimeoutUs);
+      
       ServoTimer.reset();
-      *servo = 1;
+      if (runServo) {
+        *servo = 1;
+      }
 
       // during the minimum PWM time, calculate the target time and read the ADC
       uint16_t timerTargetUs = kServoTimeMinUs + 
