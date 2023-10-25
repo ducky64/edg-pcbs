@@ -35,7 +35,6 @@ int kPinI2cSda = 16;
 
 #include <Wire.h>
 
-#include <Ps3Controller.h>
 
 #include <NeoPixelBrightnessBus.h>
 const int kNeoPixelCount = 10;
@@ -49,11 +48,6 @@ Ssd1357 Oled;
 
 #include "PwmCoprocessor.h"
 PwmCoprocessor Stm32;
-
-
-void onConnect() {
-  Serial.println("PS3 connected");
-}
 
 
 void setup() {
@@ -72,9 +66,6 @@ void setup() {
   Serial.println("Setup complete\r\n");
 
   // Oled.begin();
-
-  Ps3.attachOnConnect(onConnect);
-  Ps3.begin("b0:fc:36:5b:cf:08");
 }
 
 
@@ -88,14 +79,6 @@ const int kFbReadMs = 50;
 
 void loop() {
   Serial.println("Loop\r\n");
-
-  if (Ps3.isConnected()) {
-    int forward = Ps3.data.analog.stick.ly;
-    int turn = Ps3.data.analog.stick.lx;
-
-    int left_PWM = forward * 3 / 2 + turn;
-    int right_PWM = forward * 3 / 2 - turn;
-  }
 
   int thisMillis = millis();
   if (thisMillis - lastServoValueMillis >= kServoUpdateMs) {
