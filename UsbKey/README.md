@@ -9,6 +9,7 @@ To read the option bits:
 The capacitive threshold for solo1 is set in https://github.com/solokeys/solo1/blob/master/targets/stm32l432/src/sense.c.
 To build solo1: install [rustup](https://www.rust-lang.org/tools/install) (note, does not seem available from the apt-get), add the ARM target `rustup target add thumbv7em-none-eabihf`, then in solo1/targets/stm32l432, `make cbor` and `make build-hacker`.
 The code will not fit on a STM32L432KB (128kB variant), it will overflow by 20kB.
+Oops!
 
 The code in this repository includes part of the touch sensor code of solo1.
 Breakpoints and debugger variable inspection can be used to calibrate the sensor thresholds in the absence of a separate UART line for printf.
