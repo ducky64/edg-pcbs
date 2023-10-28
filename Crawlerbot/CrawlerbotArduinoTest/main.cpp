@@ -143,27 +143,27 @@ void loop() {
         int thisMillis = millis();
         if (currentLine.endsWith("GET /fwd")) {
           cmdServos[2] = 255;  // front left
-          cmdServos[6] = 255;  // front right
+          cmdServos[6] = 0;  // front right
           cmdServos[8] = 255;  // back left
-          cmdServos[9] = 255;  // back right
+          cmdServos[9] = 0;  // back right
           cmdExpireMillis = thisMillis + kCmdDurationMs;
         } else if (currentLine.endsWith("GET /left")) {
+          cmdServos[2] = kServoNeutral;
+          cmdServos[6] = 0;
+          cmdServos[8] = kServoNeutral;
+          cmdServos[9] = 0;
+          cmdExpireMillis = thisMillis + kCmdDurationMs;
+        } else if (currentLine.endsWith("GET /right")) {
           cmdServos[2] = 255;
           cmdServos[6] = kServoNeutral;
           cmdServos[8] = 255;
           cmdServos[9] = kServoNeutral;
           cmdExpireMillis = thisMillis + kCmdDurationMs;
-        } else if (currentLine.endsWith("GET /right")) {
-          cmdServos[2] = kServoNeutral;
-          cmdServos[6] = 255;
-          cmdServos[8] = kServoNeutral;
-          cmdServos[9] = 255;
-          cmdExpireMillis = thisMillis + kCmdDurationMs;
         } else if (currentLine.endsWith("GET /back")) {
           cmdServos[2] = 0;
-          cmdServos[6] = 0;
+          cmdServos[6] = 255;
           cmdServos[8] = 0;
-          cmdServos[9] = 0;
+          cmdServos[9] = 255;
           cmdExpireMillis = thisMillis + kCmdDurationMs;
         }
       }
