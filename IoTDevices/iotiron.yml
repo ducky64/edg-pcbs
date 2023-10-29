@@ -1,0 +1,145 @@
+substitutions:
+  name: "Iron"
+
+esphome:
+  name: ducky-iotiron
+  name_add_mac_suffix: true
+  platform: esp32
+  board: esp32-s3-devkitc-1  # 8MB flash without PSRAM
+
+wifi:
+  <<: !include ../wifi_config.yaml
+
+# HASS API
+api:
+
+# Allow API
+ota:
+
+# Print Updates
+logger:
+
+# WebServer component, displays some information
+web_server:
+    port: 80
+
+time:
+  - platform: sntp
+    id: sntp_time
+
+light:
+  - platform: binary
+    name: "${name} Dbg"
+    output: output_debug_led
+
+output:
+  - id: output_debug_led
+    platform: gpio
+    pin: GPIO0
+    inverted: true
+
+i2c:
+  scl: GPIO42
+  sda: GPIO41
+  frequency: 400kHz
+
+font:
+  - file: "resources/4x6.bdf"  # characters actually 3x5 plus 1px descender
+    id: bdf4x6
+  - file: "resources/6x10.bdf"  # characters actually 5x7 plus 2px descender
+    id: bdf6x10
+    
+display:  
+  - platform: ssd1306_i2c
+    model: "SSD1306 128x64"
+    address: 0x3c
+    reset_pin: GPIO18
+    lambda: |-
+      it.printf(0, 0, id(bdf6x10), "Ducky Iron  %2.0f C", id(cold_temp).state);
+      it.printf(0, 10, id(bdf6x10), "U %2.1f  I %2.1f  A %2.1f", id(adc_vusb).get_state(), id(adc_viron).get_state(), id(adc_iiron).get_state());
+      it.printf(0, 20, id(bdf6x10), "E %.0f  %.0f", id(encoder).state, id(encoder_sw).state);
+      it.strftime(0, 30, id(bdf4x6), "%H:%M:%S", id(sntp_time).now());
+      
+
+binary_sensor:
+  - platform: gpio
+    id: encoder_sw
+    name: "${name} Encoder Sw"
+    pin: 
+      number: GPIO15
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    filters:
+      - delayed_on: 10ms
+
+sensor:
+  - platform: adc
+    id: adc_vusb
+    name: "${name} VUsb"
+    pin: GPIO1
+    accuracy_decimals: 2
+    update_interval: 5s
+    attenuation: auto
+    filters:
+      - multiply: 9.174
+  - platform: adc
+    id: adc_viron
+    name: "${name} VIron"
+    pin: GPIO6
+    accuracy_decimals: 2
+    update_interval: 1s
+    attenuation: auto
+    filters:
+      - multiply: 2.469
+  - platform: adc
+    id: adc_iiron
+    name: "${name} IIron"
+    pin: GPIO7
+    accuracy_decimals: 2
+    update_interval: 1s
+    attenuation: auto
+    filters:
+      - multiply: 2.114  # 22mOhm resistor * 22.1x amp
+  - platform: adc
+    id: adc_temp
+    name: "${name} Temp"
+    pin: GPIO8
+    accuracy_decimals: 2
+    update_interval: 1s
+    attenuation: auto
+    filters:
+      - multiply: 1000
+  - platform: rotary_encoder
+    id: encoder
+    name: "${name} Encoder"
+    pin_a:
+      number: GPIO17
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    pin_b:
+      number: GPIO16
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+  - platform: hdc1080
+    temperature:
+      id: cold_temp
+      name: "${name} Temperature"
+    humidity:
+      name: "${name} Humidity"
+    update_interval: 15s
+
+i2s_audio:
+  i2s_lrclk_pin: GPIO38
+  i2s_bclk_pin: GPIO9
+
+speaker:
+  - platform: i2s_audio
+    dac_type: external
+    i2s_dout_pin: GPIO40
+    mode: mono
