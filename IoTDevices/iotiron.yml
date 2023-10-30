@@ -7,6 +7,12 @@ esphome:
   platform: esp32
   board: esp32-s3-devkitc-1  # 8MB flash without PSRAM
 
+  includes:
+    - Fusb302.h
+    - Fusb302.cpp
+    - UsbPd.h
+    - Fusb302PdComponent.h
+
 wifi:
   <<: !include ../wifi_config.yaml
 
@@ -101,6 +107,14 @@ binary_sensor:
               }
     
 sensor:
+  - platform: custom
+    lambda: |-
+      auto component = new Fusb302PdComponent();
+      App.register_component(component);
+      return {component};
+    sensors:
+      name: "FUSB302 ID"
+
   - platform: adc
     id: adc_vusb
     name: "${name} VUsb"
