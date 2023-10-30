@@ -18,13 +18,11 @@ bool Fusb302::writeRegister(uint8_t addr, size_t len, uint8_t data[]) {
 }
 
 bool Fusb302::readRegister(uint8_t addr, size_t len, uint8_t data[]) {
-  wire_.beginTransmission(kI2cAddr);
-  wire_.write(addr);
-  if (wire_.endTransmission()) {
+  if (!writeRegister(addr, 0, NULL)) {
     return false;
   }
 
-  wire_.requestFrom(kI2cAddr, len);
+  uint8_t reqd = wire_.requestFrom(kI2cAddr, len);
   for (size_t i=0; i<len; i++) {
     data[i] = wire_.read();
   }
@@ -62,9 +60,7 @@ bool Fusb302::writeFifoMessage(uint16_t header, uint8_t numDataObjects, uint32_t
 }
 
 bool Fusb302::readNextRxFifo(uint8_t bufferOut[]) {
-  wire_.beginTransmission(kI2cAddr);
-  wire_.write(Register::kFifos);
-  if (wire_.endTransmission()) {
+  if (!writeRegister(Register::kFifos, 0, NULL)) {
     return false;
   }
 

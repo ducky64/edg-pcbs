@@ -38,7 +38,7 @@ public:
   // bufferOut must be at least 30 bytes.
   bool readNextRxFifo(uint8_t bufferOut[]);
 
-  uint8_t kI2cAddr = 0x44;
+  uint8_t kI2cAddr = 0x22;  // 7-bit address
 
   enum Register {
     kDeviceId = 0x01,
