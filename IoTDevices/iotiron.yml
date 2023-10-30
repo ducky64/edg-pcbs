@@ -106,15 +106,19 @@ binary_sensor:
                 id(pwm_ctl).turn_off().perform();
               }
     
-sensor:
-  - platform: custom
-    lambda: |-
+text_sensor:
+
+custom_component:
+  - lambda: |-
       auto component = new Fusb302PdComponent();
       App.register_component(component);
       return {component};
-    sensors:
-      name: "FUSB302 ID"
+    sensor:
+      - id: fusb_id
+    text_sensor:
+      - id: fusb_status
 
+sensor:
   - platform: adc
     id: adc_vusb
     name: "${name} VUsb"
