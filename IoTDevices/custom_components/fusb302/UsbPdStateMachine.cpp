@@ -5,18 +5,15 @@
 UsbPdStateMachine::UsbPdState UsbPdStateMachine::update() {
   if (state_ > kEnableTransceiver) {  // poll to detect COMP VBus low
     uint8_t compResult;
-    if (!readComp(compResult)) {
-      if (compResult == 0) {
-        compLowTimer_.start();
-      } else {
-        compLowTimer_.reset();
-        compLowTimer_.stop();
+    if (readComp(compResult)) {
+      if (compResult == 1) {  // if VBus high reset the expiration timer
+        compLowExpire_ = millis() + UsbPdStateMachine::kCompLowResetTimeMs;
       }
     } else {
       ESP_LOGW("UsbPdStateMachine", "processInterrupt(): ICompChng readComp failed");
     }
-    startStopDelay();
-    if (compLowTimer_.read_ms() >= kCompLowResetTimeMs) {
+    fusb_.startStopDelay();
+    if (millis() >= compLowExpire_) {
       ESP_LOGW("UsbPdStateMachine", "update(): Comp low reset");
       reset();
     }
@@ -25,8 +22,9 @@ UsbPdStateMachine::UsbPdState UsbPdStateMachine::update() {
   switch (state_) {
     case kStart:
     default:
-      if (!init()) {
-        measuringCcPin_ = -1;
+      if (init() && setMeasure(1)) {
+        ccPin_ = 0;
+        measuringCcPin_ = 1;
         savedCcMeasureLevel_ = -1;
         state_ = kDetectCc;
         stateExpire_ = millis() + kMeasureTimeMs;
@@ -35,22 +33,20 @@ UsbPdStateMachine::UsbPdState UsbPdStateMachine::update() {
       }
       break;
     case kDetectCc:
-      if ((measuringCcPin_ == 1 || measuringCcPin_ == 2) && millis() >= stateExpire_) {  // measurerment ready
+      if (millis() >= stateExpire_) {  // measurement ready
         uint8_t measureLevel;
-        if (!readMeasure(measureLevel)) {
+        if (readMeasure(measureLevel)) {
           if (savedCcMeasureLevel_ != -1 && measureLevel != savedCcMeasureLevel_) {
             // last measurement on other pin was valid, and one is higher
             if (measureLevel > savedCcMeasureLevel_) {  // this measurement higher, use this CC pin
               ccPin_ = measuringCcPin_;
-            } else {  // other measurement higher, use other rCC pin
+            } else {  // other measurement higher, use other CC pin
               ccPin_ = measuringCcPin_ == 1 ? 2 : 1;
             }
             state_ = kEnableTransceiver;
           } else {  // save this measurement and swap measurement pins
             uint8_t nextMeasureCcPin = measuringCcPin_ == 1 ? 2 : 1;
-            if (!setMeasure(nextMeasureCcPin)) {
-              compLowTimer_.reset();
-              compLowTimer_.start();
+            if (setMeasure(nextMeasureCcPin)) {
               savedCcMeasureLevel_ = measureLevel;
               measuringCcPin_ = nextMeasureCcPin;
               stateExpire_ = millis() + kMeasureTimeMs;
@@ -61,16 +57,10 @@ UsbPdStateMachine::UsbPdState UsbPdStateMachine::update() {
         } else {
           ESP_LOGW("UsbPdStateMachine", "update(): DetectCc readMeasure failed");
         }
-      } else if (measuringCcPin_ != 1 && measuringCcPin_ != 2) {  // state entry, invalid measurement pin
-        if (!setMeasure(1)) {
-          ESP_LOGW("UsbPdStateMachine", "update(): DetectCc setMeasure failed");
-        }
-        timer_.reset();
-        measuringCcPin_ = 1; 
       }
       break;
     case kEnableTransceiver:
-      if (!enablePdTrasceiver(ccPin_)) {
+      if (enablePdTrasceiver(ccPin_)) {
         state_ = kWaitSourceCapabilities;
         stateExpire_ = millis() + UsbPdTiming::tTypeCSendSourceCapMsMax;
       } else {
@@ -97,7 +87,7 @@ UsbPdStateMachine::UsbPdState UsbPdStateMachine::update() {
 //     ESP_LOGW("UsbPdStateMachine", "processInterrupt(): readRegister(Interrupt) failed");
 //     return;
 //   }
-//   startStopDelay();
+//   fusb_.startStopDelay();
 //   if (intVal & Fusb302::kInterrupt::kICrcChk) {
 //     processRxMessages();
 //   }
@@ -135,18 +125,18 @@ bool UsbPdStateMachine::init() {
     ESP_LOGW("UsbPdStateMachine", "init(): reset failed");
     return false;
   }
-  startStopDelay();
+  fusb_.startStopDelay();
 
   if (!fusb_.writeRegister(Fusb302::Register::kPower, 0x0f)) {  // power up everything
     ESP_LOGW("UsbPdStateMachine", "init(): power failed");
     return false;
   }
-  startStopDelay();
+  fusb_.startStopDelay();
   if (!fusb_.writeRegister(Fusb302::Register::kMeasure, 0x40 | (kCompVBusThresholdMv/42))) {  // MEAS_VBUS
     ESP_LOGW("UsbPdStateMachine", "enablePdTransceiver(): Measure failed");
     return false;
   }
-  startStopDelay();  
+  fusb_.startStopDelay();  
 
   return true;
 }
@@ -169,43 +159,43 @@ bool UsbPdStateMachine::enablePdTrasceiver(int ccPin) {
     ESP_LOGW("UsbPdStateMachine", "enablePdTransceiver(): switches0 failed");
     return false;
   }
-  startStopDelay();
+  fusb_.startStopDelay();
   if (!fusb_.writeRegister(Fusb302::Register::kSwitches1, switches1Val)) {
     ESP_LOGW("UsbPdStateMachine", "enablePdTransceiver(): switches1 failed");
     return false;
   }
-  startStopDelay();
-  if (fusb_.writeRegister(Fusb302::Register::kControl3, 0x07)) {  // enable auto-retry
+  fusb_.startStopDelay();
+  if (!fusb_.writeRegister(Fusb302::Register::kControl3, 0x07)) {  // enable auto-retry
     ESP_LOGW("UsbPdStateMachine", "enablePdTransceiver(): control3 failed");
     return false;
   }
-  startStopDelay();
+  fusb_.startStopDelay();
   if (!fusb_.writeRegister(Fusb302::Register::kMask, 0xef)) {  // mask interupts
     ESP_LOGW("UsbPdStateMachine", "enablePdTransceiver(): mask failed");
     return false;
   }
-  startStopDelay();
+  fusb_.startStopDelay();
   if (!fusb_.writeRegister(Fusb302::Register::kMaska, 0xff)) {  // mask interupts
     ESP_LOGW("UsbPdStateMachine", "enablePdTransceiver(): maska failed");
     return false;
   }
-  startStopDelay();
+  fusb_.startStopDelay();
   if (!fusb_.writeRegister(Fusb302::Register::kMaskb, 0x01)) {  // mask interupts
     ESP_LOGW("UsbPdStateMachine", "enablePdTransceiver(): maskb failed");
     return false;
   }
-  startStopDelay();
+  fusb_.startStopDelay();
   if (!fusb_.writeRegister(Fusb302::Register::kControl0, 0x04)) {  // unmask global interrupt
     ESP_LOGW("UsbPdStateMachine", "enablePdTransceiver(): control0 failed");
     return false;
   }
-  startStopDelay();
+  fusb_.startStopDelay();
 
   if (!fusb_.writeRegister(Fusb302::Register::kReset, 0x02)) {  // reset PD logic
     ESP_LOGW("UsbPdStateMachine", "enablePdTransceiver(): reset failed");
     return false;
   }
-  startStopDelay();
+  fusb_.startStopDelay();
 
   return true;
 }
@@ -224,7 +214,7 @@ bool UsbPdStateMachine::setMeasure(int ccPin) {
     ESP_LOGW("UsbPdStateMachine", "setMeasure(): switches0 failed");
     return false;
   }
-  startStopDelay();
+  fusb_.startStopDelay();
 
   return true;
 }
@@ -235,7 +225,7 @@ bool UsbPdStateMachine::readMeasure(uint8_t& result) {
     ESP_LOGW("UsbPdStateMachine", "readMeasure(): status0 failed", );
     return false;
   }
-  startStopDelay();
+  fusb_.startStopDelay();
 
   result = regVal & 0x03;  // take BC_LVL only
   return true;
@@ -247,7 +237,7 @@ bool UsbPdStateMachine::readComp(uint8_t& result) {
     ESP_LOGW("UsbPdStateMachine", "readMeasure(): status0 failed");
     return false;
   }
-  startStopDelay();
+  fusb_.startStopDelay();
 
   result = regVal & 0x20;  // take COMP only
   return true;
@@ -260,7 +250,7 @@ bool UsbPdStateMachine::processRxMessages() {
       ESP_LOGW("UsbPdStateMachine", "processRxMessages(): readRegister(Status1) failed");
       return false;  // exit on error condition
     }
-    startStopDelay();
+    fusb_.startStopDelay();
 
     bool rxEmpty = status1Val & Fusb302::kStatus1::kRxEmpty;
     if (rxEmpty) {
@@ -272,7 +262,7 @@ bool UsbPdStateMachine::processRxMessages() {
       ESP_LOGW("UsbPdStateMachine", "processRxMessages(): readNextRxFifo failed");
       return false;  // exit on error condition
     }
-    startStopDelay();
+    fusb_.startStopDelay();
 
     uint16_t header = UsbPd::unpackUint16(rxData + 0);
     uint8_t messageType = UsbPd::MessageHeader::unpackMessageType(header);

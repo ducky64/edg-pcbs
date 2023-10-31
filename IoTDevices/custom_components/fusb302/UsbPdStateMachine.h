@@ -43,11 +43,11 @@ public:
   // Requests a capability from the source.
   bool requestCapability(uint8_t capability, uint16_t currentMa);
 
-protected:
-  inline void startStopDelay() {
-    delayMicroseconds(1);
+  uint8_t getCcPin() {
+    return ccPin_;
   }
 
+protected:
   void reset();
 
   // Resets and initializes the FUSB302 from an unknown state, returning true on success

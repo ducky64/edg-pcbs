@@ -7,14 +7,19 @@ from . import Fusb302Component, CONF_FUSB302_ID
 DEPENDENCIES = ['fusb302']
 
 CONF_STATUS = 'status'
+CONF_CAPABILITIES = 'capabilities'
 
 TYPES = [
     CONF_STATUS,
+    CONF_CAPABILITIES,
 ]
 
 CONFIG_SCHEMA = cv.Schema({
     cv.GenerateID(CONF_FUSB302_ID): cv.use_id(Fusb302Component),
     cv.Optional(CONF_STATUS): text_sensor.text_sensor_schema(
+      icon="mdi:checkbox-marked-circle-outline"
+    ),
+    cv.Optional(CONF_CAPABILITIES): text_sensor.text_sensor_schema(
       icon="mdi:checkbox-marked-circle-outline"
     ),
 })

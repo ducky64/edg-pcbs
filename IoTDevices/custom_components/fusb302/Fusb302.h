@@ -38,6 +38,11 @@ public:
   // bufferOut must be at least 30 bytes.
   bool readNextRxFifo(uint8_t bufferOut[]);
 
+  // datasheet-specified delay between I2C starts and stops
+  inline void startStopDelay() {
+    delayMicroseconds(1);  // actually should be 500us, but Arduino doesn't go that low
+  }
+
   uint8_t kI2cAddr = 0x22;  // 7-bit address
 
   enum Register {
@@ -126,8 +131,6 @@ public:
     kFifoTokens::kSop1, 
     kFifoTokens::kSop2,
   };
-
-  static const uint32_t kStopStartDelayNs = 500;  // 0.5us between start and stops
 
 protected:
   TwoWire& wire_;

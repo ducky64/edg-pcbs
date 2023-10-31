@@ -107,12 +107,16 @@ text_sensor:
   - platform: fusb302
     status:
       name: "${name} PD Status"  
-
+    capabilities:
+      name: "${name} PD Capabilities"
+  
 sensor:
   - platform: fusb302
     id:
       name: "${name} PD ID"
-
+    cc:
+      name: "${name} PD CC"
+      
   - platform: adc
     id: adc_vusb
     name: "${name} VUsb"
