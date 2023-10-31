@@ -113,6 +113,8 @@ namespace UsbPd {
   }
 
   namespace Capability {
+    const uint8_t kMaxCapabilities = 8;
+    
     namespace Type {
       enum Value {
         kFixedSupply = 0,

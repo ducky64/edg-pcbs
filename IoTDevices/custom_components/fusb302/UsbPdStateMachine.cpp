@@ -91,7 +91,7 @@ UsbPdStateMachine::UsbPdState UsbPdStateMachine::update() {
   return state_;
 }
 
-int UsbPdStateMachine::getCapabilities(UsbPd::Capability::Unpacked capabilities[]) {
+uint8_t UsbPdStateMachine::getCapabilities(UsbPd::Capability::Unpacked capabilities[]) {
   for (uint8_t i=0; i<sourceCapabilitiesLen_; i++) {
     capabilities[i] = UsbPd::Capability::unpack(sourceCapabilitiesObjects_[i]);
   }

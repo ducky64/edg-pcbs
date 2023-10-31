@@ -43,7 +43,7 @@ public:
     delayMicroseconds(1);  // actually should be 500us, but Arduino doesn't go that low
   }
 
-  uint8_t kI2cAddr = 0x22;  // 7-bit address
+  static constexpr uint8_t kI2cAddr = 0x22;  // 7-bit address
 
   enum Register {
     kDeviceId = 0x01,
@@ -86,7 +86,7 @@ public:
   enum kRxFifoTokens {
     kSop = 0xe0,  // only top 3 MSBs matter
   };
-  const uint8_t kRxFifoTokenMask = 0xe0;
+  static constexpr uint8_t kRxFifoTokenMask = 0xe0;
 
   enum kStatus1 {
     kRxSop2 = 0x80,

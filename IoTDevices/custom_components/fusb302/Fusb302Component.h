@@ -1,3 +1,5 @@
+#include <sstream>
+
 #include "esphome/core/component.h"
 #include "esphome/components/sensor/sensor.h"
 #include "esphome/components/text_sensor/text_sensor.h"
@@ -17,6 +19,8 @@ public:
   void set_id_sensor(sensor::Sensor* that) { sensor_id_ = that; }
   sensor::Sensor* sensor_cc_ = nullptr;
   void set_cc_sensor(sensor::Sensor* that) { sensor_cc_ = that; }
+  sensor::Sensor* sensor_vbus_ = nullptr;
+  void set_vbus_sensor(sensor::Sensor* that) { sensor_vbus_ = that; }
 
   text_sensor::TextSensor* sensor_status_ = nullptr;
   void set_status_text_sensor(text_sensor::TextSensor* that) { sensor_status_ = that; }
@@ -57,9 +61,34 @@ public:
     }
 
     if (last_state_ < UsbPdStateMachine::kConnected && state >= UsbPdStateMachine::kConnected) {  // capabilities now available
-      // sensor_capabilities_->publish_state("PLACEHOLDER");
+      std::stringstream ss;
+      UsbPd::Capability::Unpacked capabilities[UsbPd::Capability::kMaxCapabilities];
+      uint8_t capabilitiesCount = pd_fsm_.getCapabilities(capabilities);
+      for (uint8_t capabilityIndex=0; capabilityIndex<capabilitiesCount; capabilityIndex++) {
+        UsbPd::Capability::Unpacked& capability = capabilities[capabilityIndex];
+        if (capabilityIndex > 0) {
+          ss << "; ";
+        }
+        if (capability.capabilitiesType == UsbPd::Capability::Type::kFixedSupply) {
+          ss << capability.voltageMv / 1000 << "." << (capability.voltageMv / 100) % 10 <<  "V " 
+            << capability.maxCurrentMa / 1000 << "." << (capability.maxCurrentMa / 100) % 10 << "A" ;
+          if (capability.dualRolePower) {
+            ss << " dual-role";
+          }
+          if (!capability.unconstrainedPower) {
+            ss << " constrained";
+          }
+        } else if (capability.capabilitiesType == UsbPd::Capability::Type::kVariable) {
+          ss << "unknown variable";
+        } else if (capability.capabilitiesType == UsbPd::Capability::Type::kAugmented) {
+          ss << "unknown augmented";
+        } else if (capability.capabilitiesType == UsbPd::Capability::Type::kBattery) {
+          ss << "unknown battery";
+        }
+      }
+      sensor_capabilities_->publish_state(ss.str());
     } else if (last_state_ >= UsbPdStateMachine::kConnected && state < UsbPdStateMachine::kConnected) {  // disconnected
-      // sensor_capabilities_->publish_state("");
+      sensor_capabilities_->publish_state("");
     }
 
     last_state_ = state;

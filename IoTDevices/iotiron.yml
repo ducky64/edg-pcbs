@@ -118,7 +118,9 @@ sensor:
       name: "${name} PD ID"
     cc:
       name: "${name} PD CC"
-      
+    vbus:
+      name: "${name} PD VBus"
+
   - platform: adc
     id: adc_vusb
     name: "${name} VUsb"
