@@ -1,9 +1,11 @@
 #include "esphome/core/component.h"
+#include "esphome/components/sensor/sensor.h"  // needed to enable ESPHome logging
 #include "UsbPd.h"
 #include "UsbPdStateMachine.h"
 
+using namespace esphome;  // needed to enable ESPHome logging
+
 static const char* TAG = "UsbPdStateMachine";
-#define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
 
 
 UsbPdStateMachine::UsbPdState UsbPdStateMachine::update() {
@@ -229,7 +231,7 @@ bool UsbPdStateMachine::setMeasure(int ccPin) {
 bool UsbPdStateMachine::readMeasure(uint8_t& result) {
   uint8_t regVal;
   if (!fusb_.readRegister(Fusb302::Register::kStatus0, regVal)) {
-    ESP_LOGW(TAG, "readMeasure(): status0 failed", );
+    ESP_LOGW(TAG, "readMeasure(): status0 failed");
     return false;
   }
   fusb_.startStopDelay();
@@ -271,6 +273,7 @@ bool UsbPdStateMachine::processRxMessages() {
     fusb_.startStopDelay();
 
     uint16_t header = UsbPd::unpackUint16(rxData + 0);
+    uint8_t messageId = UsbPd::MessageHeader::unpackMessageId(header);
     uint8_t messageType = UsbPd::MessageHeader::unpackMessageType(header);
     uint8_t messageNumDataObjects = UsbPd::MessageHeader::unpackNumDataObjects(header);
     if (messageNumDataObjects > 0) {  // data message

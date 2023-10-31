@@ -4,9 +4,12 @@
 #include "Fusb302.h"
 #include "UsbPdStateMachine.h"
 
-using namespace esphome;
 
 namespace fusb302 {
+
+using namespace esphome;
+
+static const char* TAG = "Fusb302Component";
 
 class Fusb302Component : public Component {
 public:
@@ -28,9 +31,9 @@ public:
   void setup() override {
     if (fusb_.readId(id_)) {
       sensor_id_->publish_state(id_);
-      ESP_LOGI("Fusb302Component", "got chip id 0x%02x", id_);
+      ESP_LOGCONFIG(TAG, "got chip id 0x%02x", id_);
     } else {
-      ESP_LOGW("Fusb302Component", "failed to read chip id");
+      ESP_LOGCONFIG(TAG, "failed to read chip id");
       mark_failed();
     }
   }
@@ -54,9 +57,9 @@ public:
     }
 
     if (last_state_ < UsbPdStateMachine::kConnected && state >= UsbPdStateMachine::kConnected) {  // capabilities now available
-      sensor_capabilities_->publish_state("PLACEHOLDER");
+      // sensor_capabilities_->publish_state("PLACEHOLDER");
     } else if (last_state_ >= UsbPdStateMachine::kConnected && state < UsbPdStateMachine::kConnected) {  // disconnected
-      sensor_capabilities_->publish_state("");
+      // sensor_capabilities_->publish_state("");
     }
 
     last_state_ = state;
