@@ -10,9 +10,9 @@ static const char* TAG = "UsbPdStateMachine";
 
 UsbPdStateMachine::UsbPdState UsbPdStateMachine::update() {
   if (state_ > kEnableTransceiver) {  // poll to detect COMP VBus low
-    uint8_t compResult;
+    bool compResult;
     if (readComp(compResult)) {
-      if (compResult == 1) {  // if VBus high reset the expiration timer
+      if (compResult) {  // if VBus high reset the expiration timer
         compLowExpire_ = millis() + UsbPdStateMachine::kCompLowResetTimeMs;
       }
     } else {
@@ -67,6 +67,7 @@ UsbPdStateMachine::UsbPdState UsbPdStateMachine::update() {
       break;
     case kEnableTransceiver:
       if (enablePdTrasceiver(ccPin_)) {
+        compLowExpire_ = millis() + UsbPdStateMachine::kCompLowResetTimeMs;  // reset the COMP timer
         state_ = kWaitSourceCapabilities;
         stateExpire_ = millis() + UsbPdTiming::tTypeCSendSourceCapMsMax;
       } else {
@@ -141,8 +142,8 @@ bool UsbPdStateMachine::init() {
     return false;
   }
   fusb_.startStopDelay();
-  if (!fusb_.writeRegister(Fusb302::Register::kMeasure, 0x40 | (kCompVBusThresholdMv/42))) {  // MEAS_VBUS
-    ESP_LOGW(TAG, "enablePdTransceiver(): Measure failed");
+  if (!fusb_.writeRegister(Fusb302::Register::kMeasure, 0x40 | ((kCompVBusThresholdMv/42) & 0x3f))) {  // MEAS_VBUS
+    ESP_LOGW(TAG, "init(): Measure failed");
     return false;
   }
   fusb_.startStopDelay();  
@@ -240,9 +241,9 @@ bool UsbPdStateMachine::readMeasure(uint8_t& result) {
   return true;
 }
 
-bool UsbPdStateMachine::readComp(uint8_t& result) {
+bool UsbPdStateMachine::readComp(bool& result) {
   uint8_t regVal;
-  if ((!fusb_.readRegister(Fusb302::Register::kStatus0, regVal))) {
+  if (!fusb_.readRegister(Fusb302::Register::kStatus0, regVal)) {
     ESP_LOGW(TAG, "readMeasure(): status0 failed");
     return false;
   }

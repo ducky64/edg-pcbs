@@ -61,7 +61,7 @@ protected:
 
   bool readMeasure(uint8_t& result);
 
-  bool readComp(uint8_t& result);
+  bool readComp(bool& result);
 
   bool processRxMessages();
 
