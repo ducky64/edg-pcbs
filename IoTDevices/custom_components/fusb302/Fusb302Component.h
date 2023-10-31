@@ -43,6 +43,16 @@ public:
   }
 
   void loop() override {
+    uint16_t vbusMv;
+    if (pd_fsm_.updateVbus(vbusMv)) {
+      if (measureIterations_ > 1) {
+        ESP_LOGW(TAG, "Vbus converged in %i cycles", measureIterations_);
+      }
+      sensor_vbus_->publish_state((float)vbusMv / 1000);
+      measureIterations_ = 0;
+    }
+    measureIterations_++;
+
     UsbPdStateMachine::UsbPdState state = pd_fsm_.update();
     if (state != last_state_) {
       switch (state) {
@@ -100,6 +110,8 @@ protected:
   UsbPdStateMachine::UsbPdState last_state_ = UsbPdStateMachine::kStart;
 
   uint8_t id_;  // device id, if read successful
+
+  uint8_t measureIterations_ = 0;
 };
 
 }

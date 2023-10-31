@@ -47,6 +47,11 @@ public:
     return ccPin_;
   }
 
+  // Updates the Vbus measurement. Can be called independently of update().
+  // Returns true if a valid sample was obtained, false if trying to converge.
+  // Call regularly.
+  bool updateVbus(uint16_t& vbusOutMv);
+
 protected:
   void reset();
 
@@ -62,6 +67,7 @@ protected:
   bool readMeasure(uint8_t& result);
 
   bool readComp(bool& result);
+  bool setMdac(uint8_t mdacValue);
 
   bool processRxMessages();
 
@@ -78,8 +84,7 @@ protected:
   int8_t measuringCcPin_;  // CC pin currently being measured
   uint8_t ccPin_;  // CC pin used for communication, only valid when connected
   long stateExpire_;  // millis() time at which the next state expires
-  long compLowExpire_;  // millis() time at which comp low expires
-  
+
   // USB PD state
   uint8_t nextMessageId_;
 
@@ -94,8 +99,12 @@ protected:
   Fusb302& fusb_;
 
   static const int kMeasureTimeMs = 1;  // TODO arbitrary
-  static const int kCompLowResetTimeMs = 50;  // time Vbus needs to be low to detect a disconnect; TODO arbitrary
-  static const int kCompVBusThresholdMv = 3000;  // account for leakage from 3.3v
+
+  // Vbus measurement binary search algorithm
+  int8_t lastMdacValue_ = -1;  // -1 is invalid
+  int8_t lastMdacDelta_ = 32;  // delta 
+  bool deltaWidening_ = true;  // if true, delta is increasing (broadening search), if false is decreasing (refining search)
+  bool lastComp_ = false;
 };
 
 #endif

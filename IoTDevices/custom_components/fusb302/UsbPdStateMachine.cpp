@@ -9,22 +9,6 @@ static const char* TAG = "UsbPdStateMachine";
 
 
 UsbPdStateMachine::UsbPdState UsbPdStateMachine::update() {
-  if (state_ > kEnableTransceiver) {  // poll to detect COMP VBus low
-    bool compResult;
-    if (readComp(compResult)) {
-      if (compResult) {  // if VBus high reset the expiration timer
-        compLowExpire_ = millis() + UsbPdStateMachine::kCompLowResetTimeMs;
-      }
-    } else {
-      ESP_LOGW(TAG, "update(): ICompChng readComp failed");
-    }
-    fusb_.startStopDelay();
-    if (millis() >= compLowExpire_) {
-      ESP_LOGW(TAG, "update(): Comp low reset");
-      reset();
-    }
-  }
-
   switch (state_) {
     case kStart:
     default:
@@ -67,7 +51,6 @@ UsbPdStateMachine::UsbPdState UsbPdStateMachine::update() {
       break;
     case kEnableTransceiver:
       if (enablePdTrasceiver(ccPin_)) {
-        compLowExpire_ = millis() + UsbPdStateMachine::kCompLowResetTimeMs;  // reset the COMP timer
         state_ = kWaitSourceCapabilities;
         stateExpire_ = millis() + UsbPdTiming::tTypeCSendSourceCapMsMax;
       } else {
@@ -106,6 +89,62 @@ bool UsbPdStateMachine::requestCapability(uint8_t capability, uint16_t currentMa
   return sendRequestCapability(capability, currentMa);
 }
 
+// runs an iterative binary search with increasing and decreasing levels
+bool UsbPdStateMachine::updateVbus(uint16_t& vbusOutMv) {
+  uint8_t newMdacValue = 32;  // init
+  int8_t convergedMdac = -1;  // if >=0, means converged
+
+  if (lastMdacValue_ >= 0) {  // if previous valid mdac setting
+    bool comp;
+    if (!readComp(comp)) {
+      ESP_LOGW(TAG, "updateVbus(): readComp failed");
+      return false;
+    }
+
+    if (lastMdacDelta_ == -1 && !lastComp_ && comp) {
+      convergedMdac = lastMdacValue_;
+      deltaWidening_ = true;  // on convergence, can expand again
+    } else if (lastMdacDelta_ == 1 && lastComp_ && !comp) {
+      convergedMdac = lastMdacValue_ - 1;
+      deltaWidening_ = true;
+    } else if (lastComp_ != comp) {  // crossover point, from widening to narrowing
+      deltaWidening_ = false;
+    }
+
+    // adjust magnitude value of delta
+    lastMdacDelta_ = abs(lastMdacDelta_);
+    if (deltaWidening_) {
+      if (convergedMdac >= 0) {  // converged, stay at single step
+      } else {
+        lastMdacDelta_ = min(32, lastMdacDelta_ * 2);
+      }
+    } else {
+      lastMdacDelta_ = max(1, lastMdacDelta_ / 2);
+    }
+
+    if (!comp) {  // compare false, search downwards
+      lastMdacDelta_ = -lastMdacDelta_;
+    }
+    newMdacValue = max(0, min(fusb_.kMdacCounts - 1, lastMdacValue_ + lastMdacDelta_));
+
+    lastComp_ = comp;
+  }
+
+  if (!setMdac(newMdacValue)) {
+    ESP_LOGW(TAG, "updateVbus(): setMdac failed");
+  } else {
+    lastMdacValue_ = newMdacValue;
+  }
+
+  if (convergedMdac >= 0) {
+    vbusOutMv = (convergedMdac + 1) * fusb_.kMdacVbusCountMv;
+    return true;
+  } else {
+    return false;
+  }
+}
+
+
 void UsbPdStateMachine::reset() {
   state_ = kStart;
   ccPin_ = 0;
@@ -130,11 +169,6 @@ bool UsbPdStateMachine::init() {
     return false;
   }
   fusb_.startStopDelay();
-  if (!fusb_.writeRegister(Fusb302::Register::kMeasure, 0x40 | ((kCompVBusThresholdMv/42) & 0x3f))) {  // MEAS_VBUS
-    ESP_LOGW(TAG, "init(): Measure failed");
-    return false;
-  }
-  fusb_.startStopDelay();  
 
   return true;
 }
@@ -165,26 +199,6 @@ bool UsbPdStateMachine::enablePdTrasceiver(int ccPin) {
   fusb_.startStopDelay();
   if (!fusb_.writeRegister(Fusb302::Register::kControl3, 0x07)) {  // enable auto-retry
     ESP_LOGW(TAG, "enablePdTransceiver(): control3 failed");
-    return false;
-  }
-  fusb_.startStopDelay();
-  if (!fusb_.writeRegister(Fusb302::Register::kMask, 0xef)) {  // mask interupts
-    ESP_LOGW(TAG, "enablePdTransceiver(): mask failed");
-    return false;
-  }
-  fusb_.startStopDelay();
-  if (!fusb_.writeRegister(Fusb302::Register::kMaska, 0xff)) {  // mask interupts
-    ESP_LOGW(TAG, "enablePdTransceiver(): maska failed");
-    return false;
-  }
-  fusb_.startStopDelay();
-  if (!fusb_.writeRegister(Fusb302::Register::kMaskb, 0x01)) {  // mask interupts
-    ESP_LOGW(TAG, "enablePdTransceiver(): maskb failed");
-    return false;
-  }
-  fusb_.startStopDelay();
-  if (!fusb_.writeRegister(Fusb302::Register::kControl0, 0x04)) {  // unmask global interrupt
-    ESP_LOGW(TAG, "enablePdTransceiver(): control0 failed");
     return false;
   }
   fusb_.startStopDelay();
@@ -238,6 +252,15 @@ bool UsbPdStateMachine::readComp(bool& result) {
   fusb_.startStopDelay();
 
   result = regVal & 0x20;  // take COMP only
+  return true;
+}
+
+bool UsbPdStateMachine::setMdac(uint8_t mdacValue) {
+  if (!fusb_.writeRegister(Fusb302::Register::kMeasure, 0x40 | (mdacValue & 0x3f))) {  // MEAS_VBUS
+    ESP_LOGW(TAG, "setMdac(): failed");
+    return false;
+  }
+  fusb_.startStopDelay();  
   return true;
 }
 

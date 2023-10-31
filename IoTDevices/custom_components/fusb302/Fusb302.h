@@ -132,6 +132,9 @@ public:
     kFifoTokens::kSop2,
   };
 
+  static constexpr uint8_t kMdacCounts = 64;  // MEASURE.MDAC can be up to (but not including) this value
+  static constexpr uint16_t kMdacVbusCountMv = 420;  // 42mV / count
+
 protected:
   TwoWire& wire_;
 };

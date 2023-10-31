@@ -114,7 +114,7 @@ namespace UsbPd {
 
   namespace Capability {
     const uint8_t kMaxCapabilities = 8;
-    
+
     namespace Type {
       enum Value {
         kFixedSupply = 0,
@@ -133,7 +133,7 @@ namespace UsbPd {
       bool dualRoleData;
       bool unchunkedExtendedMessagesSupported;
       uint8_t peakCurrent;  // TODO: not decoded
-      uint16_t voltageMv;;
+      uint16_t voltageMv;
       uint16_t maxCurrentMa;
     };
 
