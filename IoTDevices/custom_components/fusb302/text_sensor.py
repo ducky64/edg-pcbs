@@ -6,12 +6,18 @@ from . import Fusb302Component, CONF_FUSB302_ID
 
 DEPENDENCIES = ['fusb302']
 
+CONF_STATUS = 'status'
+
+TYPES = [
+    CONF_STATUS,
+]
+
 CONFIG_SCHEMA = cv.Schema({
     cv.GenerateID(CONF_FUSB302_ID): cv.use_id(Fusb302Component),
-    cv.Optional('status'): text_sensor.text_sensor_schema(
+    cv.Optional(CONF_STATUS): text_sensor.text_sensor_schema(
       icon="mdi:checkbox-marked-circle-outline"
     ),
-}).extend(cv.COMPONENT_SCHEMA)
+})
 
 
 async def setup_conf(config, key, hub):

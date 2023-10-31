@@ -6,9 +6,15 @@ from . import Fusb302Component, CONF_FUSB302_ID
 
 DEPENDENCIES = ['fusb302']
 
+CONF_ID = 'id'
+
+TYPES = [
+    CONF_ID
+]
+
 CONFIG_SCHEMA = cv.Schema({
     cv.GenerateID(CONF_FUSB302_ID): cv.use_id(Fusb302Component),
-    cv.Optional('id'): sensor.sensor_schema(
+    cv.Optional(CONF_ID): sensor.sensor_schema(
       unit_of_measurement=UNIT_EMPTY
     ),
 })
