@@ -91,18 +91,6 @@ UsbPdStateMachine::UsbPdState UsbPdStateMachine::update() {
   return state_;
 }
 
-// void UsbPdStateMachine::processInterrupt() {
-//   uint8_t intVal;
-//   if (!fusb_.readRegister(Fusb302::Register::kInterrupt, intVal)) {
-//     ESP_LOGW(TAG, "processInterrupt(): readRegister(Interrupt) failed");
-//     return;
-//   }
-//   fusb_.startStopDelay();
-//   if (intVal & Fusb302::kInterrupt::kICrcChk) {
-//     processRxMessages();
-//   }
-// }
-
 int UsbPdStateMachine::getCapabilities(UsbPd::Capability::Unpacked capabilities[]) {
   for (uint8_t i=0; i<sourceCapabilitiesLen_; i++) {
     capabilities[i] = UsbPd::Capability::unpack(sourceCapabilitiesObjects_[i]);
@@ -261,7 +249,6 @@ bool UsbPdStateMachine::processRxMessages() {
       return false;  // exit on error condition
     }
     fusb_.startStopDelay();
-
     if (status1Val & Fusb302::kStatus1::kRxEmpty) {  // nothing to do
       return true;
     }

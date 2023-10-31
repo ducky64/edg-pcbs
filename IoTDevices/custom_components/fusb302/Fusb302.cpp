@@ -75,7 +75,9 @@ bool Fusb302::readNextRxFifo(uint8_t bufferOut[]) {
   uint16_t header = UsbPd::unpackUint16(bufferOut + 0);
   uint16_t numDataObjects = UsbPd::MessageHeader::unpackNumDataObjects(header);
   uint8_t bufferInd = 2;
-  return !wire_.endTransmission();
+  if (wire_.endTransmission()) {
+    return false;
+  }
 
   wire_.requestFrom(kI2cAddr, numDataObjects * 4 + 4);  // read out additional data objects
   for (uint8_t i=0; i<numDataObjects * 4; i++) {
