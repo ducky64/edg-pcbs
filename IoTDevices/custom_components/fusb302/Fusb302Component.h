@@ -8,7 +8,7 @@ using namespace esphome;
 
 namespace fusb302 {
 
-class Fusb302Component : public PollingComponent {
+class Fusb302Component : public Component {
 public:
   sensor::Sensor* sensor_id_ = nullptr;
   void set_id_sensor(sensor::Sensor* that) { sensor_id_ = that; }
@@ -20,7 +20,7 @@ public:
   text_sensor::TextSensor* sensor_capabilities_ = nullptr;
   void set_capabilities_text_sensor(text_sensor::TextSensor* that) { sensor_capabilities_ = that; }
 
-  Fusb302Component() : PollingComponent(1000), fusb_(Wire), pd_fsm_(fusb_) {
+  Fusb302Component() : fusb_(Wire), pd_fsm_(fusb_) {
   }
 
   float get_setup_priority() const override { return esphome::setup_priority::HARDWARE; }
@@ -35,7 +35,7 @@ public:
     }
   }
 
-  void update() override {
+  void loop() override {
     UsbPdStateMachine::UsbPdState state = pd_fsm_.update();
     if (state != last_state_) {
       switch (state) {
@@ -58,7 +58,7 @@ public:
     } else if (last_state_ >= UsbPdStateMachine::kConnected && state < UsbPdStateMachine::kConnected) {  // disconnected
       sensor_capabilities_->publish_state("");
     }
-    
+
     last_state_ = state;
   }
 

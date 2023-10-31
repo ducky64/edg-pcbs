@@ -1,3 +1,4 @@
+#include "esphome/core/component.h"
 #include "UsbPd.h"
 #include "UsbPdStateMachine.h"
 
@@ -23,7 +24,6 @@ UsbPdStateMachine::UsbPdState UsbPdStateMachine::update() {
     case kStart:
     default:
       if (init() && setMeasure(1)) {
-        ccPin_ = 0;
         measuringCcPin_ = 1;
         savedCcMeasureLevel_ = -1;
         state_ = kDetectCc;
@@ -68,6 +68,7 @@ UsbPdStateMachine::UsbPdState UsbPdStateMachine::update() {
       }
       break;
     case kWaitSourceCapabilities:
+      processRxMessages();
       if (sourceCapabilitiesLen_ > 0) {
         state_ = kConnected;
       } else if (millis() >= stateExpire_) {
@@ -75,6 +76,7 @@ UsbPdStateMachine::UsbPdState UsbPdStateMachine::update() {
       }
       break;
     case kConnected:
+      processRxMessages();
       break;
   }
 
