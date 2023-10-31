@@ -52,9 +52,9 @@ public:
   // Call regularly.
   bool updateVbus(uint16_t& vbusOutMv);
 
-protected:
   void reset();
 
+protected:
   // Resets and initializes the FUSB302 from an unknown state, returning true on success
   // Checks here are minimal, the upper layer should read out the device ID
   bool init();

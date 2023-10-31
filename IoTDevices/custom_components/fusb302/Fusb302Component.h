@@ -40,12 +40,17 @@ public:
   }
 
   void loop() override {
-    uint16_t vbusMv;
-    if (pd_fsm_.updateVbus(vbusMv)) {
-      sensor_vbus_->publish_state((float)vbusMv / 1000);
+    if (pd_fsm_.updateVbus(lastVbusMv_)) {
+      sensor_vbus_->publish_state((float)lastVbusMv_ / 1000);
     }
 
-    UsbPdStateMachine::UsbPdState state = pd_fsm_.update();
+    UsbPdStateMachine::UsbPdState state = UsbPdStateMachine::kStart;
+    if (lastVbusMv_ > 4000) {
+      state = pd_fsm_.update();
+    } else {  // reset, likely source was disconnected
+      pd_fsm_.reset();
+    }
+
     if (state != last_state_) {
       switch (state) {
         case UsbPdStateMachine::kStart: sensor_status_->publish_state("Start"); break;
@@ -102,6 +107,7 @@ protected:
   UsbPdStateMachine::UsbPdState last_state_ = UsbPdStateMachine::kStart;
 
   uint8_t id_;  // device id, if read successful
+  uint16_t lastVbusMv_ = 0;
 };
 
 }
