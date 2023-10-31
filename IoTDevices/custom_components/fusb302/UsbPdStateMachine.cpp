@@ -2,6 +2,9 @@
 #include "UsbPd.h"
 #include "UsbPdStateMachine.h"
 
+static const char* TAG = "UsbPdStateMachine";
+#define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
+
 
 UsbPdStateMachine::UsbPdState UsbPdStateMachine::update() {
   if (state_ > kEnableTransceiver) {  // poll to detect COMP VBus low
@@ -11,11 +14,11 @@ UsbPdStateMachine::UsbPdState UsbPdStateMachine::update() {
         compLowExpire_ = millis() + UsbPdStateMachine::kCompLowResetTimeMs;
       }
     } else {
-      ESP_LOGW("UsbPdStateMachine", "processInterrupt(): ICompChng readComp failed");
+      ESP_LOGW(TAG, "update(): ICompChng readComp failed");
     }
     fusb_.startStopDelay();
     if (millis() >= compLowExpire_) {
-      ESP_LOGW("UsbPdStateMachine", "update(): Comp low reset");
+      ESP_LOGW(TAG, "update(): Comp low reset");
       reset();
     }
   }
@@ -29,7 +32,7 @@ UsbPdStateMachine::UsbPdState UsbPdStateMachine::update() {
         state_ = kDetectCc;
         stateExpire_ = millis() + kMeasureTimeMs;
       } else {
-        ESP_LOGW("UsbPdStateMachine", "update(): Start init failed");
+        ESP_LOGW(TAG, "update(): Start init failed");
       }
       break;
     case kDetectCc:
@@ -43,6 +46,7 @@ UsbPdStateMachine::UsbPdState UsbPdStateMachine::update() {
             } else {  // other measurement higher, use other CC pin
               ccPin_ = measuringCcPin_ == 1 ? 2 : 1;
             }
+            ESP_LOGI(TAG, "update(): DetectCC cc=%i", ccPin_);
             state_ = kEnableTransceiver;
           } else {  // save this measurement and swap measurement pins
             uint8_t nextMeasureCcPin = measuringCcPin_ == 1 ? 2 : 1;
@@ -51,11 +55,11 @@ UsbPdStateMachine::UsbPdState UsbPdStateMachine::update() {
               measuringCcPin_ = nextMeasureCcPin;
               stateExpire_ = millis() + kMeasureTimeMs;
             } else {
-              ESP_LOGW("UsbPdStateMachine", "update(): DetectCc setMeasure failed");
+              ESP_LOGW(TAG, "update(): DetectCc setMeasure failed");
             }
           }
         } else {
-          ESP_LOGW("UsbPdStateMachine", "update(): DetectCc readMeasure failed");
+          ESP_LOGW(TAG, "update(): DetectCc readMeasure failed");
         }
       }
       break;
@@ -64,7 +68,7 @@ UsbPdStateMachine::UsbPdState UsbPdStateMachine::update() {
         state_ = kWaitSourceCapabilities;
         stateExpire_ = millis() + UsbPdTiming::tTypeCSendSourceCapMsMax;
       } else {
-        ESP_LOGW("UsbPdStateMachine", "update(): EnableTransceiver enablePdTransceiver failed");
+        ESP_LOGW(TAG, "update(): EnableTransceiver enablePdTransceiver failed");
       }
       break;
     case kWaitSourceCapabilities:
@@ -72,6 +76,7 @@ UsbPdStateMachine::UsbPdState UsbPdStateMachine::update() {
       if (sourceCapabilitiesLen_ > 0) {
         state_ = kConnected;
       } else if (millis() >= stateExpire_) {
+        ESP_LOGW(TAG, "update(): WaitSourceCapabilities timed out");
         state_ = kEnableTransceiver;
       }
       break;
@@ -86,7 +91,7 @@ UsbPdStateMachine::UsbPdState UsbPdStateMachine::update() {
 // void UsbPdStateMachine::processInterrupt() {
 //   uint8_t intVal;
 //   if (!fusb_.readRegister(Fusb302::Register::kInterrupt, intVal)) {
-//     ESP_LOGW("UsbPdStateMachine", "processInterrupt(): readRegister(Interrupt) failed");
+//     ESP_LOGW(TAG, "processInterrupt(): readRegister(Interrupt) failed");
 //     return;
 //   }
 //   fusb_.startStopDelay();
@@ -124,18 +129,18 @@ void UsbPdStateMachine::reset() {
 
 bool UsbPdStateMachine::init() {
   if (!fusb_.writeRegister(Fusb302::Register::kReset, 0x03)) {  // reset everything
-    ESP_LOGW("UsbPdStateMachine", "init(): reset failed");
+    ESP_LOGW(TAG, "init(): reset failed");
     return false;
   }
   fusb_.startStopDelay();
 
   if (!fusb_.writeRegister(Fusb302::Register::kPower, 0x0f)) {  // power up everything
-    ESP_LOGW("UsbPdStateMachine", "init(): power failed");
+    ESP_LOGW(TAG, "init(): power failed");
     return false;
   }
   fusb_.startStopDelay();
   if (!fusb_.writeRegister(Fusb302::Register::kMeasure, 0x40 | (kCompVBusThresholdMv/42))) {  // MEAS_VBUS
-    ESP_LOGW("UsbPdStateMachine", "enablePdTransceiver(): Measure failed");
+    ESP_LOGW(TAG, "enablePdTransceiver(): Measure failed");
     return false;
   }
   fusb_.startStopDelay();  
@@ -153,48 +158,48 @@ bool UsbPdStateMachine::enablePdTrasceiver(int ccPin) {
     switches0Val |= 0x08;
     switches1Val |= 0x02;
   } else {
-    ESP_LOGE("UsbPdStateMachine", "invalid ccPin = %i", ccPin);
+    ESP_LOGE(TAG, "invalid ccPin = %i", ccPin);
     return false;
   }
 
   if (!fusb_.writeRegister(Fusb302::Register::kSwitches0, switches0Val)) {  // PDWN1/2
-    ESP_LOGW("UsbPdStateMachine", "enablePdTransceiver(): switches0 failed");
+    ESP_LOGW(TAG, "enablePdTransceiver(): switches0 failed");
     return false;
   }
   fusb_.startStopDelay();
   if (!fusb_.writeRegister(Fusb302::Register::kSwitches1, switches1Val)) {
-    ESP_LOGW("UsbPdStateMachine", "enablePdTransceiver(): switches1 failed");
+    ESP_LOGW(TAG, "enablePdTransceiver(): switches1 failed");
     return false;
   }
   fusb_.startStopDelay();
   if (!fusb_.writeRegister(Fusb302::Register::kControl3, 0x07)) {  // enable auto-retry
-    ESP_LOGW("UsbPdStateMachine", "enablePdTransceiver(): control3 failed");
+    ESP_LOGW(TAG, "enablePdTransceiver(): control3 failed");
     return false;
   }
   fusb_.startStopDelay();
   if (!fusb_.writeRegister(Fusb302::Register::kMask, 0xef)) {  // mask interupts
-    ESP_LOGW("UsbPdStateMachine", "enablePdTransceiver(): mask failed");
+    ESP_LOGW(TAG, "enablePdTransceiver(): mask failed");
     return false;
   }
   fusb_.startStopDelay();
   if (!fusb_.writeRegister(Fusb302::Register::kMaska, 0xff)) {  // mask interupts
-    ESP_LOGW("UsbPdStateMachine", "enablePdTransceiver(): maska failed");
+    ESP_LOGW(TAG, "enablePdTransceiver(): maska failed");
     return false;
   }
   fusb_.startStopDelay();
   if (!fusb_.writeRegister(Fusb302::Register::kMaskb, 0x01)) {  // mask interupts
-    ESP_LOGW("UsbPdStateMachine", "enablePdTransceiver(): maskb failed");
+    ESP_LOGW(TAG, "enablePdTransceiver(): maskb failed");
     return false;
   }
   fusb_.startStopDelay();
   if (!fusb_.writeRegister(Fusb302::Register::kControl0, 0x04)) {  // unmask global interrupt
-    ESP_LOGW("UsbPdStateMachine", "enablePdTransceiver(): control0 failed");
+    ESP_LOGW(TAG, "enablePdTransceiver(): control0 failed");
     return false;
   }
   fusb_.startStopDelay();
 
   if (!fusb_.writeRegister(Fusb302::Register::kReset, 0x02)) {  // reset PD logic
-    ESP_LOGW("UsbPdStateMachine", "enablePdTransceiver(): reset failed");
+    ESP_LOGW(TAG, "enablePdTransceiver(): reset failed");
     return false;
   }
   fusb_.startStopDelay();
@@ -209,11 +214,11 @@ bool UsbPdStateMachine::setMeasure(int ccPin) {
   } else if (ccPin == 2) {
     switches0Val |= 0x08;
   } else {
-    ESP_LOGW("UsbPdStateMachine", "setMeasure(): invalid ccPin arg = %i", ccPin);
+    ESP_LOGW(TAG, "setMeasure(): invalid ccPin arg = %i", ccPin);
     return false;
   }
   if (!fusb_.writeRegister(Fusb302::Register::kSwitches0, switches0Val)) {
-    ESP_LOGW("UsbPdStateMachine", "setMeasure(): switches0 failed");
+    ESP_LOGW(TAG, "setMeasure(): switches0 failed");
     return false;
   }
   fusb_.startStopDelay();
@@ -224,7 +229,7 @@ bool UsbPdStateMachine::setMeasure(int ccPin) {
 bool UsbPdStateMachine::readMeasure(uint8_t& result) {
   uint8_t regVal;
   if (!fusb_.readRegister(Fusb302::Register::kStatus0, regVal)) {
-    ESP_LOGW("UsbPdStateMachine", "readMeasure(): status0 failed", );
+    ESP_LOGW(TAG, "readMeasure(): status0 failed", );
     return false;
   }
   fusb_.startStopDelay();
@@ -236,7 +241,7 @@ bool UsbPdStateMachine::readMeasure(uint8_t& result) {
 bool UsbPdStateMachine::readComp(uint8_t& result) {
   uint8_t regVal;
   if ((!fusb_.readRegister(Fusb302::Register::kStatus0, regVal))) {
-    ESP_LOGW("UsbPdStateMachine", "readMeasure(): status0 failed");
+    ESP_LOGW(TAG, "readMeasure(): status0 failed");
     return false;
   }
   fusb_.startStopDelay();
@@ -249,19 +254,18 @@ bool UsbPdStateMachine::processRxMessages() {
   while (true) {
     uint8_t status1Val;
     if (!fusb_.readRegister(Fusb302::Register::kStatus1, status1Val)) {
-      ESP_LOGW("UsbPdStateMachine", "processRxMessages(): readRegister(Status1) failed");
+      ESP_LOGW(TAG, "processRxMessages(): readRegister(Status1) failed");
       return false;  // exit on error condition
     }
     fusb_.startStopDelay();
 
-    bool rxEmpty = status1Val & Fusb302::kStatus1::kRxEmpty;
-    if (rxEmpty) {
+    if (status1Val & Fusb302::kStatus1::kRxEmpty) {  // nothing to do
       return true;
     }
 
     uint8_t rxData[30];
     if (!fusb_.readNextRxFifo(rxData)) {
-      ESP_LOGW("UsbPdStateMachine", "processRxMessages(): readNextRxFifo failed");
+      ESP_LOGW(TAG, "processRxMessages(): readNextRxFifo failed");
       return false;  // exit on error condition
     }
     fusb_.startStopDelay();
@@ -270,7 +274,7 @@ bool UsbPdStateMachine::processRxMessages() {
     uint8_t messageType = UsbPd::MessageHeader::unpackMessageType(header);
     uint8_t messageNumDataObjects = UsbPd::MessageHeader::unpackNumDataObjects(header);
     if (messageNumDataObjects > 0) {  // data message
-      ESP_LOGI("UsbPdStateMachine", "processRxMessages(): data message: id=%i, type=%03x, numData=%i", 
+      ESP_LOGI(TAG, "processRxMessages(): data message: id=%i, type=%03x, numData=%i", 
           messageId, messageType, messageNumDataObjects);
       switch (messageType) {
         case UsbPd::MessageHeader::DataType::kSourceCapabilities: {
@@ -287,7 +291,7 @@ bool UsbPdStateMachine::processRxMessages() {
           break;
       }
     } else {  // command message
-      ESP_LOGI("UsbPdStateMachine", "processRxMessages(): command message: id=%i, type=%03x", 
+      ESP_LOGI(TAG, "processRxMessages(): command message: id=%i, type=%03x", 
           messageId, messageType);
       switch (messageType) {
         case UsbPd::MessageHeader::ControlType::kAccept:
@@ -325,9 +329,9 @@ bool UsbPdStateMachine::sendRequestCapability(uint8_t capability, uint16_t curre
   if (fusb_.writeFifoMessage(header, 1, &requestData)) {
     requestedCapability_ = capability;
     powerStable_ = false;
-    ESP_LOGI("UsbPdStateMachine", "requestCapability(): writeFifoMessage(Request(%i), %i)", capability, nextMessageId_);
+    ESP_LOGI(TAG, "requestCapability(): writeFifoMessage(Request(%i), %i)", capability, nextMessageId_);
   } else {
-    ESP_LOGW("UsbPdStateMachine", "requestCapability(): writeFifoMessage(Request(%i), %i) failed", capability, nextMessageId_);
+    ESP_LOGW(TAG, "requestCapability(): writeFifoMessage(Request(%i), %i) failed", capability, nextMessageId_);
     return false;
   }
   nextMessageId_ = (nextMessageId_ + 1) % 8;

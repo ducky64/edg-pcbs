@@ -18,6 +18,7 @@ ota:
 
 # Print Updates
 logger:
+  level: INFO
 
 # WebServer component, displays some information
 web_server:
@@ -59,6 +60,7 @@ i2c:
   scl: GPIO42
   sda: GPIO41
   frequency: 400kHz
+  scan: false
 
 font:
   - file: "resources/4x6.bdf"  # characters actually 3x5 plus 1px descender
