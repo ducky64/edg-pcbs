@@ -2,6 +2,7 @@
 #include "esphome/components/sensor/sensor.h"
 #include "esphome/components/text_sensor/text_sensor.h"
 #include "Fusb302.h"
+#include "UsbPdStateMachine.h"
 
 using namespace esphome;
 
@@ -15,7 +16,7 @@ public:
   text_sensor::TextSensor* sensor_status_ = nullptr;
   void set_status_text_sensor(text_sensor::TextSensor* that) { sensor_status_ = that; }
   
-  Fusb302Component() : PollingComponent(1000), fusb_(Wire) {
+  Fusb302Component() : PollingComponent(1000), fusb_(Wire), pd_fsm_(fusb_) {
   }
 
   float get_setup_priority() const override { return esphome::setup_priority::HARDWARE; }
@@ -37,6 +38,8 @@ public:
 
 protected:
   Fusb302 fusb_;
+  UsbPdStateMachine pd_fsm_;
+
   uint8_t id_;  // device id, if read successful
 };
 

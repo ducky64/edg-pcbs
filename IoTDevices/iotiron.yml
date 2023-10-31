@@ -127,7 +127,7 @@ sensor:
     name: "${name} VIron"
     pin: GPIO6
     accuracy_decimals: 2
-    update_interval: 0.2s
+    update_interval: 1s
     attenuation: auto
     filters:
       - multiply: 2.469
@@ -136,7 +136,7 @@ sensor:
     name: "${name} IIron"
     pin: GPIO7
     accuracy_decimals: 2
-    update_interval: 0.2s
+    update_interval: 1s
     attenuation: auto
     filters:
       - multiply: 2.114  # 22mOhm resistor * 22.1x amp
@@ -146,7 +146,7 @@ sensor:
     name: "${name} Temp"
     pin: GPIO8
     accuracy_decimals: 2
-    update_interval: 0.2s
+    update_interval: 1s
     attenuation: auto
     filters:
       - multiply: 6329.11  # 158x amplification on diffamp, in uV
