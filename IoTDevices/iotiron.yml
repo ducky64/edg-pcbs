@@ -114,8 +114,6 @@ text_sensor:
   
 sensor:
   - platform: fusb302
-    id:
-      name: "${name} PD ID"
     cc:
       name: "${name} PD CC"
     vbus:

@@ -6,12 +6,10 @@ from . import Fusb302Component, CONF_FUSB302_ID
 
 DEPENDENCIES = ['fusb302']
 
-CONF_ID = 'id'
 CONF_CC = 'cc'
 CONF_VBUS = 'vbus'
 
 TYPES = [
-    CONF_ID,
     CONF_CC,
     CONF_VBUS,
 ]

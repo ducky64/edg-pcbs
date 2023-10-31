@@ -103,7 +103,7 @@ bool UsbPdStateMachine::updateVbus(uint16_t& vbusOutMv) {
 
     if (lastMdacDelta_ == -1 && !lastComp_ && comp) {
       convergedMdac = lastMdacValue_;
-      deltaWidening_ = true;  // on convergence, can expand again
+      deltaWidening_ = true;  // allow widening after converging
     } else if (lastMdacDelta_ == 1 && lastComp_ && !comp) {
       convergedMdac = lastMdacValue_ - 1;
       deltaWidening_ = true;

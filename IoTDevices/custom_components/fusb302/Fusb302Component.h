@@ -15,8 +15,6 @@ static const char* TAG = "Fusb302Component";
 
 class Fusb302Component : public Component {
 public:
-  sensor::Sensor* sensor_id_ = nullptr;
-  void set_id_sensor(sensor::Sensor* that) { sensor_id_ = that; }
   sensor::Sensor* sensor_cc_ = nullptr;
   void set_cc_sensor(sensor::Sensor* that) { sensor_cc_ = that; }
   sensor::Sensor* sensor_vbus_ = nullptr;
@@ -34,7 +32,6 @@ public:
 
   void setup() override {
     if (fusb_.readId(id_)) {
-      sensor_id_->publish_state(id_);
       ESP_LOGCONFIG(TAG, "got chip id 0x%02x", id_);
     } else {
       ESP_LOGCONFIG(TAG, "failed to read chip id");
@@ -45,13 +42,8 @@ public:
   void loop() override {
     uint16_t vbusMv;
     if (pd_fsm_.updateVbus(vbusMv)) {
-      if (measureIterations_ > 1) {
-        ESP_LOGW(TAG, "Vbus converged in %i cycles", measureIterations_);
-      }
       sensor_vbus_->publish_state((float)vbusMv / 1000);
-      measureIterations_ = 0;
     }
-    measureIterations_++;
 
     UsbPdStateMachine::UsbPdState state = pd_fsm_.update();
     if (state != last_state_) {
@@ -110,8 +102,6 @@ protected:
   UsbPdStateMachine::UsbPdState last_state_ = UsbPdStateMachine::kStart;
 
   uint8_t id_;  // device id, if read successful
-
-  uint8_t measureIterations_ = 0;
 };
 
 }
