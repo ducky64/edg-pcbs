@@ -3,12 +3,12 @@
 #include "Fusb302.h"
 
 
-class Fusb302PdComponent : public PollingComponent {
+class Fusb302Component : public PollingComponent {
 public:
   Sensor sensor_id;
   text_sensor::TextSensor sensor_status;
 
-  Fusb302PdComponent() : PollingComponent(1000), fusb_(Wire) {
+  Fusb302Component() : PollingComponent(1000), fusb_(Wire) {
   }
 
   float get_setup_priority() const override { return esphome::setup_priority::HARDWARE; }

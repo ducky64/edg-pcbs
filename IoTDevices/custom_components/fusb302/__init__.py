@@ -5,7 +5,7 @@ from esphome.const import CONF_ID
 AUTO_LOAD = ['sensor','text_sensor', 'binary_sensor']
 MULTI_CONF = True
 
-CONF_HUB_ID = 'fusb302_id'
+CONF_FUSB302_ID = 'fusb302_id'
 
 fusb302_ns = cg.esphome_ns.namespace('fusb302')
 

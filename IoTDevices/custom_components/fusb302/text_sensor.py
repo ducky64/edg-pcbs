@@ -2,12 +2,12 @@ import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import text_sensor
 from esphome.const import CONF_ID
-from . import Fusb302Component, CONF_HUB_ID
+from . import Fusb302Component, CONF_FUSB302_ID
 
 DEPENDENCIES = ['fusb302']
 
 CONFIG_SCHEMA = cv.Schema({
-    cv.GenerateID(CONF_HUB_ID): cv.use_id(Fusb302Component),
+    cv.GenerateID(CONF_FUSB302_ID): cv.use_id(Fusb302Component),
     cv.Optional('status'): text_sensor.text_sensor_schema(
       icon="mdi:checkbox-marked-circle-outline"
     ),
@@ -20,6 +20,6 @@ async def setup_conf(config, key, hub):
         cg.add(getattr(hub, f"set_{key}_text_sensor")(sens))
 
 async def to_code(config):
-    hub = await cg.get_variable(config[CONF_BME680_BSEC_ID])
+    hub = await cg.get_variable(config[CONF_FUSB302_ID])
     for key in TYPES:
         await setup_conf(config, key, hub)
