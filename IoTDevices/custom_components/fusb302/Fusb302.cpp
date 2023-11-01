@@ -64,7 +64,7 @@ bool Fusb302::readNextRxFifo(uint8_t bufferOut[]) {
     return false;
   }
 
-  wire_.requestFrom(kI2cAddr, 3);  // read and parse the header
+  wire_.requestFrom(kI2cAddr, (uint8_t)3);  // read and parse the header
   uint8_t sofByte = wire_.read();
   if ((sofByte & kRxFifoTokenMask) != kRxFifoTokens::kSop) {
     wire_.endTransmission();
@@ -79,7 +79,7 @@ bool Fusb302::readNextRxFifo(uint8_t bufferOut[]) {
     return false;
   }
 
-  wire_.requestFrom(kI2cAddr, numDataObjects * 4 + 4);  // read out additional data objects
+  wire_.requestFrom(kI2cAddr, (uint8_t)(numDataObjects * 4 + 4));  // read out additional data objects
   for (uint8_t i=0; i<numDataObjects * 4; i++) {
     bufferOut[bufferInd++] = wire_.read();
   }

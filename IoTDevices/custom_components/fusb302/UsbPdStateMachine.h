@@ -1,5 +1,4 @@
-#ifndef __USB_PD_STATE_MACHINE_H__
-#define __USB_PD_STATE_MACHINE_H__
+#pragma once
 
 #include <Arduino.h>
 
@@ -107,5 +106,3 @@ protected:
   bool deltaWidening_ = true;  // if true, delta is increasing (broadening search), if false is decreasing (refining search)
   bool lastComp_ = false;
 };
-
-#endif

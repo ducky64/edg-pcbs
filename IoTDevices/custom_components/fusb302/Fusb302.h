@@ -1,5 +1,4 @@
-#ifndef __FUSB302_H__
-#define __FUSB302_H__
+#pragma once
 
 #include <Arduino.h>
 #include <Wire.h>
@@ -138,5 +137,3 @@ public:
 protected:
   TwoWire& wire_;
 };
-
-#endif  // __FUSB302_H__

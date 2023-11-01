@@ -1,5 +1,4 @@
-#ifndef __USB_PD_H__
-#define __USB_PD_H__
+#pragma once
 
 #include <stdint.h>
 
@@ -160,5 +159,3 @@ namespace UsbPdTiming {
   const int tReceiveMs = 1; // actually 0.9-1.1ms, Message EOP to GoodCRC EOP
   const int tSinkRequestMs = 100;  // Wait EOP to earliest the next Request should be sent
 }
-
-#endif  // __USB_PD_H__
