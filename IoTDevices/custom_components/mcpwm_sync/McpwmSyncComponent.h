@@ -1,5 +1,7 @@
 #pragma once
 
+#include <Arduino.h>
+
 #include "esphome/core/component.h"
 #include "esphome/core/hal.h"
 #include "esphome/core/automation.h"
@@ -16,10 +18,13 @@ static const char* TAG = "McpwmSyncComponent";
 
 class McpwmSyncComponent : public output::FloatOutput, public Component {
 public:
-  McpwmSyncComponent(InternalGPIOPin *pin, InternalGPIOPin *pin_comp) : pin_(pin), pin_comp_(pin_comp) {
+  McpwmSyncComponent(InternalGPIOPin *pin, InternalGPIOPin *pin_comp,
+    float frequency, float deadtime_rising, float deadtime_falling,
+    float sample_frequency, float blank_time) :
+    pin_(pin), pin_comp_(pin_comp),
+    frequency_(frequency), deadtime_rising_(deadtime_rising), deadtime_falling_(deadtime_falling),
+    sample_period_ms_(1 / sample_frequency / 1e-3), blank_time_ms_(blank_time / 1e-3) {
   }
-
-  void set_frequency(float frequency) { frequency_ = frequency; }
 
   float get_setup_priority() const override { return setup_priority::HARDWARE; }
 
@@ -34,7 +39,7 @@ public:
     }
 
     mcpwm_config_t pwm_config;
-    pwm_config.frequency = 100000;  // TODO configurable frequency
+    pwm_config.frequency = frequency_;
     pwm_config.cmpr_a = 0;
     pwm_config.cmpr_b = 0;
     pwm_config.counter_mode = MCPWM_UP_COUNTER;
@@ -45,11 +50,16 @@ public:
       return;
     }
 
-    if (mcpwm_deadtime_enable(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_ACTIVE_HIGH_COMPLIMENT_MODE, 2, 2) != ESP_OK) {
+    if (mcpwm_deadtime_enable(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_ACTIVE_HIGH_COMPLIMENT_MODE, 
+        deadtime_rising_ / 100e-9, deadtime_falling_ / 100e-9) != ESP_OK) {
       ESP_LOGE(TAG, "failed to enable deadtime");
       status_set_error();
       return;
     } 
+
+    mcpwm_set_duty(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_GEN_A, 0);
+    mcpwm_set_duty(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_GEN_B, 100);
+    mcpwm_start(MCPWM_UNIT_0, MCPWM_TIMER_0);
 
     ESP_LOGI(TAG, "MCPWM setup complete");
   }
@@ -58,19 +68,30 @@ public:
   }
 
   void write_state(float state) override {
-    ESP_LOGI(TAG, "mcpwm write %f", state);
+    ESP_LOGI(TAG, "MCPWM write %f", state);
+    duty_ = state * 100;
+    mcpwm_set_duty(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_GEN_A, duty_);
+  }
 
-    mcpwm_set_duty(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_GEN_B, 100);
-    mcpwm_set_duty(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_GEN_A, state * 100);
-
-    mcpwm_start(MCPWM_UNIT_0, MCPWM_TIMER_0);
+  void loop() override {
+    if (blank_time_ms_ > 0 && esphome::millis() >= nextBlankTime_) {
+      mcpwm_set_duty(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_GEN_A, 0);  // blank
+      esphome::delay(blank_time_ms_);
+      // TODO sample here
+      mcpwm_set_duty(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_GEN_A, duty_);  // resume PWMing
+      nextBlankTime_ += sample_period_ms_;
+    }
   }
 
  protected:
   InternalGPIOPin *pin_;
   InternalGPIOPin *pin_comp_;
   float frequency_;
+  float deadtime_rising_, deadtime_falling_;
+  uint32_t sample_period_ms_, blank_time_ms_;
   float duty_ = 0;
+
+  uint32_t nextBlankTime_ = 0;  // for blanking, in millis()
 };
 
 }

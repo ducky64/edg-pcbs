@@ -43,7 +43,11 @@ output:
     id: output_iron_pwm_high
     pin: GPIO5
     pin_comp: GPIO4
-    frequency: 250kHz
+    frequency: 200kHz
+    deadtime_rising: 150ns
+    deadtime_falling: 150ns
+    sample_frequency: 10Hz
+    blank_time: 1ms
 
 fan:
   - platform: speed

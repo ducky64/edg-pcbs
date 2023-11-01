@@ -83,7 +83,7 @@ protected:
   int8_t savedCcMeasureLevel_;  // last measured level of the other CC pin, or -1 if not yet measured
   int8_t measuringCcPin_;  // CC pin currently being measured
   uint8_t ccPin_;  // CC pin used for communication, only valid when connected
-  long stateExpire_;  // millis() time at which the next state expires
+  uint32_t stateExpire_;  // millis() time at which the next state expires
 
   // USB PD state
   uint8_t nextMessageId_;
