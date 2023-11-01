@@ -32,9 +32,9 @@ public:
 
   void setup() override {
     if (fusb_.readId(id_)) {
-      ESP_LOGCONFIG(TAG, "got chip id 0x%02x", id_);
+      ESP_LOGI(TAG, "got chip id 0x%02x", id_);
     } else {
-      ESP_LOGCONFIG(TAG, "failed to read chip id");
+      ESP_LOGE(TAG, "failed to read chip id");
       sensor_status_->publish_state("Failed chip ID");
       mark_failed();
       return;
