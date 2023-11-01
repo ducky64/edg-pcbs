@@ -35,8 +35,13 @@ public:
       ESP_LOGCONFIG(TAG, "got chip id 0x%02x", id_);
     } else {
       ESP_LOGCONFIG(TAG, "failed to read chip id");
+      sensor_status_->publish_state("Failed chip ID");
       mark_failed();
+      return;
     }
+
+    pd_fsm_.reset();
+    pd_fsm_.init();  // initialize the chip, including so it can measure Vbus
   }
 
   void loop() override {
@@ -123,7 +128,7 @@ protected:
   UsbPdStateMachine pd_fsm_;
   UsbPdStateMachine::UsbPdState last_state_ = UsbPdStateMachine::kStart;
 
-  uint8_t id_;  // device id, if read successful
+  uint8_t id_ = 0;  // device id, if read successful
   uint16_t lastVbusMv_ = 0;
 };
 

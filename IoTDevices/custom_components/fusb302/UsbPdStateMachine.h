@@ -54,11 +54,12 @@ public:
 
   void reset();
 
-protected:
   // Resets and initializes the FUSB302 from an unknown state, returning true on success
   // Checks here are minimal, the upper layer should read out the device ID
+  // TODO: init should probably not be exposed separately? TBD - needed before updateVbus is valid
   bool init();
 
+protected:
   // Enable the transmitter with the given CC pin (1 or 2, anything else is invalid)
   bool enablePdTrasceiver(int ccPin);
 
