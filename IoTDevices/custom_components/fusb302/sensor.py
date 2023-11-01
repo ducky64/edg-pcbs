@@ -28,7 +28,7 @@ CONFIG_SCHEMA = cv.Schema({
     ),
     cv.Optional(CONF_VBUS): sensor.sensor_schema(
       unit_of_measurement=UNIT_VOLT,
-      accuracy_decimals=2,  # 0.42v resolution in Vbus mode, last digit is uncertain
+      accuracy_decimals=1,  # 0.42v resolution in Vbus mode, last digit is uncertain
     ),
     cv.Optional(CONF_SELECTED_VOLTAGE): sensor.sensor_schema(
       unit_of_measurement=UNIT_VOLT,
