@@ -21,11 +21,17 @@ public:
   void set_cc_sensor(sensor::Sensor* that) { sensor_cc_ = that; }
   sensor::Sensor* sensor_vbus_ = nullptr;
   void set_vbus_sensor(sensor::Sensor* that) { sensor_vbus_ = that; }
+  sensor::Sensor* sensor_selected_voltage_ = nullptr;
+  void set_selected_voltage_sensor(sensor::Sensor* that) { sensor_selected_voltage_ = that; }
+  sensor::Sensor* sensor_selected_current_ = nullptr;
+  void set_selected_current_sensor(sensor::Sensor* that) { sensor_selected_current_ = that; }
 
   text_sensor::TextSensor* sensor_status_ = nullptr;
   void set_status_text_sensor(text_sensor::TextSensor* that) { sensor_status_ = that; }
   text_sensor::TextSensor* sensor_capabilities_ = nullptr;
   void set_capabilities_text_sensor(text_sensor::TextSensor* that) { sensor_capabilities_ = that; }
+
+  void set_target(float target) { targetMv_ = target * 1000; }
 
   Fusb302Component() : fusb_(Wire), pd_fsm_(fusb_) {
   }
@@ -56,6 +62,10 @@ public:
       state = pd_fsm_.update();
     } else {  // reset, likely source was disconnected
       pd_fsm_.reset();
+      selectedVoltageMv_ = 0;
+      sensor_selected_voltage_->publish_state(0);
+      selectedCurrentMa_ = 0;
+      sensor_selected_current_->publish_state(0);
     }
 
     if (state != last_state_) {
@@ -101,25 +111,51 @@ public:
         }
       }
       sensor_capabilities_->publish_state(ss.str());
+    } else if (last_state_ >= UsbPdStateMachine::kConnected && state < UsbPdStateMachine::kConnected) {  // disconnected
+      sensor_capabilities_->publish_state("");
+    }
 
+    // update current capability if not yet set, once the power is stable
+    if (selectedVoltageMv_ == 0 && state == UsbPdStateMachine::kConnected && pd_fsm_.powerStable()) {
+      UsbPd::Capability::Unpacked capabilities[UsbPd::Capability::kMaxCapabilities];
+      pd_fsm_.getCapabilities(capabilities);
+      uint8_t currentCapability = pd_fsm_.currentCapability();
+      if (currentCapability > 0) {
+        selectedVoltageMv_ = capabilities[currentCapability - 1].voltageMv;
+        sensor_selected_voltage_->publish_state(selectedVoltageMv_ / 1000);
+        selectedCurrentMa_ = capabilities[currentCapability - 1].maxCurrentMa;
+        sensor_selected_current_->publish_state(selectedCurrentMa_ / 1000);
+      }
+    }
+
+    // request capability a cycle after the connection - otherwise the loop blocks for a bit
+    if (last_state_ == UsbPdStateMachine::kConnected && state == UsbPdStateMachine::kConnected 
+        && pd_fsm_.currentCapability() == 0) {
       uint8_t selectCapability = 0;
       uint16_t lastBestVoltageMv = 0;
+      uint16_t lastBestCurrentMa = 0;
+
+      UsbPd::Capability::Unpacked capabilities[UsbPd::Capability::kMaxCapabilities];
+      uint8_t capabilitiesCount = pd_fsm_.getCapabilities(capabilities);
       for (uint8_t capabilityIndex=0; capabilityIndex<capabilitiesCount; capabilityIndex++) {
         UsbPd::Capability::Unpacked& capability = capabilities[capabilityIndex];
-        if (capability.voltageMv < 13000 && capability.voltageMv > lastBestVoltageMv) {
+        if (capability.voltageMv <= targetMv_ && capability.voltageMv > lastBestVoltageMv) {
           selectCapability = capabilityIndex;
           lastBestVoltageMv = capability.voltageMv;
+          lastBestCurrentMa = capability.maxCurrentMa;
         }
       }
       if (selectCapability > 0) {
-        if (pd_fsm_.requestCapability(selectCapability + 1, 2000)) {  // note, 1-indexed
-          ESP_LOGI(TAG, "loop(): request capability %i", selectCapability);
+        if (pd_fsm_.requestCapability(selectCapability + 1, lastBestCurrentMa)) {  // note, 1-indexed
+          ESP_LOGI(TAG, "request capability %i", selectCapability);
         } else {
-          ESP_LOGW(TAG, "loop(): request capability %i failed", selectCapability);
+          ESP_LOGW(TAG, "request capability %i failed", selectCapability);
         }
+        selectedVoltageMv_ = 0;
+        sensor_selected_voltage_->publish_state(0);
+        selectedCurrentMa_ = 0;
+        sensor_selected_current_->publish_state(0);
       }
-    } else if (last_state_ >= UsbPdStateMachine::kConnected && state < UsbPdStateMachine::kConnected) {  // disconnected
-      sensor_capabilities_->publish_state("");
     }
 
     last_state_ = state;
@@ -132,6 +168,10 @@ protected:
 
   uint8_t id_ = 0;  // device id, if read successful
   uint16_t lastVbusMv_ = 0;
+
+  uint16_t selectedVoltageMv_ = 0;  // only set when power is stable, zero when power is unstable or new request being made
+  uint16_t selectedCurrentMa_ = 0;  // ditto
+  uint16_t targetMv_ = 0;
 };
 
 }

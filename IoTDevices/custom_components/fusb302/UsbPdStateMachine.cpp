@@ -81,10 +81,6 @@ uint8_t UsbPdStateMachine::getCapabilities(UsbPd::Capability::Unpacked capabilit
   return sourceCapabilitiesLen_;
 }
 
-uint8_t UsbPdStateMachine::currentCapability() {
-  return currentCapability_;
-}
-
 bool UsbPdStateMachine::requestCapability(uint8_t capability, uint16_t currentMa) {
   return sendRequestCapability(capability, currentMa);
 }

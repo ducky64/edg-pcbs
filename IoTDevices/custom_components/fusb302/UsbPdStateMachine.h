@@ -37,14 +37,13 @@ public:
   // The currently active capability requested to and confirmed by the source.
   // Zero means the default (none was requested).
   // 1 is the first capability, consistent with the object position field described in the PD spec.
-  uint8_t currentCapability();
+  uint8_t currentCapability() { return currentCapability_; }
+  bool powerStable() { return powerStable_; }
 
   // Requests a capability from the source.
   bool requestCapability(uint8_t capability, uint16_t currentMa);
 
-  uint8_t getCcPin() {
-    return ccPin_;
-  }
+  uint8_t getCcPin() { return ccPin_; }
 
   // Updates the Vbus measurement. Can be called independently of update().
   // Returns true if a valid sample was obtained, false if trying to converge.
@@ -88,12 +87,12 @@ protected:
   // USB PD state
   uint8_t nextMessageId_;
 
-  volatile uint8_t sourceCapabilitiesLen_ = 0;  // written by ISR
-  volatile uint32_t sourceCapabilitiesObjects_[UsbPd::MessageHeader::kMaxDataObjects];  // written by ISR
+  uint8_t sourceCapabilitiesLen_ = 0;  // written by ISR
+  uint32_t sourceCapabilitiesObjects_[UsbPd::MessageHeader::kMaxDataObjects];  // written by ISR
 
   // 
   uint8_t requestedCapability_;  // currently requested capability
-  volatile uint8_t currentCapability_;  // current accepted capability, 0 is default, written by ISR
+  uint8_t currentCapability_;  // current accepted capability, 0 is default, written by ISR
   bool powerStable_;
   
   Fusb302& fusb_;

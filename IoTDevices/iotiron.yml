@@ -113,6 +113,7 @@ binary_sensor:
     
 fusb302:
   id: usbpd
+  target: 20v
 
 text_sensor:
   - platform: fusb302
@@ -128,6 +129,12 @@ sensor:
     vbus:
       id: fusb_vbus
       name: "${name} PD VBus"
+    selected_voltage:
+      id: fusb_selected_voltage
+      name: "${name} PD Selected Voltage"
+    selected_current:
+      id: fusb_selected_current
+      name: "${name} PD Selected Current"
 
   - platform: adc
     id: adc_vusb

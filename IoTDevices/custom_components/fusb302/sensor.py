@@ -1,17 +1,21 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import sensor
-from esphome.const import CONF_ID, UNIT_EMPTY, ICON_EMPTY, UNIT_VOLT
+from esphome.const import CONF_ID, UNIT_EMPTY, ICON_EMPTY, UNIT_VOLT, UNIT_AMPERE
 from . import Fusb302Component, CONF_FUSB302_ID
 
 DEPENDENCIES = ['fusb302']
 
 CONF_CC = 'cc'
 CONF_VBUS = 'vbus'
+CONF_SELECTED_VOLTAGE = 'selected_voltage'
+CONF_SELECTED_CURRENT = 'selected_current'
 
 TYPES = [
     CONF_CC,
     CONF_VBUS,
+    CONF_SELECTED_VOLTAGE,
+    CONF_SELECTED_CURRENT,
 ]
 
 CONFIG_SCHEMA = cv.Schema({
@@ -24,7 +28,13 @@ CONFIG_SCHEMA = cv.Schema({
     ),
     cv.Optional(CONF_VBUS): sensor.sensor_schema(
       unit_of_measurement=UNIT_VOLT,
-      accuracy_decimals=2,  # down to 0.042v resolution, last digit is uncertain
+      accuracy_decimals=2,  # 0.42v resolution in Vbus mode, last digit is uncertain
+    ),
+    cv.Optional(CONF_SELECTED_VOLTAGE): sensor.sensor_schema(
+      unit_of_measurement=UNIT_VOLT,
+    ),
+    cv.Optional(CONF_SELECTED_CURRENT): sensor.sensor_schema(
+      unit_of_measurement=UNIT_AMPERE,
     ),
 })
 
