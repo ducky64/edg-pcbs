@@ -14,7 +14,7 @@ static const char* TAG = "McpwmSyncComponent";
 
 class McpwmSyncComponent : public output::FloatOutput, public Component {
 public:
-   McpwmSyncComponent(InternalGPIOPin *pin, InternalGPIOPin *pin_comp) : pin_(pin), pin_comp_(pin_comp) {
+  McpwmSyncComponent(InternalGPIOPin *pin, InternalGPIOPin *pin_comp) : pin_(pin), pin_comp_(pin_comp) {
   }
 
   void set_frequency(float frequency) { frequency_ = frequency; }
