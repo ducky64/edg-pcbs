@@ -121,10 +121,11 @@ public:
       pd_fsm_.getCapabilities(capabilities);
       uint8_t currentCapability = pd_fsm_.currentCapability();
       if (currentCapability > 0) {
-        selectedVoltageMv_ = capabilities[currentCapability - 1].voltageMv;
-        sensor_selected_voltage_->publish_state(selectedVoltageMv_ / 1000);
-        selectedCurrentMa_ = capabilities[currentCapability - 1].maxCurrentMa;
-        sensor_selected_current_->publish_state(selectedCurrentMa_ / 1000);
+        UsbPd::Capability::Unpacked capability = capabilities[currentCapability - 1];
+        selectedVoltageMv_ = capability.voltageMv;
+        sensor_selected_voltage_->publish_state((float)selectedVoltageMv_ / 1000);
+        selectedCurrentMa_ = capability.maxCurrentMa;  // TODO not necessarily requested
+        sensor_selected_current_->publish_state((float)selectedCurrentMa_ / 1000);
       }
     }
 
@@ -147,9 +148,9 @@ public:
       }
       if (selectCapability > 0) {
         if (pd_fsm_.requestCapability(selectCapability + 1, lastBestCurrentMa)) {  // note, 1-indexed
-          ESP_LOGI(TAG, "request capability %i", selectCapability);
+          ESP_LOGI(TAG, "request capability %i at %i mA", selectCapability, lastBestCurrentMa);
         } else {
-          ESP_LOGW(TAG, "request capability %i failed", selectCapability);
+          ESP_LOGW(TAG, "request capability %i at %i mA failed", selectCapability, lastBestCurrentMa);
         }
         selectedVoltageMv_ = 0;
         sensor_selected_voltage_->publish_state(0);

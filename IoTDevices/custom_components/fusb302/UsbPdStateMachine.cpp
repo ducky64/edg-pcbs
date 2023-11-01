@@ -288,6 +288,7 @@ bool UsbPdStateMachine::processRxMessages() {
           messageId, messageType, messageNumDataObjects);
       switch (messageType) {
         case UsbPd::MessageHeader::DataType::kSourceCapabilities: {
+          ESP_LOGI(TAG, "processRxMessages(): source capabilities");
           bool isFirstMessage = sourceCapabilitiesLen_ == 0;
           processRxSourceCapabilities(messageNumDataObjects, rxData);
           if (isFirstMessage && sourceCapabilitiesLen_ > 0) {
@@ -305,12 +306,15 @@ bool UsbPdStateMachine::processRxMessages() {
           messageId, messageType);
       switch (messageType) {
         case UsbPd::MessageHeader::ControlType::kAccept:
+          ESP_LOGI(TAG, "processRxMessages(): accept");
           currentCapability_ = requestedCapability_;
           break;
         case UsbPd::MessageHeader::ControlType::kReject:
+          ESP_LOGI(TAG, "processRxMessages(): reject");
           requestedCapability_ = currentCapability_;
           break;
         case UsbPd::MessageHeader::ControlType::kPsRdy:
+          ESP_LOGI(TAG, "processRxMessages(): ready");
           powerStable_ = true;
           break;
         case UsbPd::MessageHeader::ControlType::kGoodCrc:

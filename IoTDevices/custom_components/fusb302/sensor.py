@@ -32,9 +32,11 @@ CONFIG_SCHEMA = cv.Schema({
     ),
     cv.Optional(CONF_SELECTED_VOLTAGE): sensor.sensor_schema(
       unit_of_measurement=UNIT_VOLT,
+      accuracy_decimals=0
     ),
     cv.Optional(CONF_SELECTED_CURRENT): sensor.sensor_schema(
       unit_of_measurement=UNIT_AMPERE,
+      accuracy_decimals=1
     ),
 })
 
