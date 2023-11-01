@@ -39,9 +39,10 @@ output:
     platform: gpio
     pin: GPIO0
     inverted: true
-  - platform: ledc
+  - platform: mcpwm_sync
     id: output_iron_pwm_high
     pin: GPIO5
+    pin_comp: GPIO4
     frequency: 250kHz
 
 fan:

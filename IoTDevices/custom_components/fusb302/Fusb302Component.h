@@ -28,7 +28,7 @@ public:
   Fusb302Component() : fusb_(Wire), pd_fsm_(fusb_) {
   }
 
-  float get_setup_priority() const override { return esphome::setup_priority::HARDWARE; }
+  float get_setup_priority() const override { return setup_priority::HARDWARE; }
 
   void setup() override {
     if (fusb_.readId(id_)) {
