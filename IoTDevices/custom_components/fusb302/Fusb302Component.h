@@ -102,23 +102,22 @@ public:
       }
       sensor_capabilities_->publish_state(ss.str());
 
-      // TEMPORARILY DISABLED to run on 5v
-      // uint8_t selectCapability = 0;
-      // uint16_t lastBestVoltageMv = 0;
-      // for (uint8_t capabilityIndex=0; capabilityIndex<capabilitiesCount; capabilityIndex++) {
-      //   UsbPd::Capability::Unpacked& capability = capabilities[capabilityIndex];
-      //   if (capability.voltageMv < 13000 && capability.voltageMv > lastBestVoltageMv) {
-      //     selectCapability = capabilityIndex;
-      //     lastBestVoltageMv = capability.voltageMv;
-      //   }
-      // }
-      // if (selectCapability > 0) {
-      //   if (pd_fsm_.requestCapability(selectCapability + 1, 2000)) {  // note, 1-indexed
-      //     ESP_LOGI(TAG, "loop(): request capability %i", selectCapability);
-      //   } else {
-      //     ESP_LOGW(TAG, "loop(): request capability %i failed", selectCapability);
-      //   }
-      // }
+      uint8_t selectCapability = 0;
+      uint16_t lastBestVoltageMv = 0;
+      for (uint8_t capabilityIndex=0; capabilityIndex<capabilitiesCount; capabilityIndex++) {
+        UsbPd::Capability::Unpacked& capability = capabilities[capabilityIndex];
+        if (capability.voltageMv < 13000 && capability.voltageMv > lastBestVoltageMv) {
+          selectCapability = capabilityIndex;
+          lastBestVoltageMv = capability.voltageMv;
+        }
+      }
+      if (selectCapability > 0) {
+        if (pd_fsm_.requestCapability(selectCapability + 1, 2000)) {  // note, 1-indexed
+          ESP_LOGI(TAG, "loop(): request capability %i", selectCapability);
+        } else {
+          ESP_LOGW(TAG, "loop(): request capability %i failed", selectCapability);
+        }
+      }
     } else if (last_state_ >= UsbPdStateMachine::kConnected && state < UsbPdStateMachine::kConnected) {  // disconnected
       sensor_capabilities_->publish_state("");
     }
