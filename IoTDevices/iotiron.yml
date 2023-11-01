@@ -40,19 +40,20 @@ output:
     pin: GPIO0
     inverted: true
   - platform: mcpwm_sync
-    id: output_iron_pwm_high
+    id: output_iron_pwm
     pin: GPIO5
     pin_comp: GPIO4
     frequency: 200kHz
     deadtime_rising: 150ns
     deadtime_falling: 150ns
-    sample_frequency: 10Hz
+    sample_adc: adc_temp
+    blank_frequency: 10Hz
     blank_time: 1ms
 
 fan:
   - platform: speed
     id: pwm_ctl
-    output: output_iron_pwm_high
+    output: output_iron_pwm
     name: "${name} PWM"
     on_turn_on:
       - then:
@@ -79,11 +80,14 @@ display:
     address: 0x3c
     reset_pin: GPIO18
     lambda: |-
-      it.printf(0, 0, id(bdf6x10), "Ducky Iron  %2.0f C", id(cold_temp).state);
-      it.printf(0, 10, id(bdf6x10), "U %2.1f  I %2.1f  A %2.1f", id(adc_vusb).get_state(), id(adc_viron).get_state(), id(adc_iiron).get_state());
-      it.printf(0, 20, id(bdf6x10), "E %.0f  %.0f", id(encoder).state, id(encoder_sw).state);
-      it.printf(0, 64-10, id(bdf4x6), "%s", WiFi.localIP().toString().c_str());
-      it.strftime(128-64, 64-10, id(bdf4x6), "%H:%M:%S", id(sntp_time).now());
+      it.printf(0, 0, id(bdf6x10), "Ducky Iron");
+      it.printf(0, 12, id(bdf6x10), "USB  %2.1f V", id(fusb_vbus).get_state());
+      it.printf(0, 22, id(bdf6x10), "IRON %2.0f W  %2.0f%%", id(adc_iiron).get_state(), id(output_iron_pwm).get_state());
+      it.printf(0, 32, id(bdf6x10), "     %3.0f C", id(adc_temp).get_state());
+
+      it.printf(0, 64-6, id(bdf4x6), "%s", WiFi.localIP().toString().c_str());
+      it.strftime(64, 64-6, id(bdf4x6), "%H:%M:%S", id(sntp_time).now());
+      it.printf(128-(4*4), 64-6, id(bdf4x6), "%2.0f C", id(cold_temp).state);
       
 
 binary_sensor:
@@ -122,6 +126,7 @@ sensor:
     cc:
       name: "${name} PD CC"
     vbus:
+      id: fusb_vbus
       name: "${name} PD VBus"
 
   - platform: adc
@@ -129,7 +134,7 @@ sensor:
     name: "${name} VUsb"
     pin: GPIO1
     accuracy_decimals: 2
-    update_interval: 5s
+    update_interval: 2s
     attenuation: auto
     filters:
       - multiply: 9.174
@@ -138,7 +143,7 @@ sensor:
     name: "${name} VIron"
     pin: GPIO6
     accuracy_decimals: 2
-    update_interval: 1s
+    update_interval: 0.2s
     attenuation: auto
     filters:
       - multiply: 2.469
@@ -147,21 +152,25 @@ sensor:
     name: "${name} IIron"
     pin: GPIO7
     accuracy_decimals: 2
-    update_interval: 1s
+    update_interval: 0.2s
     attenuation: auto
     filters:
       - multiply: 2.114  # 22mOhm resistor * 22.1x amp
-    unit_of_measurement: A
+      # TODO the power should be a separate item, but not clear how to make a dummy sensor
+      - lambda: return x * id(adc_viron).get_state();
+    unit_of_measurement: W
   - platform: adc
     id: adc_temp
     name: "${name} Temp"
     pin: GPIO8
     accuracy_decimals: 2
-    update_interval: 1s
+    update_interval: 10days  # sampling controlled by MCPWM blanking, should not trigger by itself
     attenuation: auto
     filters:
-      - multiply: 6329.11  # 158x amplification on diffamp, in uV
-    unit_of_measurement: uV
+      # 158x amplification on diffamp, ~23uV/K coefficient on thermocouple poorly empirically determined
+      # common thermocouple coefficients: https://www.analog.com/en/analog-dialogue/articles/measuring-temp-using-thermocouples.html
+      - lambda: return x / 158 / 23e-6 + id(cold_temp).get_state();
+    unit_of_measurement: C
   - platform: rotary_encoder
     id: encoder
     name: "${name} Encoder"

@@ -1,6 +1,7 @@
 from esphome import pins, automation
 from esphome.components import output
 import esphome.config_validation as cv
+from esphome.components.adc import sensor
 import esphome.codegen as cg
 from esphome.const import (
     CONF_FREQUENCY,
@@ -16,7 +17,8 @@ DEPENDENCIES = ["esp32"]
 CONF_PIN_COMP = 'pin_comp'  # complementary pin
 CONF_DEADTIME_RISING = 'deadtime_rising'
 CONF_DEADTIME_FALLING = 'deadtime_falling'
-CONF_SAMPLE_FREQUENCY = 'sample_frequency'
+CONF_SYNC_ADC = 'sample_adc'
+CONF_SAMPLE_FREQUENCY = 'blank_frequency'
 CONF_BLANK_TIME = 'blank_time'
 
 
@@ -31,6 +33,7 @@ CONFIG_SCHEMA = output.FLOAT_OUTPUT_SCHEMA.extend(
         cv.Optional(CONF_FREQUENCY, default="1kHz"): cv.frequency,
         cv.Optional(CONF_DEADTIME_RISING, default="1us"): cv_time_ns,
         cv.Optional(CONF_DEADTIME_FALLING, default="1us"): cv_time_ns,
+        cv.Optional(CONF_SYNC_ADC): cv.use_id(sensor.ADCSensor),
         cv.Optional(CONF_SAMPLE_FREQUENCY, default="1Hz"): cv.frequency,
         cv.Optional(CONF_BLANK_TIME, default="0s"): cv_time_ns,  # 0 to disable
     }
@@ -40,9 +43,10 @@ CONFIG_SCHEMA = output.FLOAT_OUTPUT_SCHEMA.extend(
 async def to_code(config):
     gpio = await cg.gpio_pin_expression(config[CONF_PIN])
     gpio_comp = await cg.gpio_pin_expression(config[CONF_PIN_COMP])
+    sync_adc = await cg.get_variable(config[CONF_SYNC_ADC])
     var = cg.new_Pvariable(config[CONF_ID], gpio, gpio_comp,
       config[CONF_FREQUENCY], config[CONF_DEADTIME_RISING], config[CONF_DEADTIME_FALLING],
-      config[CONF_SAMPLE_FREQUENCY], config[CONF_BLANK_TIME])
+      sync_adc, config[CONF_SAMPLE_FREQUENCY], config[CONF_BLANK_TIME])
 
     await cg.register_component(var, config)
     await output.register_output(var, config)
