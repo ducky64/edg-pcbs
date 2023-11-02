@@ -68,7 +68,6 @@ public:
   }
 
   void write_state(float state) override {
-    ESP_LOGI(TAG, "MCPWM write %f", state);
     duty_ = state * 100;
     mcpwm_set_duty(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_GEN_A, duty_);
   }
