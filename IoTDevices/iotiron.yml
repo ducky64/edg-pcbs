@@ -34,6 +34,22 @@ light:
     id: debug_led
     output: output_debug_led
 
+climate:
+  - platform: pid
+    name: "Iron Controller"
+    id: iron_control
+    default_target_temperature: 275°C
+    sensor: adc_temp
+    heat_output: output_iron_command
+    visual:
+      min_temperature: 0
+      max_temperature: 400
+      temperature_step: 1
+    control_parameters:
+      kp: 1
+      ki: 0.1
+      output_averaging_samples: 5
+
 output:
   - id: output_debug_led
     platform: gpio
@@ -47,7 +63,7 @@ output:
     deadtime_rising: 100ns
     deadtime_falling: 100ns
     sample_adc: adc_temp
-    blank_frequency: 10Hz
+    blank_frequency: 25Hz
     blank_time: 1ms
   - platform: template  # a commanded power that transforms a target watt to PWM
     id: output_iron_command
@@ -74,18 +90,6 @@ output:
 
           // 1.1 is fudge factor accounting for deadtime
           id(output_iron_pwm)->write_state(min(targetDc, maxDc) * kFudgeDcMultiplier);
-
-fan:
-  - platform: speed
-    id: pwm_ctl
-    output: output_iron_command
-    name: "${name} PWM"
-    on_turn_on:
-      - then:
-        - light.turn_on: debug_led
-    on_turn_off:
-      - then:
-        - light.turn_off: debug_led
 
 i2c:
   scl: GPIO42
@@ -129,10 +133,10 @@ binary_sensor:
     on_click:
       - then:
           - lambda: |-
-              if (!id(pwm_ctl).state) {
-                id(pwm_ctl).turn_on().perform();
+              if (id(iron_control).mode == CLIMATE_MODE_OFF) {
+                id(iron_control).make_call().set_mode("HEAT").perform();
               } else {
-                id(pwm_ctl).turn_off().perform();
+                id(iron_control).make_call().set_mode("OFF").perform();
               }
     
 fusb302:
@@ -198,9 +202,9 @@ sensor:
     update_interval: 10days  # sampling controlled by MCPWM blanking, should not trigger by itself
     attenuation: auto
     filters:
-      # 158x amplification on diffamp, ~23uV/K coefficient on thermocouple poorly empirically determined
+      # 158x amplification on diffamp, coefficient on thermocouple empirically determined (poorly)
       # common thermocouple coefficients: https://www.analog.com/en/analog-dialogue/articles/measuring-temp-using-thermocouples.html
-      - lambda: return x / 158 / 23e-6 + id(cold_temp).get_state();
+      - lambda: return x / 158 / 25e-6 + id(cold_temp).get_state();
     unit_of_measurement: C
   - platform: rotary_encoder
     id: encoder
