@@ -44,16 +44,41 @@ output:
     pin: GPIO5
     pin_comp: GPIO4
     frequency: 200kHz
-    deadtime_rising: 150ns
-    deadtime_falling: 150ns
+    deadtime_rising: 100ns
+    deadtime_falling: 100ns
     sample_adc: adc_temp
     blank_frequency: 10Hz
     blank_time: 1ms
+  - platform: template  # a commanded power that transforms a target watt to PWM
+    id: output_iron_command
+    type: float
+    write_action:
+      - lambda: |-
+          float kIronResistance = 2.5;  // ohms
+          float kMaxIronCurrent = 3.57;  // amps, limited by inductor capability
+          float kSystemPower = 0.5;  // watts, guesstimate of system power draw excluding heater
+          float kFudgeDcMultiplier = 1.1;  // fudge factor to multiply duty cycle by, to account for deadtime
+
+          float maxOutputVoltage = kMaxIronCurrent * kIronResistance;
+
+          // calculate max output voltage to stay within PD current limit
+          float pdVoltage = id(fusb_selected_voltage).get_state();
+          float maxPdCurrent = id(fusb_selected_current).get_state();
+          float maxPower = pdVoltage * maxPdCurrent - kSystemPower;
+          maxOutputVoltage = min(maxOutputVoltage, sqrt(maxPower * kIronResistance));
+          float maxDc = pdVoltage > 0 ? min(1.0f, maxOutputVoltage / pdVoltage) : 0;
+
+          // calculate target dc given power input
+          float targetVoltage = sqrt((state * 100) * kIronResistance);
+          float targetDc = pdVoltage > 0 ? targetVoltage / pdVoltage : 0;
+
+          // 1.1 is fudge factor accounting for deadtime
+          id(output_iron_pwm)->write_state(min(targetDc, maxDc) * kFudgeDcMultiplier);
 
 fan:
   - platform: speed
     id: pwm_ctl
-    output: output_iron_pwm
+    output: output_iron_command
     name: "${name} PWM"
     on_turn_on:
       - then:
@@ -89,7 +114,6 @@ display:
       it.strftime(64, 64-6, id(bdf4x6), "%H:%M:%S", id(sntp_time).now());
       it.printf(128-(4*4), 64-6, id(bdf4x6), "%2.0f C", id(cold_temp).state);
       
-
 binary_sensor:
   - platform: gpio
     id: encoder_sw
