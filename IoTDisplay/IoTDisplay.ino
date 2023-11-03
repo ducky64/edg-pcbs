@@ -1,20 +1,24 @@
 // ESP32-S3 variant
-const int kSw0Pin = 8;
-const int kSw1Pin = 18;
-const int kSw2Pin = 17;
-const int kOledRstPin = 2;
-const int kOledDcPin = 39;
-const int kOledCsPin = 38;
-const int kEpdBusyPin = 42;
+// const int kSw0Pin = 8;
+// const int kSw1Pin = 18;
+// const int kSw2Pin = 17;
+// const int kOledRstPin = 2;
+// const int kOledDcPin = 39;
+// const int kOledCsPin = 38;
+// const int kEpdBusyPin = 42;
 
-const int kOledSckPin = 40;
-const int kOledMosiPin = 41;
+// const int kOledSckPin = 40;
+// const int kOledMosiPin = 41;
 
-const int kLedR = 7;
-const int kLedG = 15;
-const int kLedB = 16;
+// const int kLedR = 7;
+// const int kLedG = 15;
+// const int kLedB = 16;
 
 // ESP32-C6 variant
+// Currently requires the esp32 3.0.0-alpha board
+// add this to the Arduino IDE board managers URL (comma-separated):
+// https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_dev_index.json
+// does not appear to be supported by PlatformIO yet
 const int kSw0Pin = 11;
 const int kSw1Pin = 10;
 const int kSw2Pin = 8;
@@ -46,7 +50,8 @@ const int kLedB = 1;
 
 GxEPD2_3C<GxEPD2_290_C90c, GxEPD2_290_C90c::HEIGHT> display(GxEPD2_290_C90c(kOledCsPin, kOledDcPin, kOledRstPin, kEpdBusyPin));  // SSD1680, compatible w/ ER-EPD029-2R
 
-SPIClass hspi(HSPI);  // for ESP32
+// SPIClass hspi(HSPI);  // for ESP32S3
+SPIClass hspi(FSPI);  // for ESP32C6 - only has FSPI
 
 
 
