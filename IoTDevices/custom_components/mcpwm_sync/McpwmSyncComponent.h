@@ -38,7 +38,7 @@ public:
       return;
     }
 
-    const uint8_t kResolutionFactor = 8;
+    const uint8_t kResolutionFactor = 16;
 
     mcpwm_config_t pwm_config;
     pwm_config.frequency = frequency_;
@@ -62,7 +62,14 @@ public:
       ESP_LOGE(TAG, "failed to enable deadtime");
       status_set_error();
       return;
-    } 
+    }
+
+    deadtime_duty_comp_ = (deadtime_rising_ / (1 / frequency_)) * 100;
+    if (deadtime_duty_comp_ > 100) {
+      ESP_LOGE(TAG, "invalid deadtime duty comp %f", deadtime_duty_comp_);
+      status_set_error();
+      return;
+    }
 
     mcpwm_set_duty(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_GEN_A, 0);
     mcpwm_set_duty(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_GEN_B, 100);
@@ -75,8 +82,11 @@ public:
   }
 
   void write_state(float state) override {
+    ESP_LOGI(TAG, "state %.3f", state);
     duty_ = state * 100;
-    ESP_LOGI(TAG, "duty %2.1f", duty_);
+    if (duty_ > 0) {  // compensate for rising deadtime which is rolled into the high duty cycle
+      duty_ += deadtime_duty_comp_;
+    }
     mcpwm_set_duty(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_GEN_A, duty_);
   }
 
@@ -98,7 +108,7 @@ public:
   InternalGPIOPin *pin_;
   InternalGPIOPin *pin_comp_;
   float frequency_;
-  float deadtime_rising_, deadtime_falling_;
+  float deadtime_rising_, deadtime_falling_, deadtime_duty_comp_;
 
   adc::ADCSensor *sample_adc_ = nullptr;
   uint32_t blank_period_ms_, blank_time_ms_;
