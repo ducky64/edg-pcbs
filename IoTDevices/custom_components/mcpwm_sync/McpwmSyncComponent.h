@@ -38,20 +38,27 @@ public:
       return;
     }
 
+    const uint8_t kResolutionFactor = 8;
+
     mcpwm_config_t pwm_config;
     pwm_config.frequency = frequency_;
     pwm_config.cmpr_a = 0;
     pwm_config.cmpr_b = 0;
     pwm_config.counter_mode = MCPWM_UP_COUNTER;
     pwm_config.duty_mode = MCPWM_DUTY_MODE_0;
-    if (mcpwm_init(MCPWM_UNIT_0, MCPWM_TIMER_0, &pwm_config) != ESP_OK) {
+
+    if (mcpwm_group_set_resolution(MCPWM_UNIT_0, 10000000 * kResolutionFactor) != ESP_OK ||
+        mcpwm_timer_set_resolution(MCPWM_UNIT_0, MCPWM_TIMER_0, 1000000 * kResolutionFactor) != ESP_OK ||
+        mcpwm_timer_set_resolution(MCPWM_UNIT_0, MCPWM_TIMER_1, 1000000 * kResolutionFactor) != ESP_OK ||
+        mcpwm_timer_set_resolution(MCPWM_UNIT_0, MCPWM_TIMER_2, 1000000 * kResolutionFactor) != ESP_OK ||
+        mcpwm_init(MCPWM_UNIT_0, MCPWM_TIMER_0, &pwm_config) != ESP_OK) {
       ESP_LOGE(TAG, "failed to init MCPWM");
       status_set_error();
       return;
     }
 
     if (mcpwm_deadtime_enable(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_ACTIVE_HIGH_COMPLIMENT_MODE, 
-        deadtime_rising_ / 100e-9, deadtime_falling_ / 100e-9) != ESP_OK) {
+        deadtime_rising_ / 100e-9 * kResolutionFactor, deadtime_falling_ / 100e-9 * kResolutionFactor) != ESP_OK) {
       ESP_LOGE(TAG, "failed to enable deadtime");
       status_set_error();
       return;
@@ -69,6 +76,7 @@ public:
 
   void write_state(float state) override {
     duty_ = state * 100;
+    ESP_LOGI(TAG, "duty %2.1f", duty_);
     mcpwm_set_duty(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_GEN_A, duty_);
   }
 
