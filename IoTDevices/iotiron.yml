@@ -199,13 +199,25 @@ sensor:
     filters:
       - multiply: 2.114  # 22mOhm resistor * 22.1x amp
       - lambda: |-
-          id(sen_piron).publish_state(x * id(adc_viron).get_state());  // power calculated here to sample synchronously
+          float voltage = id(adc_viron).get_state();
+          id(sen_piron).publish_state(x * voltage);  // power calculated here to sample synchronously
+          if (x > 0) {
+            id(sen_riron).publish_state(voltage / x);
+          } else {
+            id(sen_riron).publish_state(NAN);
+          }
           return x;
     unit_of_measurement: A
   - platform: template  # value calculated and published in current sensor
     id: sen_piron
     name: "${name} PIron"
     unit_of_measurement: W
+    accuracy_decimals: 1
+  - platform: template  # value calculated and published in current sensor
+    id: sen_riron
+    name: "${name} RIron"
+    unit_of_measurement: Ω
+    accuracy_decimals: 2
   - platform: adc
     id: adc_temp
     name: "${name} Temp"
