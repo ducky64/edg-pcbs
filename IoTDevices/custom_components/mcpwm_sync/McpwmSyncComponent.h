@@ -82,10 +82,12 @@ public:
   }
 
   void write_state(float state) override {
-    ESP_LOGI(TAG, "state %.3f", state);
     duty_ = state * 100;
     if (duty_ > 0) {  // compensate for rising deadtime which is rolled into the high duty cycle
       duty_ += deadtime_duty_comp_;
+    }
+    if (duty_ > 100 - deadtime_duty_comp_) {  // ensure it keeps pulsing
+      duty_ = 100 - deadtime_duty_comp_;
     }
     mcpwm_set_duty(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_GEN_A, duty_);
   }

@@ -6,6 +6,10 @@ esphome:
   name_add_mac_suffix: true
   platform: esp32
   board: esp32-s3-devkitc-1  # 8MB flash without PSRAM
+  on_boot:
+    - climate.control:  # turn off iron at power on
+        id: iron_control
+        mode: "OFF"
 
 wifi:
   <<: !include ../wifi_config.yaml
@@ -24,37 +28,33 @@ logger:
 web_server:
     port: 80
 
-time:
-  - platform: sntp
-    id: sntp_time
-
 light:
   - platform: binary
     name: "${name} Dbg"
     id: debug_led
     output: output_debug_led
 
-# climate:
-#   - platform: pid
-#     name: "Iron Controller"
-#     id: iron_control
-#     default_target_temperature: 275°C
-#     sensor: adc_temp
-#     heat_output: output_iron_command
-#     visual:
-#       min_temperature: 0
-#       max_temperature: 400
-#       temperature_step: 1
-#     control_parameters:
-#       kp: 1
-#       ki: 0.1
-#       output_averaging_samples: 5
-
-fan:
-  - platform: speed
+climate:
+  - platform: pid
+    name: "Iron Controller"
     id: iron_control
-    output: output_iron_command
-    name: "Iron Command Power"
+    default_target_temperature: 275°C
+    sensor: sen_temp
+    heat_output: output_iron_command
+    visual:
+      min_temperature: 0
+      max_temperature: 400
+      temperature_step: 1
+    control_parameters:
+      kp: 1
+      ki: 0.1
+      output_averaging_samples: 5
+
+# fan:  # allows manual power control
+#   - platform: speed
+#     id: iron_control
+#     output: output_iron_command
+#     name: "Iron Command Power"
 
 output:
   - id: output_debug_led
@@ -68,7 +68,7 @@ output:
     frequency: 200kHz
     deadtime_rising: 100ns
     deadtime_falling: 100ns
-    sample_adc: adc_temp
+    sample_adc: adc_thermocouple
     blank_frequency: 25Hz
     blank_time: 1ms
   - platform: template  # a commanded power that transforms a target watt to PWM
@@ -76,10 +76,9 @@ output:
     type: float
     write_action:
       - lambda: |-
-          float kIronResistance = 2.5;  // ohms
+          float kIronResistance = 2.3;  // ohms - lower estimate, to keep power within bounds
           float kMaxIronCurrent = 3.57;  // amps, limited by inductor capability
           float kSystemPower = 0.5;  // watts, guesstimate of system power draw excluding heater
-          float kFudgeDcMultiplier = 1.1;  // fudge factor to multiply duty cycle by, to account for deadtime
 
           float maxOutputVoltage = kMaxIronCurrent * kIronResistance;
 
@@ -95,8 +94,7 @@ output:
           float targetVoltage = sqrt((state * 100) * kIronResistance);
           float targetDc = pdVoltage > 0 ? targetVoltage / pdVoltage : 0;
 
-          // 1.1 is fudge factor accounting for deadtime
-          id(output_iron_pwm)->write_state(min(targetDc, maxDc) * kFudgeDcMultiplier);
+          id(output_iron_pwm)->write_state(min(targetDc, maxDc));
 
 i2c:
   scl: GPIO42
@@ -110,19 +108,39 @@ font:
   - file: "resources/6x10.bdf"  # characters actually 5x7 plus 2px descender
     id: bdf6x10
     
-display:  
+display:
   - platform: ssd1306_i2c
     model: "SSD1306 128x64"
     address: 0x3c
     reset_pin: GPIO18
+    update_interval : 200ms
     lambda: |-
       it.printf(0, 0, id(bdf6x10), "Ducky Iron");
-      it.printf(0, 12, id(bdf6x10), "USB  %2.1f V", id(fusb_vbus).get_state());
-      it.printf(0, 22, id(bdf6x10), "IRON %2.0f W  %2.0f%%", id(adc_iiron).get_state(), id(output_iron_pwm).get_state());
-      it.printf(0, 32, id(bdf6x10), "     %3.0f C", id(adc_temp).get_state());
+
+      it.printf(0, 12, id(bdf6x10), "%3.0f C / %3.0f C", id(sen_temp).get_state(), id(iron_control).target_temperature);
+
+      if (id(iron_control).mode == CLIMATE_MODE_OFF) {
+        it.printf(0, 22, id(bdf6x10), "OFF");
+      } else {
+        float power = id(sen_piron).get_state();
+        it.printf(0, 22, id(bdf6x10), "%3.0f W", power);
+
+        const int kMaxPower = 32;  // watts, arbitrary based on ~3.5A max current
+        const int kBarX = 30, kBarY = 23;
+        const int kBarWidth = 128 - kBarX;
+        it.rectangle(kBarX, kBarY, kBarWidth, 7);
+        int fillWidth = (int)(power * kBarWidth) / kMaxPower;
+        if (fillWidth > kBarWidth) {
+          fillWidth = kBarWidth;
+        }
+        if (fillWidth > 0) {
+          it.filled_rectangle(kBarX, kBarY, fillWidth, 7);
+        }
+      }
+
+      it.printf(0, 64-6-10, id(bdf6x10), "USB  %2.1f V", id(fusb_vbus).get_state());
 
       it.printf(0, 64-6, id(bdf4x6), "%s", WiFi.localIP().toString().c_str());
-      it.strftime(64, 64-6, id(bdf4x6), "%H:%M:%S", id(sntp_time).now());
       it.printf(128-(4*4), 64-6, id(bdf4x6), "%2.0f C", id(cold_temp).state);
       
 binary_sensor:
@@ -137,18 +155,18 @@ binary_sensor:
         pullup: true
     filters:
       - delayed_on: 10ms
-    # on_click:
-    #   - then:
-    #       - lambda: |-
-    #           if (id(iron_control).mode == CLIMATE_MODE_OFF) {
-    #             id(iron_control).make_call().set_mode("HEAT").perform();
-    #           } else {
-    #             id(iron_control).make_call().set_mode("OFF").perform();
-    #           }
+    on_click:
+      - then:
+          - lambda: |-
+              if (id(iron_control).mode == CLIMATE_MODE_OFF) {
+                id(iron_control).make_call().set_mode("HEAT").perform();
+              } else {
+                id(iron_control).make_call().set_mode("OFF").perform();
+              }
     
 fusb302:
   id: usbpd
-  target: 9v
+  target: 12v
 
 text_sensor:
   - platform: fusb302
@@ -219,8 +237,8 @@ sensor:
     unit_of_measurement: Ω
     accuracy_decimals: 2
   - platform: adc
-    id: adc_temp
-    name: "${name} Temp"
+    id: adc_thermocouple
+    name: "${name} Thermocouple"
     pin: GPIO8
     accuracy_decimals: 0
     update_interval: 10days  # sampling controlled by MCPWM blanking, should not trigger by itself
@@ -228,8 +246,17 @@ sensor:
     filters:
       # 158x amplification on diffamp, coefficient on thermocouple empirically determined (poorly)
       # common thermocouple coefficients: https://www.analog.com/en/analog-dialogue/articles/measuring-temp-using-thermocouples.html
-      - lambda: return x / 158 / 25e-6 + id(cold_temp).get_state();
+      - lambda: |-
+          float volts = x / 158;
+          id(sen_temp).publish_state(volts / 25e-6 + id(cold_temp).get_state());
+          return volts * 1e6;
+    unit_of_measurement: uV
+  - platform: template  # value calculated and published in ADC sensor
+    id: sen_temp
+    name: "${name} Temp"
     unit_of_measurement: C
+    accuracy_decimals: 0
+
   - platform: rotary_encoder
     id: encoder
     name: "${name} Encoder"
@@ -245,6 +272,15 @@ sensor:
       mode:
         input: true
         pullup: true
+    on_clockwise:
+    - then:
+        - lambda: |-
+            id(iron_control).target_temperature += 1;
+    on_anticlockwise:
+    - then:
+        - lambda: |-
+            id(iron_control).target_temperature -= 1;
+
   - platform: hdc1080
     temperature:
       id: cold_temp
