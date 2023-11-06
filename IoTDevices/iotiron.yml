@@ -34,21 +34,27 @@ light:
     id: debug_led
     output: output_debug_led
 
-climate:
-  - platform: pid
-    name: "Iron Controller"
+# climate:
+#   - platform: pid
+#     name: "Iron Controller"
+#     id: iron_control
+#     default_target_temperature: 275°C
+#     sensor: adc_temp
+#     heat_output: output_iron_command
+#     visual:
+#       min_temperature: 0
+#       max_temperature: 400
+#       temperature_step: 1
+#     control_parameters:
+#       kp: 1
+#       ki: 0.1
+#       output_averaging_samples: 5
+
+fan:
+  - platform: speed
     id: iron_control
-    default_target_temperature: 275°C
-    sensor: adc_temp
-    heat_output: output_iron_command
-    visual:
-      min_temperature: 0
-      max_temperature: 400
-      temperature_step: 1
-    control_parameters:
-      kp: 1
-      ki: 0.1
-      output_averaging_samples: 5
+    output: output_iron_command
+    name: "Iron Command Power"
 
 output:
   - id: output_debug_led
@@ -80,6 +86,7 @@ output:
           // calculate max output voltage to stay within PD current limit
           float pdVoltage = id(fusb_selected_voltage).get_state();
           float maxPdCurrent = id(fusb_selected_current).get_state();
+
           float maxPower = pdVoltage * maxPdCurrent - kSystemPower;
           maxOutputVoltage = min(maxOutputVoltage, sqrt(maxPower * kIronResistance));
           float maxDc = pdVoltage > 0 ? min(1.0f, maxOutputVoltage / pdVoltage) : 0;
@@ -130,18 +137,18 @@ binary_sensor:
         pullup: true
     filters:
       - delayed_on: 10ms
-    on_click:
-      - then:
-          - lambda: |-
-              if (id(iron_control).mode == CLIMATE_MODE_OFF) {
-                id(iron_control).make_call().set_mode("HEAT").perform();
-              } else {
-                id(iron_control).make_call().set_mode("OFF").perform();
-              }
+    # on_click:
+    #   - then:
+    #       - lambda: |-
+    #           if (id(iron_control).mode == CLIMATE_MODE_OFF) {
+    #             id(iron_control).make_call().set_mode("HEAT").perform();
+    #           } else {
+    #             id(iron_control).make_call().set_mode("OFF").perform();
+    #           }
     
 fusb302:
   id: usbpd
-  target: 20v
+  target: 9v
 
 text_sensor:
   - platform: fusb302
@@ -198,7 +205,7 @@ sensor:
     id: adc_temp
     name: "${name} Temp"
     pin: GPIO8
-    accuracy_decimals: 2
+    accuracy_decimals: 0
     update_interval: 10days  # sampling controlled by MCPWM blanking, should not trigger by itself
     attenuation: auto
     filters:
