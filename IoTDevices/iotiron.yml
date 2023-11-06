@@ -219,7 +219,7 @@ sensor:
       - lambda: |-
           float voltage = id(adc_viron).get_state();
           id(sen_piron).publish_state(x * voltage);  // power calculated here to sample synchronously
-          if (x > 0) {
+          if (x > 0 && voltage > 0) {
             id(sen_riron).publish_state(voltage / x);
           } else {
             id(sen_riron).publish_state(NAN);
