@@ -198,8 +198,13 @@ sensor:
     attenuation: auto
     filters:
       - multiply: 2.114  # 22mOhm resistor * 22.1x amp
-      # TODO the power should be a separate item, but not clear how to make a dummy sensor
-      - lambda: return x * id(adc_viron).get_state();
+      - lambda: |-
+          id(sen_piron).publish_state(x * id(adc_viron).get_state());  // power calculated here to sample synchronously
+          return x;
+    unit_of_measurement: A
+  - platform: template  # value calculated and published in current sensor
+    id: sen_piron
+    name: "${name} PIron"
     unit_of_measurement: W
   - platform: adc
     id: adc_temp
