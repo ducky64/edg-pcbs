@@ -59,7 +59,19 @@ SPIClass spi(HSPI);  // for ESP32S3
 GxEPD2_3C<GxEPD2_290_C90c, GxEPD2_290_C90c::HEIGHT> display(GxEPD2_290_C90c(kOledCsPin, kOledDcPin, kOledRstPin, kEpdBusyPin));  // SSD1680, compatible w/ ER-EPD029-2R
 
 
+#include <WiFi.h>
+#include <HTTPClient.h>
+#include "WifiConfig.h"  // must define 'const char* ssid' and 'const char* password'
+const char* kNtpServer = "time.google.com";
+const char* kTimezone = "PST8PDT,M3.2.0,M11.1.0";  // https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv
+const long utcOffsetSeconds = -8*3600;
+
+// note, the non-HTTPS URL 301s to the HTTPS URL
+const char* kIcsUrl = "https://calendar.google.com/calendar/ical/gv8rblqs5t8hm6br9muf9uo2f0%40group.calendar.google.com/public/basic.ics";
+
+
 const char kHelloWorld[] = "Hello World!";
+
 
 void einkHelloWorld() {
   display.setRotation(1);
@@ -84,6 +96,7 @@ void einkHelloWorld() {
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
+  esp_log_level_set("*", ESP_LOG_DEBUG);
 
   pinMode(kLedR, OUTPUT);
   pinMode(kLedG, OUTPUT);
@@ -93,16 +106,48 @@ void setup() {
   digitalWrite(kLedG, 0);
   digitalWrite(kLedB, 0);
 
-  Serial.printf("Total heap: %d, PSRAM: %d\r\n", ESP.getHeapSize(), ESP.getPsramSize());
+  log_i("Total heap: %d, PSRAM: %d", ESP.getHeapSize(), ESP.getPsramSize());
 
-  spi.begin(kOledSckPin, -1, kOledMosiPin, -1);
-  display.epd2.selectSPI(spi, SPISettings(4000000, MSBFIRST, SPI_MODE0));
-  display.init(115200);
-  digitalWrite(kLedR, 0);
-  einkHelloWorld();
-  digitalWrite(kLedG, 1);
+  log_i("Connect WiFi");
+  WiFi.begin(ssid, password);
+  while(WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    log_i("...");
+  }
+  log_i("Connected WiFi: %s, RSSI=%i", WiFi.localIP().toString(), WiFi.RSSI());
 
-  display.hibernate();
+  // see https://randomnerdtutorials.com/esp32-ntp-timezones-daylight-saving/
+  log_i("Sync NTP time");
+  configTime(0, 0, "pool.ntp.org");
+  setenv("TZ", kTimezone, 1);
+  tzset();
+  struct tm timeinfo;
+  if (!getLocalTime(&timeinfo)){
+    log_e("Failed to get NTP time");
+  } else {
+  }
+  log_i("%04i-%02i-%02i %02i:%02i:%02i%s", timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday, 
+      timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec, 
+      timeinfo.tm_isdst ? " DST" : "");
+
+  log_i("GET ICS");
+  HTTPClient http;
+  http.begin(kIcsUrl);
+  int httpResponseCode = http.GET();
+  String payload = http.getString();
+  log_i("GET: %i (%i KiB) <= %s", httpResponseCode, payload.length() / 1024, kIcsUrl);
+  if (payload.length() <= 2048) {  // print unexpectedly short responses
+    log_i("%s", payload.c_str());
+  }
+
+  // spi.begin(kOledSckPin, -1, kOledMosiPin, -1);
+  // display.epd2.selectSPI(spi, SPISettings(4000000, MSBFIRST, SPI_MODE0));
+  // display.init(115200);
+  // digitalWrite(kLedR, 0);
+  // einkHelloWorld();
+  // digitalWrite(kLedG, 1);
+
+  // display.hibernate();
 }
 
 void loop() {
