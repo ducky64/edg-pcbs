@@ -71,6 +71,9 @@ const long utcOffsetSeconds = -8*3600;
 const char* kIcsUrl = "https://calendar.google.com/calendar/ical/gv8rblqs5t8hm6br9muf9uo2f0%40group.calendar.google.com/public/basic.ics";
 
 
+#include <uICAL.h>
+
+
 const char kHelloWorld[] = "Hello World!";
 
 
@@ -109,6 +112,7 @@ void setup() {
 
   log_i("Total heap: %d, PSRAM: %d", ESP.getHeapSize(), ESP.getPsramSize());
 
+  long int timeStartWifi = millis();
   log_i("Connect WiFi");
   WiFi.begin(ssid, password);
   while(WiFi.status() != WL_CONNECTED) {
@@ -118,6 +122,7 @@ void setup() {
   log_i("Connected WiFi: %s, RSSI=%i", WiFi.localIP().toString(), WiFi.RSSI());
 
   // see https://randomnerdtutorials.com/esp32-ntp-timezones-daylight-saving/
+  long int timeStartNtp = millis();
   log_i("Sync NTP time");
   configTime(0, 0, "pool.ntp.org");
   setenv("TZ", kTimezone, 1);
@@ -131,6 +136,7 @@ void setup() {
       timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec, 
       timeinfo.tm_isdst ? " DST" : "");
 
+  long int timeStartGet = millis();
   log_i("GET ICS");
   HTTPClient http;
   http.begin(kIcsUrl);
@@ -141,6 +147,26 @@ void setup() {
     log_i("%s", payload.c_str());
   }
 
+
+  log_i("Parse ICS");
+  uICAL::istream_String istm(payload);
+  log_i("Parse ICS2");
+  auto cal = uICAL::Calendar::load(istm);
+  log_i("Parse ICS3");
+  uICAL::DateTime begin("20191016T102000Z");
+  uICAL::DateTime end("20191017T103000Z");
+  delay(1000);
+
+  auto calIt = uICAL::new_ptr<uICAL::CalendarIter>(cal, begin, end);
+  log_i("Iterate");
+
+  while (calIt->next()) {
+    log_i("next");
+    // uICAL::CalendarEntry_ptr entry = calIt->current();
+    // log_d("%s", entry.as_str().c_str());
+  }
+
+  
   // done with all network tasks, stop wifi to save power
   WiFi.disconnect();
   if (esp_wifi_stop() != ESP_OK) {
@@ -148,6 +174,11 @@ void setup() {
   } else {
     log_i("Disabled WiFi");
   }
+  long int timeStopWifi = millis();
+  log_i("Total network active time: %.1f", (float)(timeStopWifi - timeStartWifi) / 1000);
+
+  
+
 
   // spi.begin(kOledSckPin, -1, kOledMosiPin, -1);
   // display.epd2.selectSPI(spi, SPISettings(4000000, MSBFIRST, SPI_MODE0));
