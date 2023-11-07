@@ -1,38 +1,46 @@
+#include <Arduino.h>
+#include <SPI.h>
+
 // ESP32-S3 variant
-// const int kSw0Pin = 8;
-// const int kSw1Pin = 18;
-// const int kSw2Pin = 17;
-// const int kOledRstPin = 2;
-// const int kOledDcPin = 39;
-// const int kOledCsPin = 38;
-// const int kEpdBusyPin = 42;
+const int kSw0Pin = 8;
+const int kSw1Pin = 18;
+const int kSw2Pin = 17;
+const int kOledRstPin = 2;
+const int kOledDcPin = 39;
+const int kOledCsPin = 38;
+const int kEpdBusyPin = 42;
 
-// const int kOledSckPin = 40;
-// const int kOledMosiPin = 41;
+const int kOledSckPin = 40;
+const int kOledMosiPin = 41;
 
-// const int kLedR = 7;
-// const int kLedG = 15;
-// const int kLedB = 16;
+const int kLedR = 7;
+const int kLedG = 15;
+const int kLedB = 16;
+
+SPIClass spi(HSPI);  // for ESP32S3
+
 
 // ESP32-C6 variant
 // Currently requires the esp32 3.0.0-alpha board
 // add this to the Arduino IDE board managers URL (comma-separated):
 // https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_dev_index.json
 // does not appear to be supported by PlatformIO yet
-const int kSw0Pin = 11;
-const int kSw1Pin = 10;
-const int kSw2Pin = 8;
-const int kOledRstPin = 3;
-const int kOledDcPin = 22;
-const int kOledCsPin = 21;
-const int kEpdBusyPin = 15;
+// const int kSw0Pin = 11;
+// const int kSw1Pin = 10;
+// const int kSw2Pin = 8;
+// const int kOledRstPin = 3;
+// const int kOledDcPin = 22;
+// const int kOledCsPin = 21;
+// const int kEpdBusyPin = 15;
 
-const int kOledSckPin = 23;
-const int kOledMosiPin = 20;  // NOTE - needs a jumper, otherwise pad on PCB is NC!
+// const int kOledSckPin = 23;
+// const int kOledMosiPin = 20;  // NOTE - needs a jumper, otherwise pad on PCB is NC!
 
-const int kLedR = 7;
-const int kLedG = 0;
-const int kLedB = 1;
+// const int kLedR = 7;
+// const int kLedG = 0;
+// const int kLedB = 1;
+
+// SPIClass spi(FSPI);  // for ESP32C6 - only has FSPI
 
 
 #include <GxEPD2_BW.h>
@@ -49,11 +57,6 @@ const int kLedB = 1;
 // GxEPD2_3C<GxEPD2_270c, GxEPD2_270c::HEIGHT> display(GxEPD2_270c(kOledCsPin, kOledDcPin, kOledRstPin, kEpdBusyPin)); // GDEW027C44 176x264, IL91874
 
 GxEPD2_3C<GxEPD2_290_C90c, GxEPD2_290_C90c::HEIGHT> display(GxEPD2_290_C90c(kOledCsPin, kOledDcPin, kOledRstPin, kEpdBusyPin));  // SSD1680, compatible w/ ER-EPD029-2R
-
-// SPIClass hspi(HSPI);  // for ESP32S3
-SPIClass hspi(FSPI);  // for ESP32C6 - only has FSPI
-
-
 
 
 const char kHelloWorld[] = "Hello World!";
@@ -80,6 +83,8 @@ void einkHelloWorld() {
 
 void setup() {
   // put your setup code here, to run once:
+  Serial.begin(115200);
+
   pinMode(kLedR, OUTPUT);
   pinMode(kLedG, OUTPUT);
   pinMode(kLedB, OUTPUT);
@@ -88,8 +93,10 @@ void setup() {
   digitalWrite(kLedG, 0);
   digitalWrite(kLedB, 0);
 
-  hspi.begin(kOledSckPin, -1, kOledMosiPin, -1);
-  display.epd2.selectSPI(hspi, SPISettings(4000000, MSBFIRST, SPI_MODE0));
+  Serial.printf("Total heap: %d, PSRAM: %d\r\n", ESP.getHeapSize(), ESP.getPsramSize());
+
+  spi.begin(kOledSckPin, -1, kOledMosiPin, -1);
+  display.epd2.selectSPI(spi, SPISettings(4000000, MSBFIRST, SPI_MODE0));
   display.init(115200);
   digitalWrite(kLedR, 0);
   einkHelloWorld();
