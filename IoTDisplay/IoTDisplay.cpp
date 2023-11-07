@@ -59,6 +59,7 @@ SPIClass spi(HSPI);  // for ESP32S3
 GxEPD2_3C<GxEPD2_290_C90c, GxEPD2_290_C90c::HEIGHT> display(GxEPD2_290_C90c(kOledCsPin, kOledDcPin, kOledRstPin, kEpdBusyPin));  // SSD1680, compatible w/ ER-EPD029-2R
 
 
+#include "esp_wifi.h"  // support wifi stop
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include "WifiConfig.h"  // must define 'const char* ssid' and 'const char* password'
@@ -138,6 +139,14 @@ void setup() {
   log_i("GET: %i (%i KiB) <= %s", httpResponseCode, payload.length() / 1024, kIcsUrl);
   if (payload.length() <= 2048) {  // print unexpectedly short responses
     log_i("%s", payload.c_str());
+  }
+
+  // done with all network tasks, stop wifi to save power
+  WiFi.disconnect();
+  if (esp_wifi_stop() != ESP_OK) {
+    log_e("Failed disable WiFi");
+  } else {
+    log_i("Disabled WiFi");
   }
 
   // spi.begin(kOledSckPin, -1, kOledMosiPin, -1);
