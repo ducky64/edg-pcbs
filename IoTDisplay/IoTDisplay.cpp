@@ -139,13 +139,30 @@ void setup() {
   long int timeStartGet = millis();
   log_i("GET ICS");
   HTTPClient http;
+  http.useHTTP10(true);  // disabe chunked encoding, since the stream doesn't remove metadata
   http.begin(kIcsUrl);
   int httpResponseCode = http.GET();
-  String payload = http.getString();
-  log_i("GET: %i (%i B) <= %s", httpResponseCode, payload.length(), kIcsUrl);
-  if (payload.length() <= 2048) {  // print unexpectedly short responses
-    log_i("%s", payload.c_str());
+  int httpResponseLen = http.getSize();
+  log_i("GET: %i (%i KiB) <= %s", httpResponseCode, httpResponseLen / 1024, kIcsUrl);
+
+  try {
+    uICAL::istream_Stream istm(http.getStream());
+    uICAL::DateTime begin("20191016T102000Z");
+    uICAL::DateTime end("20191017T103000Z");
+    auto cal = uICAL::Calendar::load(istm, [=](const uICAL::VEvent& event){
+        return event.start > begin && event.end < end;
+    });
+  
+    auto calIt = uICAL::new_ptr<uICAL::CalendarIter>(cal, begin, end);
+    while (calIt->next()) {
+      uICAL::CalendarEntry_ptr entry = calIt->current();
+      log_d("%s", entry->summary().c_str());
+    }
+  } catch (const uICAL::Error& err) {
+    log_e("Error during parsing: %s", err.message.c_str());
   }
+
+  http.end();
 
   // done with all network tasks, stop wifi to save power
   WiFi.disconnect();
@@ -156,29 +173,6 @@ void setup() {
   }
   long int timeStopWifi = millis();
   log_i("Total network active time: %.1f", (float)(timeStopWifi - timeStartWifi) / 1000);
-
-  try {
-    log_i("Parse ICS");
-    uICAL::istream_String istm(payload);
-    log_i("Parse ICS2");
-    auto cal = uICAL::Calendar::load(istm);
-    log_i("Parse ICS3");
-    uICAL::DateTime begin("20191016T102000Z");
-    uICAL::DateTime end("20191017T103000Z");
-    delay(1000);
-
-    auto calIt = uICAL::new_ptr<uICAL::CalendarIter>(cal, begin, end);
-    log_i("Iterate");
-
-    while (calIt->next()) {
-      log_i("next");
-      // uICAL::CalendarEntry_ptr entry = calIt->current();
-      // log_d("%s", entry.as_str().c_str());
-    }
-  } catch (const uICAL::Error& err) {
-    log_e("Error during parsing: %s", err.message.c_str());
-  }  
-
 
   // spi.begin(kOledSckPin, -1, kOledMosiPin, -1);
   // display.epd2.selectSPI(spi, SPISettings(4000000, MSBFIRST, SPI_MODE0));
