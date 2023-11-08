@@ -142,31 +142,11 @@ void setup() {
   http.begin(kIcsUrl);
   int httpResponseCode = http.GET();
   String payload = http.getString();
-  log_i("GET: %i (%i KiB) <= %s", httpResponseCode, payload.length() / 1024, kIcsUrl);
+  log_i("GET: %i (%i B) <= %s", httpResponseCode, payload.length(), kIcsUrl);
   if (payload.length() <= 2048) {  // print unexpectedly short responses
     log_i("%s", payload.c_str());
   }
 
-
-  log_i("Parse ICS");
-  uICAL::istream_String istm(payload);
-  log_i("Parse ICS2");
-  auto cal = uICAL::Calendar::load(istm);
-  log_i("Parse ICS3");
-  uICAL::DateTime begin("20191016T102000Z");
-  uICAL::DateTime end("20191017T103000Z");
-  delay(1000);
-
-  auto calIt = uICAL::new_ptr<uICAL::CalendarIter>(cal, begin, end);
-  log_i("Iterate");
-
-  while (calIt->next()) {
-    log_i("next");
-    // uICAL::CalendarEntry_ptr entry = calIt->current();
-    // log_d("%s", entry.as_str().c_str());
-  }
-
-  
   // done with all network tasks, stop wifi to save power
   WiFi.disconnect();
   if (esp_wifi_stop() != ESP_OK) {
@@ -177,7 +157,27 @@ void setup() {
   long int timeStopWifi = millis();
   log_i("Total network active time: %.1f", (float)(timeStopWifi - timeStartWifi) / 1000);
 
-  
+  try {
+    log_i("Parse ICS");
+    uICAL::istream_String istm(payload);
+    log_i("Parse ICS2");
+    auto cal = uICAL::Calendar::load(istm);
+    log_i("Parse ICS3");
+    uICAL::DateTime begin("20191016T102000Z");
+    uICAL::DateTime end("20191017T103000Z");
+    delay(1000);
+
+    auto calIt = uICAL::new_ptr<uICAL::CalendarIter>(cal, begin, end);
+    log_i("Iterate");
+
+    while (calIt->next()) {
+      log_i("next");
+      // uICAL::CalendarEntry_ptr entry = calIt->current();
+      // log_d("%s", entry.as_str().c_str());
+    }
+  } catch (const uICAL::Error& err) {
+    log_e("Error during parsing: %s", err.message.c_str());
+  }  
 
 
   // spi.begin(kOledSckPin, -1, kOledMosiPin, -1);
