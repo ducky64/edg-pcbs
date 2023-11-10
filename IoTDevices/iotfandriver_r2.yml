@@ -123,6 +123,7 @@ sensor:
       - multiply: 5.714
   - platform: rotary_encoder
     name: "${name} Encoder"
+    resolution: 2  # so each detent generates one action
     pin_a:
       number: GPIO19
       inverted: true
