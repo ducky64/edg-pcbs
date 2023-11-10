@@ -62,7 +62,7 @@ UsbPdStateMachine::UsbPdState UsbPdStateMachine::update() {
       if (sourceCapabilitiesLen_ > 0) {
         state_ = kConnected;
       } else if (millis() >= stateExpire_) {
-        ESP_LOGW(TAG, "update(): WaitSourceCapabilities timed out");
+        ESP_LOGD(TAG, "update(): WaitSourceCapabilities timed out");  // happens quite often if non-PD source connected
         state_ = kEnableTransceiver;
       }
       break;

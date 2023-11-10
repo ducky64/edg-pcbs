@@ -162,6 +162,8 @@ public:
     last_state_ = state;
   }
 
+  UsbPdStateMachine::UsbPdState get_state() { return last_state_; }
+
 protected:
   Fusb302 fusb_;
   UsbPdStateMachine pd_fsm_;

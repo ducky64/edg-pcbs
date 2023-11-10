@@ -13,6 +13,7 @@ esphome:
 
 wifi:
   <<: !include ../wifi_config.yaml
+  reboot_timeout: 0s
 
 # HASS API
 api:
@@ -69,7 +70,7 @@ output:
     deadtime_rising: 100ns
     deadtime_falling: 100ns
     sample_adc: adc_thermocouple
-    blank_frequency: 25Hz
+    blank_frequency: 20Hz
     blank_time: 1ms
   - platform: template  # a commanded power that transforms a target watt to PWM
     id: output_iron_command
@@ -138,11 +139,25 @@ display:
         }
       }
 
-      it.printf(0, 64-6-10, id(bdf6x10), "USB  %2.1f V", id(fusb_vbus).get_state());
+      if (id(touch).state) {
+        it.printf(0, 64-6-20, id(bdf6x10), "** QUACK **  %i", id(touch).get_value());
+      }
+
+      const char* pdState;
+      switch (id(usbpd).get_state()) {
+        case UsbPdStateMachine::kStart: pdState = "DIS";
+        case UsbPdStateMachine::kConnected: pdState = "CON";
+        default: pdState = "...";
+      }
+      it.printf(0, 64-6-10, id(bdf6x10), "USB  %2.1f V  %s", id(fusb_vbus).get_state(), pdState);
 
       it.printf(0, 64-6, id(bdf4x6), "%s", WiFi.localIP().toString().c_str());
       it.printf(128-(4*4), 64-6, id(bdf4x6), "%2.0f C", id(cold_temp).state);
-      
+
+esp32_touch:
+  setup_mode: true
+  measurement_duration: 1ms  # otherwise it overflows
+
 binary_sensor:
   - platform: gpio
     id: encoder_sw
@@ -163,7 +178,12 @@ binary_sensor:
               } else {
                 id(iron_control).make_call().set_mode("OFF").perform();
               }
-    
+  - platform: esp32_touch
+    id: touch
+    name: "${name} Touch"
+    pin: GPIO3
+    threshold: 390000
+
 fusb302:
   id: usbpd
   target: 12v
