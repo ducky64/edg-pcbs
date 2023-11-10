@@ -140,7 +140,7 @@ display:
       }
 
       if (id(touch).state) {
-        it.printf(0, 64-6-20, id(bdf6x10), "** QUACK **  %i", id(touch).get_value());
+        it.printf(0, 64-6-20, id(bdf6x10), "-- QUACK --  %i", id(touch).get_value());
       }
 
       const char* pdState;
@@ -280,6 +280,7 @@ sensor:
   - platform: rotary_encoder
     id: encoder
     name: "${name} Encoder"
+    resolution: 2  # so each detent generates one action
     pin_a:
       number: GPIO17
       inverted: true
