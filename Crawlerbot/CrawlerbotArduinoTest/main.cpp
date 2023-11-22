@@ -66,8 +66,8 @@ WiFiServer Server(80);
 WiFiClient Client;
 
 const int kCmdDurationMs = 1000;
-const size_t kNumRemoteServos = 10;
-uint16_t remoteServoVaues[kNumRemoteServos] = {0};  // remote servos
+const size_t kNumLocalServos = 4;
+uint16_t servoVaues[kNumServos] = {0};
 int cmdExpireMillis = 0;
 
 
@@ -111,7 +111,7 @@ void setup() {
 
 int servoUpdateIndex = 0;
 int nextRemoteServoMillis = 0;
-const int kServoUpdateMs = 100;
+const int kServoUpdateMs = 50;
 const int kServoNeutral = 114;
 
 int nextFbReadMillis = 0;
@@ -129,11 +129,11 @@ void loop() {
   }
 
   if (Client) {
-    uint16_t cmdValues[kNumServos] = {0};
-    if (Client.available() >= sizeof(cmdValues)) {
-      Client.read((uint8_t*)cmdValues, sizeof(cmdValues));
-      for (size_t i=0; i<kNumRemoteServos; i++) {
-        remoteServoVaues[i] = cmdValues[i+4];  // first 4 are on ESP32 itself
+    uint8_t buf[sizeof(servoVaues)];
+    if (Client.available() >= sizeof(servoVaues)) {
+      Client.read(buf, sizeof(servoVaues));
+      for (size_t i=0; i<kNumServos; i++) {  // first 4 are on ESP32 itself
+        servoVaues[i] = buf[i*2] << 8 | buf[i*2 + 1];
       }
       cmdExpireMillis = thisMillis + kCmdDurationMs;  // always based off current millis
     }    
@@ -142,9 +142,9 @@ void loop() {
   if (thisMillis >= nextRemoteServoMillis) {
     digitalWrite(kPinLed, 1);
 
-    for (int i=0; i<10; i++) {
+    for (int i=0; i<(kNumServos - kNumLocalServos); i++) {
       if (thisMillis < cmdExpireMillis) {
-        Stm32.writeServoValue(i, remoteServoVaues[i]);
+        Stm32.writeServoValue(i, servoVaues[4+i]);
       } else {  // expired, write neutral
         Stm32.writeServoValue(i, kServoNeutral);
       }
@@ -164,13 +164,18 @@ void loop() {
 
   if (thisMillis >= nextFbReadMillis) {
     uint16_t fbValues[kNumServos] = {0};
-    for (size_t i=0; i<kNumServos; i++) {
-      if (!Stm32.readServoFeedback(i, fbValues + i)) {
-        fbValues[i] = 0;
+    for (size_t i=0; i<(kNumServos - kNumLocalServos); i++) {
+      if (!Stm32.readServoFeedback(i, fbValues + 4+i)) {
+        fbValues[4+i] = 0;
       }
     }
 
     if (Client) {
+      uint8_t buf[sizeof(fbValues)];
+      for (size_t i=0; i<kNumServos; i++) {
+        buf[i*2] = fbValues[i] >> 8;
+        buf[i*2 + 1] = fbValues[i] & 0xff;
+      }
       Client.write((uint8_t*)fbValues, sizeof(fbValues));
     }
 
