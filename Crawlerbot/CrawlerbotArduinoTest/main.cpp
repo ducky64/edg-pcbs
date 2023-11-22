@@ -59,8 +59,12 @@ const size_t kNumServos = 14;
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <WiFiAP.h>
-const char *kWifiSsid = "RobotDriverAP";
-// const char *password = "password";
+#if __has_include("wificonnection.h")
+  #include "wificonnection.h"
+#else
+  const char *kWifiSsid = "RobotDriverAP";
+  const char *kWifiPassword = "password";
+#endif
 WiFiServer Server(80);
 // note, send rate over network determined by kFbReadMs
 WiFiClient Client;
@@ -97,7 +101,7 @@ void setup() {
   // Serial.println(WiFi.softAPIP());
 
   WiFi.mode(WIFI_STA);
-  WiFi.begin("lemur2", "nope");
+  WiFi.begin(kWifiSsid, kWifiPassword);
   while(WiFi.status() != WL_CONNECTED){
     Serial.print(".");
     delay(100);
