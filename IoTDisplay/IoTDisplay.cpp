@@ -67,17 +67,28 @@ GxEPD2_7C<GxEPD2_565c, GxEPD2_565c::HEIGHT / 4> display(GxEPD2_565c(kOledCsPin, 
 #include "WifiConfig.h"  // must define 'const char* ssid' and 'const char* password'
 const char* kNtpServer = "time.google.com";
 const char* kTimezone = "PST8PDT,M3.2.0,M11.1.0";  // https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv
-const long utcOffsetSeconds = -8*3600;
 
-// note, the non-HTTPS URL 301s to the HTTPS URL
-const char* kIcsUrl = "https://calendar.google.com/calendar/ical/gv8rblqs5t8hm6br9muf9uo2f0%40group.calendar.google.com/public/basic.ics";
-
-
-#include <uICAL.h>
+#include <PNGdec.h>
+#include "octocat_4bpp.h"
+PNG png;
 
 
 const char kHelloWorld[] = "Hello World!";
 
+
+void PNGDraw(PNGDRAW *pDraw) {
+  uint16_t usPixels[320];
+  uint8_t ucMask[320/8];
+  
+  png.getLineAsRGB565(pDraw, usPixels, PNG_RGB565_BIG_ENDIAN, 0xffffffff);
+  png.getAlphaMask(pDraw, ucMask, 255);
+
+  for (size_t i=0; i<pDraw->iWidth; i++) {
+    if (((usPixels[i] & 0x1f) < 0x10) && ((ucMask[i/8] >> ((7-i) % 8)) & 0x1)) {  // darker than grey
+      display.drawPixel(i, pDraw->y, GxEPD_BLACK);
+    }
+  }
+}
 
 void einkHelloWorld() {
   display.setRotation(1);
@@ -91,7 +102,13 @@ void einkHelloWorld() {
   display.firstPage();
   do {
     display.fillScreen(GxEPD_WHITE);
-    
+
+  // partial window doesn't seem to do anything for this display
+  // } while (display.nextPage());
+
+  // display.setPartialWindow(0, 0, display.width(), display.height());
+  // display.firstPage();
+  // do {
     display.setTextColor(GxEPD_BLACK);
     display.setCursor(x, y);
     display.print(kHelloWorld);
@@ -107,6 +124,14 @@ void einkHelloWorld() {
     display.setTextColor(GxEPD_BLUE);
     display.setCursor(x, y + tbh*3);
     display.print(kHelloWorld);
+
+    int rc = png.openRAM((uint8_t *)octocat_4bpp, sizeof(octocat_4bpp), PNGDraw);
+    if (rc == PNG_SUCCESS) {
+      log_i("Start decode");
+      rc = png.decode(NULL, 0);
+      log_i("End decode decode");
+      png.close();
+    }
   } while (display.nextPage());
 }
 
