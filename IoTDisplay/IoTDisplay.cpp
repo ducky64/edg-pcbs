@@ -56,7 +56,9 @@ SPIClass spi(HSPI);  // for ESP32S3
 // GxEPD2_BW<GxEPD2_270, GxEPD2_270::HEIGHT> display(GxEPD2_270(kOledCsPin, kOledDcPin, kOledRstPin, kEpdBusyPin)); // GDEW027W3 176x264, EK79652 (IL91874)
 // GxEPD2_3C<GxEPD2_270c, GxEPD2_270c::HEIGHT> display(GxEPD2_270c(kOledCsPin, kOledDcPin, kOledRstPin, kEpdBusyPin)); // GDEW027C44 176x264, IL91874
 
-GxEPD2_3C<GxEPD2_290_C90c, GxEPD2_290_C90c::HEIGHT> display(GxEPD2_290_C90c(kOledCsPin, kOledDcPin, kOledRstPin, kEpdBusyPin));  // SSD1680, compatible w/ ER-EPD029-2R
+// GxEPD2_3C<GxEPD2_290_C90c, GxEPD2_290_C90c::HEIGHT> display(GxEPD2_290_C90c(kOledCsPin, kOledDcPin, kOledRstPin, kEpdBusyPin));  // SSD1680, compatible w/ ER-EPD029-2R
+
+GxEPD2_7C<GxEPD2_565c, GxEPD2_565c::HEIGHT / 4> display(GxEPD2_565c(kOledCsPin, kOledDcPin, kOledRstPin, kEpdBusyPin)); // Waveshare 5.65" 7-color
 
 
 #include "esp_wifi.h"  // support wifi stop
@@ -80,7 +82,6 @@ const char kHelloWorld[] = "Hello World!";
 void einkHelloWorld() {
   display.setRotation(1);
   display.setFont(&FreeMonoBold9pt7b);
-  display.setTextColor(GxEPD_BLACK);
   int16_t tbx, tby; uint16_t tbw, tbh;
   display.getTextBounds(kHelloWorld, 0, 0, &tbx, &tby, &tbw, &tbh);
   // center the bounding box by transposition of the origin:
@@ -88,13 +89,25 @@ void einkHelloWorld() {
   uint16_t y = ((display.height() - tbh) / 2) - tby;
   display.setFullWindow();
   display.firstPage();
-  do
-  {
+  do {
     display.fillScreen(GxEPD_WHITE);
+    
+    display.setTextColor(GxEPD_BLACK);
     display.setCursor(x, y);
     display.print(kHelloWorld);
-  }
-  while (display.nextPage());
+
+    display.setTextColor(GxEPD_RED);
+    display.setCursor(x, y + tbh);
+    display.print(kHelloWorld);
+
+    display.setTextColor(GxEPD_GREEN);
+    display.setCursor(x, y + tbh*2);
+    display.print(kHelloWorld);
+
+    display.setTextColor(GxEPD_BLUE);
+    display.setCursor(x, y + tbh*3);
+    display.print(kHelloWorld);
+  } while (display.nextPage());
 }
 
 void setup() {
@@ -112,76 +125,76 @@ void setup() {
 
   log_i("Total heap: %d, PSRAM: %d", ESP.getHeapSize(), ESP.getPsramSize());
 
-  long int timeStartWifi = millis();
-  log_i("Connect WiFi");
-  WiFi.begin(ssid, password);
-  while(WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    log_i("...");
-  }
-  log_i("Connected WiFi: %s, RSSI=%i", WiFi.localIP().toString(), WiFi.RSSI());
+  // long int timeStartWifi = millis();
+  // log_i("Connect WiFi");
+  // WiFi.begin(ssid, password);
+  // while(WiFi.status() != WL_CONNECTED) {
+  //   delay(500);
+  //   log_i("...");
+  // }
+  // log_i("Connected WiFi: %s, RSSI=%i", WiFi.localIP().toString(), WiFi.RSSI());
 
-  // see https://randomnerdtutorials.com/esp32-ntp-timezones-daylight-saving/
-  long int timeStartNtp = millis();
-  log_i("Sync NTP time");
-  configTime(0, 0, "pool.ntp.org");
-  setenv("TZ", kTimezone, 1);
-  tzset();
-  struct tm timeinfo;
-  if (!getLocalTime(&timeinfo)){
-    log_e("Failed to get NTP time");
-  } else {
-  }
-  log_i("%04i-%02i-%02i %02i:%02i:%02i%s", timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday, 
-      timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec, 
-      timeinfo.tm_isdst ? " DST" : "");
+  // // see https://randomnerdtutorials.com/esp32-ntp-timezones-daylight-saving/
+  // long int timeStartNtp = millis();
+  // log_i("Sync NTP time");
+  // configTime(0, 0, "pool.ntp.org");
+  // setenv("TZ", kTimezone, 1);
+  // tzset();
+  // struct tm timeinfo;
+  // if (!getLocalTime(&timeinfo)){
+  //   log_e("Failed to get NTP time");
+  // } else {
+  // }
+  // log_i("%04i-%02i-%02i %02i:%02i:%02i%s", timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday, 
+  //     timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec, 
+  //     timeinfo.tm_isdst ? " DST" : "");
 
-  long int timeStartGet = millis();
-  log_i("GET ICS");
-  HTTPClient http;
-  http.useHTTP10(true);  // disabe chunked encoding, since the stream doesn't remove metadata
-  http.begin(kIcsUrl);
-  int httpResponseCode = http.GET();
-  int httpResponseLen = http.getSize();
-  log_i("GET: %i (%i KiB) <= %s", httpResponseCode, httpResponseLen / 1024, kIcsUrl);
+  // long int timeStartGet = millis();
+  // log_i("GET ICS");
+  // HTTPClient http;
+  // http.useHTTP10(true);  // disabe chunked encoding, since the stream doesn't remove metadata
+  // http.begin(kIcsUrl);
+  // int httpResponseCode = http.GET();
+  // int httpResponseLen = http.getSize();
+  // log_i("GET: %i (%i KiB) <= %s", httpResponseCode, httpResponseLen / 1024, kIcsUrl);
 
-  try {
-    uICAL::istream_Stream istm(http.getStream());
-    uICAL::DateTime begin("20191016T102000Z");
-    uICAL::DateTime end("20191017T103000Z");
-    auto cal = uICAL::Calendar::load(istm, [=](const uICAL::VEvent& event){
-        return event.start > begin && event.end < end;
-    });
+  // try {
+  //   uICAL::istream_Stream istm(http.getStream());
+  //   uICAL::DateTime begin("20191016T102000Z");
+  //   uICAL::DateTime end("20191017T103000Z");
+  //   auto cal = uICAL::Calendar::load(istm, [=](const uICAL::VEvent& event){
+  //       return event.start > begin && event.end < end;
+  //   });
   
-    auto calIt = uICAL::new_ptr<uICAL::CalendarIter>(cal, begin, end);
-    while (calIt->next()) {
-      uICAL::CalendarEntry_ptr entry = calIt->current();
-      log_d("%s", entry->summary().c_str());
-    }
-  } catch (const uICAL::Error& err) {
-    log_e("Error during parsing: %s", err.message.c_str());
-  }
+  //   auto calIt = uICAL::new_ptr<uICAL::CalendarIter>(cal, begin, end);
+  //   while (calIt->next()) {
+  //     uICAL::CalendarEntry_ptr entry = calIt->current();
+  //     log_d("%s", entry->summary().c_str());
+  //   }
+  // } catch (const uICAL::Error& err) {
+  //   log_e("Error during parsing: %s", err.message.c_str());
+  // }
 
-  http.end();
+  // http.end();
 
-  // done with all network tasks, stop wifi to save power
-  WiFi.disconnect();
-  if (esp_wifi_stop() != ESP_OK) {
-    log_e("Failed disable WiFi");
-  } else {
-    log_i("Disabled WiFi");
-  }
-  long int timeStopWifi = millis();
-  log_i("Total network active time: %.1f", (float)(timeStopWifi - timeStartWifi) / 1000);
+  // // done with all network tasks, stop wifi to save power
+  // WiFi.disconnect();
+  // if (esp_wifi_stop() != ESP_OK) {
+  //   log_e("Failed disable WiFi");
+  // } else {
+  //   log_i("Disabled WiFi");
+  // }
+  // long int timeStopWifi = millis();
+  // log_i("Total network active time: %.1f", (float)(timeStopWifi - timeStartWifi) / 1000);
 
-  // spi.begin(kOledSckPin, -1, kOledMosiPin, -1);
-  // display.epd2.selectSPI(spi, SPISettings(4000000, MSBFIRST, SPI_MODE0));
-  // display.init(115200);
-  // digitalWrite(kLedR, 0);
-  // einkHelloWorld();
-  // digitalWrite(kLedG, 1);
+  spi.begin(kOledSckPin, -1, kOledMosiPin, -1);
+  display.epd2.selectSPI(spi, SPISettings(4000000, MSBFIRST, SPI_MODE0));
+  display.init(115200);
+  digitalWrite(kLedR, 0);
+  einkHelloWorld();
+  digitalWrite(kLedG, 1);
 
-  // display.hibernate();
+  display.hibernate();
 }
 
 void loop() {
