@@ -185,9 +185,7 @@ void setup() {
     if (streamDataPtr > streamData) {  // got a PNG
       int rc = png.openRAM((uint8_t *)streamData, sizeof(streamData), PNGDraw);
       if (rc == PNG_SUCCESS) {
-        log_i("Start decode");
         rc = png.decode(NULL, 0);
-        log_i("End decode");
         png.close();
       }
     } else {  // failed for whatever reason
