@@ -107,12 +107,9 @@ void setup() {
   display.epd2.selectSPI(spi, SPISettings(4000000, MSBFIRST, SPI_MODE0));
   display.init(115200);
 
-  display.setRotation(1);
+  display.setRotation(3);
   display.setFullWindow();
-  display.firstPage();
-  do {
-    display.fillScreen(GxEPD_WHITE);
-  } while (display.nextPage());
+  display.firstPage();  // if this isn't here, the later display code doesn't draw
 
   log_i("Total heap: %d, PSRAM: %d", ESP.getHeapSize(), ESP.getPsramSize());
 
