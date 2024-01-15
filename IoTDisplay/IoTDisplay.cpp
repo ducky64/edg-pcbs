@@ -74,6 +74,7 @@ PNG png;
 
 
 uint8_t streamData[65536] = {0};  // allocate in static memory
+uint8_t* streamDataPtr = streamData;
 
 
 void PNGDraw(PNGDRAW *pDraw) {
@@ -91,7 +92,6 @@ void PNGDraw(PNGDRAW *pDraw) {
 }
 
 void setup() {
-  // put your setup code here, to run once:
   Serial.begin(115200);
   esp_log_level_set("*", ESP_LOG_DEBUG);
 
@@ -103,20 +103,31 @@ void setup() {
   digitalWrite(kLedG, 0);
   digitalWrite(kLedB, 0);
 
+  spi.begin(kOledSckPin, -1, kOledMosiPin, -1);
+  display.epd2.selectSPI(spi, SPISettings(4000000, MSBFIRST, SPI_MODE0));
+  display.init(115200);
+
+  display.setRotation(1);
+  display.setFullWindow();
+  display.firstPage();
+  do {
+    display.fillScreen(GxEPD_WHITE);
+  } while (display.nextPage());
+
   log_i("Total heap: %d, PSRAM: %d", ESP.getHeapSize(), ESP.getPsramSize());
 
+  // NETWORK CODE
+  //
   long int timeStartWifi = millis();
-  log_i("Connect WiFi");
   WiFi.begin(ssid, password);
   while(WiFi.status() != WL_CONNECTED) {
-    delay(500);
+    delay(100);
     log_i("...");
   }
   log_i("Connected WiFi: %s, RSSI=%i", WiFi.localIP().toString(), WiFi.RSSI());
 
   // see https://randomnerdtutorials.com/esp32-ntp-timezones-daylight-saving/
   long int timeStartNtp = millis();
-  log_i("Sync NTP time");
   configTime(0, 0, "pool.ntp.org");
   setenv("TZ", kTimezone, 1);
   tzset();
@@ -130,7 +141,6 @@ void setup() {
       timeinfo.tm_isdst ? " DST" : "");
 
   long int timeStartGet = millis();
-  log_i("HTTP GET");
   HTTPClient http;
   http.useHTTP10(true);  // disabe chunked encoding, since the stream doesn't remove metadata
   http.begin(kHttpGetUrl);
@@ -138,7 +148,6 @@ void setup() {
   int httpResponseLen = http.getSize();
   log_i("GET: %i (%i KiB) <= %s", httpResponseCode, httpResponseLen / 1024, kHttpGetUrl);
 
-  uint8_t* streamDataPtr = streamData;
   if (httpResponseCode == 200) {
     WiFiClient* stream = http.getStreamPtr();
     while(http.connected()) {
@@ -161,23 +170,17 @@ void setup() {
   WiFi.disconnect();
   if (esp_wifi_stop() != ESP_OK) {
     log_e("Failed disable WiFi");
-  } else {
-    log_i("Disabled WiFi");
   }
   long int timeStopWifi = millis();
   log_i("Total network active time: %.1f", (float)(timeStopWifi - timeStartWifi) / 1000);
+  
+  delay(100);
 
-
-  spi.begin(kOledSckPin, -1, kOledMosiPin, -1);
-  display.epd2.selectSPI(spi, SPISettings(4000000, MSBFIRST, SPI_MODE0));
-  display.init(115200);
-  display.setRotation(1);
-  // display.setPartialWindow(0, 0, display.width(), display.height());  // partial window doesn't seem to do anything for this display
-
-  display.setFullWindow();
+  // DISPLAY RENDERING CODE
+  //
   display.firstPage();
   do {
-    display.fillScreen(GxEPD_YELLOW);
+    display.fillScreen(GxEPD_WHITE);
 
     if (streamDataPtr > streamData) {  // got a PNG
       int rc = png.openRAM((uint8_t *)streamData, sizeof(streamData), PNGDraw);
@@ -196,6 +199,8 @@ void setup() {
       uint16_t x = ((display.width() - tbw) / 2) - tbx;
       uint16_t y = ((display.height() - tbh) / 2) - tby;
 
+      display.fillScreen(GxEPD_YELLOW);
+
       display.setTextColor(GxEPD_RED);
       display.setFont(&FreeMonoBold9pt7b);
       display.setCursor(x, y);
@@ -203,10 +208,6 @@ void setup() {
     }
   } while (display.nextPage());
 
-
-  spi.begin(kOledSckPin, -1, kOledMosiPin, -1);
-  display.epd2.selectSPI(spi, SPISettings(4000000, MSBFIRST, SPI_MODE0));
-  display.init(115200);
   digitalWrite(kLedR, 0);
   digitalWrite(kLedG, 1);
 
