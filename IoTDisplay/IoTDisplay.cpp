@@ -67,18 +67,18 @@ GxEPD2_7C<GxEPD2_565c, GxEPD2_565c::HEIGHT / 4> display(GxEPD2_565c(kOledCsPin, 
 #include "WifiConfig.h"  // must define 'const char* ssid' and 'const char* password'
 const char* kNtpServer = "time.google.com";
 const char* kTimezone = "PST8PDT,M3.2.0,M11.1.0";  // https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv
+const char* kHttpGetUrl = "http://192.168.2.188:8000";
 
 #include <PNGdec.h>
-#include "octocat_4bpp.h"
 PNG png;
 
 
-const char kHelloWorld[] = "Hello World!";
+uint8_t streamData[65536] = {0};  // allocate in static memory
 
 
 void PNGDraw(PNGDRAW *pDraw) {
-  uint16_t usPixels[320];
-  uint8_t ucMask[320/8];
+  uint16_t usPixels[448];
+  uint8_t ucMask[448/8];
   
   png.getLineAsRGB565(pDraw, usPixels, PNG_RGB565_BIG_ENDIAN, 0xffffffff);
   png.getAlphaMask(pDraw, ucMask, 255);
@@ -88,51 +88,6 @@ void PNGDraw(PNGDRAW *pDraw) {
       display.drawPixel(i, pDraw->y, GxEPD_BLACK);
     }
   }
-}
-
-void einkHelloWorld() {
-  display.setRotation(1);
-  display.setFont(&FreeMonoBold9pt7b);
-  int16_t tbx, tby; uint16_t tbw, tbh;
-  display.getTextBounds(kHelloWorld, 0, 0, &tbx, &tby, &tbw, &tbh);
-  // center the bounding box by transposition of the origin:
-  uint16_t x = ((display.width() - tbw) / 2) - tbx;
-  uint16_t y = ((display.height() - tbh) / 2) - tby;
-  display.setFullWindow();
-  display.firstPage();
-  do {
-    display.fillScreen(GxEPD_WHITE);
-
-  // partial window doesn't seem to do anything for this display
-  // } while (display.nextPage());
-
-  // display.setPartialWindow(0, 0, display.width(), display.height());
-  // display.firstPage();
-  // do {
-    display.setTextColor(GxEPD_BLACK);
-    display.setCursor(x, y);
-    display.print(kHelloWorld);
-
-    display.setTextColor(GxEPD_RED);
-    display.setCursor(x, y + tbh);
-    display.print(kHelloWorld);
-
-    display.setTextColor(GxEPD_GREEN);
-    display.setCursor(x, y + tbh*2);
-    display.print(kHelloWorld);
-
-    display.setTextColor(GxEPD_BLUE);
-    display.setCursor(x, y + tbh*3);
-    display.print(kHelloWorld);
-
-    int rc = png.openRAM((uint8_t *)octocat_4bpp, sizeof(octocat_4bpp), PNGDraw);
-    if (rc == PNG_SUCCESS) {
-      log_i("Start decode");
-      rc = png.decode(NULL, 0);
-      log_i("End decode decode");
-      png.close();
-    }
-  } while (display.nextPage());
 }
 
 void setup() {
@@ -150,73 +105,109 @@ void setup() {
 
   log_i("Total heap: %d, PSRAM: %d", ESP.getHeapSize(), ESP.getPsramSize());
 
-  // long int timeStartWifi = millis();
-  // log_i("Connect WiFi");
-  // WiFi.begin(ssid, password);
-  // while(WiFi.status() != WL_CONNECTED) {
-  //   delay(500);
-  //   log_i("...");
-  // }
-  // log_i("Connected WiFi: %s, RSSI=%i", WiFi.localIP().toString(), WiFi.RSSI());
+  long int timeStartWifi = millis();
+  log_i("Connect WiFi");
+  WiFi.begin(ssid, password);
+  while(WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    log_i("...");
+  }
+  log_i("Connected WiFi: %s, RSSI=%i", WiFi.localIP().toString(), WiFi.RSSI());
 
-  // // see https://randomnerdtutorials.com/esp32-ntp-timezones-daylight-saving/
-  // long int timeStartNtp = millis();
-  // log_i("Sync NTP time");
-  // configTime(0, 0, "pool.ntp.org");
-  // setenv("TZ", kTimezone, 1);
-  // tzset();
-  // struct tm timeinfo;
-  // if (!getLocalTime(&timeinfo)){
-  //   log_e("Failed to get NTP time");
-  // } else {
-  // }
-  // log_i("%04i-%02i-%02i %02i:%02i:%02i%s", timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday, 
-  //     timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec, 
-  //     timeinfo.tm_isdst ? " DST" : "");
+  // see https://randomnerdtutorials.com/esp32-ntp-timezones-daylight-saving/
+  long int timeStartNtp = millis();
+  log_i("Sync NTP time");
+  configTime(0, 0, "pool.ntp.org");
+  setenv("TZ", kTimezone, 1);
+  tzset();
+  struct tm timeinfo;
+  if (!getLocalTime(&timeinfo)){
+    log_e("Failed to get NTP time");
+  } else {
+  }
+  log_i("%04i-%02i-%02i %02i:%02i:%02i%s", timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday, 
+      timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec, 
+      timeinfo.tm_isdst ? " DST" : "");
 
-  // long int timeStartGet = millis();
-  // log_i("GET ICS");
-  // HTTPClient http;
-  // http.useHTTP10(true);  // disabe chunked encoding, since the stream doesn't remove metadata
-  // http.begin(kIcsUrl);
-  // int httpResponseCode = http.GET();
-  // int httpResponseLen = http.getSize();
-  // log_i("GET: %i (%i KiB) <= %s", httpResponseCode, httpResponseLen / 1024, kIcsUrl);
+  long int timeStartGet = millis();
+  log_i("HTTP GET");
+  HTTPClient http;
+  http.useHTTP10(true);  // disabe chunked encoding, since the stream doesn't remove metadata
+  http.begin(kHttpGetUrl);
+  int httpResponseCode = http.GET();
+  int httpResponseLen = http.getSize();
+  log_i("GET: %i (%i KiB) <= %s", httpResponseCode, httpResponseLen / 1024, kHttpGetUrl);
 
-  // try {
-  //   uICAL::istream_Stream istm(http.getStream());
-  //   uICAL::DateTime begin("20191016T102000Z");
-  //   uICAL::DateTime end("20191017T103000Z");
-  //   auto cal = uICAL::Calendar::load(istm, [=](const uICAL::VEvent& event){
-  //       return event.start > begin && event.end < end;
-  //   });
-  
-  //   auto calIt = uICAL::new_ptr<uICAL::CalendarIter>(cal, begin, end);
-  //   while (calIt->next()) {
-  //     uICAL::CalendarEntry_ptr entry = calIt->current();
-  //     log_d("%s", entry->summary().c_str());
-  //   }
-  // } catch (const uICAL::Error& err) {
-  //   log_e("Error during parsing: %s", err.message.c_str());
-  // }
+  uint8_t* streamDataPtr = streamData;
+  if (httpResponseCode == 200) {
+    WiFiClient* stream = http.getStreamPtr();
+    while(http.connected()) {
+      size_t streamSize = stream->available();
+      size_t bufferLeft = sizeof(streamData) - (streamDataPtr - streamData);
+      log_i("  Stream: %i / %i free", streamSize, bufferLeft);
 
-  // http.end();
+      int c = stream->readBytes(streamDataPtr, ((streamSize > bufferLeft) ? bufferLeft : streamSize));
+      streamDataPtr += c;
 
-  // // done with all network tasks, stop wifi to save power
-  // WiFi.disconnect();
-  // if (esp_wifi_stop() != ESP_OK) {
-  //   log_e("Failed disable WiFi");
-  // } else {
-  //   log_i("Disabled WiFi");
-  // }
-  // long int timeStopWifi = millis();
-  // log_i("Total network active time: %.1f", (float)(timeStopWifi - timeStartWifi) / 1000);
+      if (streamSize <= 0 || bufferLeft <= 0) {
+        break;
+      }
+    }
+  }
+
+  http.end();
+
+  // done with all network tasks, stop wifi to save power
+  WiFi.disconnect();
+  if (esp_wifi_stop() != ESP_OK) {
+    log_e("Failed disable WiFi");
+  } else {
+    log_i("Disabled WiFi");
+  }
+  long int timeStopWifi = millis();
+  log_i("Total network active time: %.1f", (float)(timeStopWifi - timeStartWifi) / 1000);
+
+
+  spi.begin(kOledSckPin, -1, kOledMosiPin, -1);
+  display.epd2.selectSPI(spi, SPISettings(4000000, MSBFIRST, SPI_MODE0));
+  display.init(115200);
+  display.setRotation(1);
+  // display.setPartialWindow(0, 0, display.width(), display.height());  // partial window doesn't seem to do anything for this display
+
+  display.setFullWindow();
+  display.firstPage();
+  do {
+    display.fillScreen(GxEPD_YELLOW);
+
+    if (streamDataPtr > streamData) {  // got a PNG
+      int rc = png.openRAM((uint8_t *)streamData, sizeof(streamData), PNGDraw);
+      if (rc == PNG_SUCCESS) {
+        log_i("Start decode");
+        rc = png.decode(NULL, 0);
+        log_i("End decode");
+        png.close();
+      }
+    } else {  // failed for whatever reason
+      int16_t tbx, tby; uint16_t tbw, tbh;
+
+      const char* kErrMsg = "error fetching image";
+      display.getTextBounds(kErrMsg, 0, 0, &tbx, &tby, &tbw, &tbh);
+      // center the bounding box by transposition of the origin:
+      uint16_t x = ((display.width() - tbw) / 2) - tbx;
+      uint16_t y = ((display.height() - tbh) / 2) - tby;
+
+      display.setTextColor(GxEPD_RED);
+      display.setFont(&FreeMonoBold9pt7b);
+      display.setCursor(x, y);
+      display.print(kErrMsg);
+    }
+  } while (display.nextPage());
+
 
   spi.begin(kOledSckPin, -1, kOledMosiPin, -1);
   display.epd2.selectSPI(spi, SPISettings(4000000, MSBFIRST, SPI_MODE0));
   display.init(115200);
   digitalWrite(kLedR, 0);
-  einkHelloWorld();
   digitalWrite(kLedG, 1);
 
   display.hibernate();
