@@ -104,6 +104,10 @@ display:
     lambda: |-
       it.printf(0, 0, id(bdf6x10), "Ducky SMU");
 
+      it.printf(0, 64-6-10, id(bdf6x10), "USB  %2.1f V  %s", id(fusb_vbus).get_state(), pdState);
+
+      it.printf(0, 64-6, id(bdf4x6), "%s", WiFi.localIP().toString().c_str());
+      it.printf(128-(8*4), 64-6, id(bdf4x6), "%2.0f, %2.0f C", id(temp_buckboost).state, id(temp_fets).state);
 binary_sensor:
   - platform: gpio
     id: encoder_sw
@@ -223,10 +227,12 @@ sensor:
       - multiply: 14
  
   - platform: tmp1075n
+    id: temp_fets
     address: 0x48
     name: "TMP1075 FETs"
     update_interval: 10s
   - platform: tmp1075n
+    id: temp_buckboost
     address: 0x49
     name: "TMP1075 Buck-boost"
     update_interval: 10s
