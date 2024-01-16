@@ -84,6 +84,11 @@ i2c:
   frequency: 400kHz
   scan: false
 
+spi:
+  clk_pin: GPIO5
+  mosi_pin: GPIO6
+  miso_pin: GPIO7
+
 font:
   - file: "resources/4x6.bdf"  # characters actually 3x5 plus 1px descender
     id: bdf4x6
@@ -171,6 +176,11 @@ fusb302:
   id: usbpd
   target: 5v
 
+mcp3561:
+  cs_pin: GPIO4
+  id: adc_meas
+  # pin 0 is vcenter
+
 text_sensor:
   - platform: fusb302
     status:
@@ -191,6 +201,16 @@ sensor:
     selected_current:
       id: fusb_selected_current
       name: "${name} PD Selected Current"
+  - platform: mcp3561
+    update_interval: 1s
+    mcp3561_id: adc_meas
+    id: imeas
+    channel: 1
+  - platform: mcp3561
+    update_interval: 1s
+    mcp3561_id: adc_meas
+    id: vmeas
+    channel: 2
 
   - platform: adc
     id: adc_vconv
