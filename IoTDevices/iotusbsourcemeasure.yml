@@ -179,7 +179,7 @@ fusb302:
 mcp3561:
   cs_pin: GPIO4
   id: adc_meas
-  # pin 0 is vcenter
+  in_neg: CH0  # pin 0 is vcenter
 
 text_sensor:
   - platform: fusb302
@@ -205,12 +205,12 @@ sensor:
     update_interval: 1s
     mcp3561_id: adc_meas
     id: imeas
-    channel: 1
+    channel: CH1
   - platform: mcp3561
     update_interval: 1s
     mcp3561_id: adc_meas
     id: vmeas
-    channel: 2
+    channel: CH2
 
   - platform: adc
     id: adc_vconv

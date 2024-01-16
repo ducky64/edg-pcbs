@@ -3,7 +3,7 @@ import esphome.config_validation as cv
 from esphome.components import sensor, voltage_sampler
 from esphome.const import CONF_ID, CONF_CHANNEL, UNIT_VOLT, STATE_CLASS_MEASUREMENT, DEVICE_CLASS_VOLTAGE
 
-from .. import mcp3561_ns, MCP3561
+from .. import mcp3561_ns, MCP3561, MUX
 
 AUTO_LOAD = ["voltage_sampler"]
 DEPENDENCIES = ["mcp3561"]
@@ -26,7 +26,7 @@ CONFIG_SCHEMA = (
     ).extend(
         {
             cv.GenerateID(CONF_MCP3561_ID): cv.use_id(MCP3561),
-            cv.Required(CONF_CHANNEL): cv.int_range(min=0, max=3),
+            cv.Required(CONF_CHANNEL): cv.enum(MUX, upper=True),
         }
     )
     .extend(cv.polling_component_schema("60s"))
