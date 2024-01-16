@@ -7,7 +7,7 @@ namespace mcp3561 {
 
 static const char *const TAG = "mcp3561.sensor";
 
-MCP3561Sensor::MCP3561Sensor(uint8_t channel) : channel_(channel) {}
+MCP3561Sensor::MCP3561Sensor(MCP3561::kMux channel) : channel_(channel) {}
 
 float MCP3561Sensor::get_setup_priority() const { return setup_priority::DATA; }
 

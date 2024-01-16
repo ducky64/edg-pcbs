@@ -12,7 +12,7 @@ CONF_OSR = "osr"
 mcp3561_ns = cg.esphome_ns.namespace("mcp3561")
 MCP3561 = mcp3561_ns.class_("MCP3561", cg.Component, spi.SPIDevice)
 
-MCP3561Mux = mcp3561_ns.enum("MCP3561Mux")  # Table 5-1
+MCP3561Mux = MCP3561.enum("kMux")  # Table 5-1
 MUX = {
     "CH0": MCP3561Mux.kCh0,
     "CH1": MCP3561Mux.kCh1,
@@ -31,7 +31,7 @@ MUX = {
     "VCM": MCP3561Mux.kVCm,
 }
 
-MCP3561Osr = mcp3561_ns.enum("MCP3561Osr")  # Table 5-6
+MCP3561Osr = MCP3561.enum("kOsr")  # Table 5-6
 OSR = {
     "32": MCP3561Osr.k32,  # 16b, 38400-153600 Hz
     "64": MCP3561Osr.k64,  # 19b, 19200-76800 Hz

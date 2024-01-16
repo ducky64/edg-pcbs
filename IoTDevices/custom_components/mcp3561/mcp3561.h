@@ -12,13 +12,6 @@ class MCP3561 : public Component,
                 public spi::SPIDevice<spi::BIT_ORDER_MSB_FIRST, spi::CLOCK_POLARITY_LOW, spi::CLOCK_PHASE_LEADING,
                                       spi::DATA_RATE_20MHZ> {
  public:
-  MCP3561(uint8_t inn_channel, uint8_t osr);
-
-  void setup() override;
-  void dump_config() override;
-  float get_setup_priority() const override;
-  int32_t read_data(uint8_t channel);  // reads data as a 24-bit signed value
-
   enum kRegister {
     ADCDATA = 0x0,
     CONFIG0 = 0x1,
@@ -69,9 +62,35 @@ class MCP3561 : public Component,
     k32 = 0x0
   };
 
+  enum kMux {
+    kCh0 = 0x0,
+    kCh1 = 0x1,
+    kCh2 = 0x2,
+    kCh3 = 0x3,
+    kCh4 = 0x4,
+    kCh5 = 0x5,
+    kCh6 = 0x6,
+    kCh7 = 0x7,
+    kAGnd = 0x8,
+    kVdd = 0x9,
+    // reserved "do not use" 0xa
+    kRefInP = 0xb,
+    kRefInN = 0xc,
+    kTempDiodeP = 0xd,
+    kTempDiodeM = 0xe,
+    kVCm = 0xf,
+  };
+
+  MCP3561(kMux inn_channel, kOsr osr);
+
+  void setup() override;
+  void dump_config() override;
+  float get_setup_priority() const override;
+  int32_t read_data(uint8_t channel);  // reads data as a 24-bit signed value
+
 protected:
-  uint8_t inn_channel_;  // input negative channel, in device coding (0-7 = ch0-7, 8=AGND, 9=AVDD)
-  uint8_t osr_;  // oversampling ratio in device coding
+  kMux inn_channel_;
+  kOsr osr_;
 };
 
 }
