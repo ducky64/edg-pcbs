@@ -193,8 +193,8 @@ sensor:
       name: "${name} PD Selected Current"
 
   - platform: adc
-    id: adc_vconc
-    name: "${name} VConc"
+    id: adc_vconv
+    name: "${name} VConv"
     pin: GPIO10
     accuracy_decimals: 2
     update_interval: 1s
