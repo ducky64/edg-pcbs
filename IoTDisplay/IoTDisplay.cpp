@@ -140,6 +140,7 @@ void setup() {
   long int timeStartGet = millis();
   HTTPClient http;
   http.useHTTP10(true);  // disabe chunked encoding, since the stream doesn't remove metadata
+  http.setTimeout(15*1000);
   http.begin(kHttpGetUrl);
   int httpResponseCode = http.GET();
   int httpResponseLen = http.getSize();
@@ -155,8 +156,11 @@ void setup() {
       int c = stream->readBytes(streamDataPtr, ((streamSize > bufferLeft) ? bufferLeft : streamSize));
       streamDataPtr += c;
 
-      if (streamSize <= 0 || bufferLeft <= 0) {
+      if (bufferLeft <= 0) {
         break;
+      }
+      if (streamSize == 0) {  // wait for more data transfer
+        delay(1);
       }
     }
   }
