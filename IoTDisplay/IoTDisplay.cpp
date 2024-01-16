@@ -100,8 +100,8 @@ void setup() {
   pinMode(kLedB, OUTPUT);
 
   digitalWrite(kLedR, 1);
-  digitalWrite(kLedG, 0);
-  digitalWrite(kLedB, 0);
+  digitalWrite(kLedG, 1);
+  digitalWrite(kLedB, 1);
 
   spi.begin(kOledSckPin, -1, kOledMosiPin, -1);
   display.epd2.selectSPI(spi, SPISettings(4000000, MSBFIRST, SPI_MODE0));
@@ -112,6 +112,9 @@ void setup() {
   display.firstPage();  // if this isn't here, the later display code doesn't draw
 
   log_i("Total heap: %d, PSRAM: %d", ESP.getHeapSize(), ESP.getPsramSize());
+  digitalWrite(kLedR, 1);
+  digitalWrite(kLedG, 0);
+  digitalWrite(kLedB, 0);
 
   // NETWORK CODE
   //
@@ -122,6 +125,8 @@ void setup() {
     log_i("...");
   }
   log_i("Connected WiFi: %s, RSSI=%i", WiFi.localIP().toString(), WiFi.RSSI());
+  digitalWrite(kLedR, 1);
+  digitalWrite(kLedG, 1);
 
   // see https://randomnerdtutorials.com/esp32-ntp-timezones-daylight-saving/
   long int timeStartNtp = millis();
@@ -174,8 +179,8 @@ void setup() {
   }
   long int timeStopWifi = millis();
   log_i("Total network active time: %.1f", (float)(timeStopWifi - timeStartWifi) / 1000);
-  
-  delay(100);
+  digitalWrite(kLedR, 0);
+  digitalWrite(kLedG, 1);
 
   // DISPLAY RENDERING CODE
   //
@@ -208,7 +213,7 @@ void setup() {
   } while (display.nextPage());
 
   digitalWrite(kLedR, 0);
-  digitalWrite(kLedG, 1);
+  digitalWrite(kLedG, 0);
 
   display.hibernate();
 }
