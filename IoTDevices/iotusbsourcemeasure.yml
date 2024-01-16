@@ -202,11 +202,11 @@ sensor:
     filters:
       - multiply: 14
  
-  - platform: tmp1075
+  - platform: tmp1075n
     address: 0x48
     name: "TMP1075 FETs"
     update_interval: 10s
-  - platform: tmp1075
+  - platform: tmp1075n
     address: 0x49
     name: "TMP1075 Buck-boost"
     update_interval: 10s
