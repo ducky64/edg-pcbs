@@ -103,14 +103,17 @@ void setup() {
   digitalWrite(kLedG, 1);
   digitalWrite(kLedB, 1);
 
+  pinMode(kOledRstPin, OUTPUT);
+  digitalWrite(kOledRstPin, 0);  // assert reset
+
   spi.begin(kOledSckPin, -1, kOledMosiPin, -1);
   display.epd2.selectSPI(spi, SPISettings(4000000, MSBFIRST, SPI_MODE0));
-  display.init(115200);
-
-  display.setRotation(3);
-  display.setFullWindow();
+  display.init(0);
   display.firstPage();  // if this isn't here, the later display code doesn't draw
-
+  // do {  // not necessary on GxEPD 1.5.2, commented out to avoid a lengthy refresh
+  //   // display.fillScreen(GxEPD_GREEN);  // test code
+  // } while (display.nextPage());
+  
   log_i("Total heap: %d, PSRAM: %d", ESP.getHeapSize(), ESP.getPsramSize());
   digitalWrite(kLedR, 1);
   digitalWrite(kLedG, 0);
@@ -184,9 +187,11 @@ void setup() {
 
   // DISPLAY RENDERING CODE
   //
+  display.init(0);
+  display.setRotation(3);
   display.firstPage();
   do {
-    display.fillScreen(GxEPD_WHITE);
+    // display.fillScreen(GxEPD_YELLOW);  // test code
 
     if (streamDataPtr > streamData) {  // got a PNG
       int rc = png.openRAM((uint8_t *)streamData, sizeof(streamData), PNGDraw);
@@ -211,11 +216,10 @@ void setup() {
       display.print(kErrMsg);
     }
   } while (display.nextPage());
+  display.hibernate();
 
   digitalWrite(kLedR, 0);
   digitalWrite(kLedG, 0);
-
-  display.hibernate();
 }
 
 void loop() {
