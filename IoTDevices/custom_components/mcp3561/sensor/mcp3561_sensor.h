@@ -11,7 +11,8 @@ namespace mcp3561 {
 
 class MCP3561Sensor : public PollingComponent,
                       public sensor::Sensor,
-                      public voltage_sampler::VoltageSampler {
+                      public voltage_sampler::VoltageSampler,
+                      public Parented<MCP3561> {
  public:
   MCP3561Sensor(uint8_t channel);
 

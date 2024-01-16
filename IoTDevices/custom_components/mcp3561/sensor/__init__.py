@@ -13,6 +13,7 @@ MCP3561Sensor = mcp3561_ns.class_(
     sensor.Sensor,
     cg.PollingComponent,
     voltage_sampler.VoltageSampler,
+    cg.Parented.template(MCP3561),
 )
 CONF_MCP3561_ID = "mcp3561_id"
 
