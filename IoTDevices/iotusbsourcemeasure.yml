@@ -1,0 +1,235 @@
+substitutions:
+  name: "Usb Source Measure"
+
+esphome:
+  name: ducky-iotusbsmu
+  name_add_mac_suffix: true
+  platform: esp32
+  board: esp32-s3-devkitc-1  # 8MB flash without PSRAM
+
+wifi:
+  <<: !include ../wifi_config.yaml
+  reboot_timeout: 0s
+
+# HASS API
+api:
+
+# Allow API
+ota:
+
+# Print Updates
+logger:
+  level: INFO
+
+# WebServer component, displays some information
+web_server:
+    port: 80
+
+light:
+  - platform: binary
+    name: "${name} Dbg"
+    id: debug_led
+    output: output_debug_led
+  - platform: binary
+    name: "${name} RGB R"
+    output: output_rgb_r
+  - platform: binary
+    name: "${name} RGB G"
+    output: output_rgb_g
+  - platform: binary
+    name: "${name} RGB B"
+    output: output_rgb_b
+
+# fan:  # allows manual power control
+#   - platform: speed
+#     id: iron_control
+#     output: output_iron_command
+#     name: "Iron Command Power"
+
+output:
+  - id: output_debug_led
+    platform: gpio
+    pin: GPIO0
+    inverted: true
+  - id: output_rgb_r
+    platform: gpio
+    pin: GPIO13
+    inverted: true
+  - id: output_rgb_g
+    platform: gpio
+    pin: GPIO12
+    inverted: true
+  - id: output_rgb_b
+    platform: gpio
+    pin: GPIO14
+    inverted: true
+  # - platform: mcpwm_sync
+  #   id: output_iron_pwm
+  #   pin: GPIO5
+  #   pin_comp: GPIO4
+  #   frequency: 200kHz
+  #   deadtime_rising: 100ns
+  #   deadtime_falling: 100ns
+  #   sample_adc: adc_thermocouple
+  #   blank_frequency: 20Hz
+  #   blank_time: 1ms
+
+pca9554:
+  - id: pca9554a_device
+    address: 0x38
+
+i2c:
+  scl: GPIO15
+  sda: GPIO16
+  frequency: 400kHz
+  scan: false
+
+font:
+  - file: "resources/4x6.bdf"  # characters actually 3x5 plus 1px descender
+    id: bdf4x6
+  - file: "resources/6x10.bdf"  # characters actually 5x7 plus 2px descender
+    id: bdf6x10
+    
+display:
+  - platform: ssd1306_i2c
+    model: "SSD1306 128x64"
+    address: 0x3c
+    reset_pin: GPIO18
+    update_interval : 200ms
+    lambda: |-
+      it.printf(0, 0, id(bdf6x10), "Ducky SMU");
+
+binary_sensor:
+  - platform: gpio
+    id: encoder_sw
+    name: "${name} Encoder Sw"
+    pin: 
+      pca9554: pca9554a_device
+      number: 6
+      inverted: true
+      mode:
+        input: true
+    filters:
+      - delayed_on: 10ms
+  - platform: gpio
+    id: dir_sw
+    name: "${name} Dir Sw"
+    pin: 
+      pca9554: pca9554a_device
+      number: 2
+      inverted: true
+      mode:
+        input: true
+    filters:
+      - delayed_on: 10ms
+  - platform: gpio
+    id: dir_a
+    name: "${name} Dir A"
+    pin: 
+      pca9554: pca9554a_device
+      number: 1
+      inverted: true
+      mode:
+        input: true
+    filters:
+      - delayed_on: 10ms
+  - platform: gpio
+    id: dir_b
+    name: "${name} Dir B"
+    pin: 
+      pca9554: pca9554a_device
+      number: 7
+      inverted: true
+      mode:
+        input: true
+    filters:
+      - delayed_on: 10ms
+  - platform: gpio
+    id: dir_c
+    name: "${name} Dir C"
+    pin: 
+      pca9554: pca9554a_device
+      number: 3
+      inverted: true
+      mode:
+        input: true
+    filters:
+      - delayed_on: 10ms
+  - platform: gpio
+    id: dir_d
+    name: "${name} Dir D"
+    pin: 
+      pca9554: pca9554a_device
+      number: 0
+      inverted: true
+      mode:
+        input: true
+    filters:
+      - delayed_on: 10ms
+
+fusb302:
+  id: usbpd
+  target: 5v
+
+text_sensor:
+  - platform: fusb302
+    status:
+      name: "${name} PD Status"  
+    capabilities:
+      name: "${name} PD Capabilities"
+
+sensor:
+  - platform: fusb302
+    cc:
+      name: "${name} PD CC"
+    vbus:
+      id: fusb_vbus
+      name: "${name} PD VBus"
+    selected_voltage:
+      id: fusb_selected_voltage
+      name: "${name} PD Selected Voltage"
+    selected_current:
+      id: fusb_selected_current
+      name: "${name} PD Selected Current"
+
+  - platform: adc
+    id: adc_vconc
+    name: "${name} VConc"
+    pin: GPIO10
+    accuracy_decimals: 2
+    update_interval: 1s
+    attenuation: auto
+    filters:
+      - multiply: 14
+ 
+  - platform: tmp1075
+    address: 0x48
+    name: "TMP1075 FETs"
+    update_interval: 10s
+  - platform: tmp1075
+    address: 0x49
+    name: "TMP1075 Buck-boost"
+    update_interval: 10s
+
+  # - platform: rotary_encoder
+  #   id: encoder
+  #   name: "${name} Encoder"
+  #   resolution: 2  # so each detent generates one action
+  #   pin_a:
+  #     number: 4
+  #     inverted: true
+  #     mode:
+  #       input: true
+  #       pullup: true
+  #   pin_b:
+  #     number: GPIO16
+  #     inverted: true
+  #     mode:
+  #       input: true
+  #       pullup: true
+  #   on_clockwise:
+  #   - then:
+  #       - lambda: ;
+  #   on_anticlockwise:
+  #   - then:
+  #       - lambda: ;
