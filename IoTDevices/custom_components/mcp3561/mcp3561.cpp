@@ -16,7 +16,7 @@ void MCP3561::setup() {
 
   writeReg8(kRegister::CONFIG0, 0xE2);  // internal VREF, internal clock w/ no CLK out, ADC standby
   uint8_t configReadback = readReg8(kRegister::CONFIG0);  // TODO should be 16b read
-  ESP_LOGW(TAG, "MCP356x CONFIG0 readback %02x", configReadback);
+  ESP_LOGE(TAG, "MCP356x CONFIG0 readback %02x", configReadback);
 
   uint8_t reservedVal = readReg8(kRegister::RESERVED);  // TODO should be 16b read
   if (reservedVal == 0x000c) {
