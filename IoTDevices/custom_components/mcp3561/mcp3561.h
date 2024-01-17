@@ -82,7 +82,7 @@ class MCP3561 : public Component,
     kVCm = 0xf,
   };
 
-  MCP3561(kMux inn_channel, kOsr osr, uint8_t device_address = 0);
+  MCP3561(kMux inn_channel, kOsr osr, uint8_t device_address = 1);
 
   void setup() override;
   void dump_config() override;
