@@ -14,6 +14,10 @@ float MCP3561::get_setup_priority() const { return setup_priority::HARDWARE; }
 void MCP3561::setup() {
   this->spi_setup();
 
+  writeReg8(kRegister::CONFIG0, 0xE2);  // internal VREF, internal clock w/ no CLK out, ADC standby
+  uint8_t configReadback = readReg8(kRegister::CONFIG0);  // TODO should be 16b read
+  ESP_LOGW(TAG, "MCP356x CONFIG0 readback %02x", configReadback);
+
   uint8_t reservedVal = readReg8(kRegister::RESERVED);  // TODO should be 16b read
   if (reservedVal == 0x000c) {
     ESP_LOGCONFIG(TAG, "Detected MCP3561");
@@ -22,10 +26,9 @@ void MCP3561::setup() {
   } else if (reservedVal == 0x000e) {
     ESP_LOGCONFIG(TAG, "Detected MCP3564");
   } else {
-    ESP_LOGW(TAG, "MCP356x unexpected Reserved (device ID) value %04u", reservedVal);
+    ESP_LOGW(TAG, "MCP356x unexpected Reserved (device ID) value %04x", reservedVal);
   }
 
-  writeReg8(kRegister::CONFIG0, 0xE2);  // internal VREF, internal clock w/ no CLK out, ADC standby
   writeReg8(kRegister::CONFIG1, (this->osr_ & 0xf) << 2);
   writeReg8(kRegister::CONFIG3, 0x80);  // one-shot conversion into standby, 24b encoding
   writeReg8(kRegister::IRQ, 0x07);  // enable fast command and start-conversion IRQ, IRQ logic high)
