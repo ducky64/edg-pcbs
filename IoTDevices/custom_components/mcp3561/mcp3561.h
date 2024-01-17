@@ -25,6 +25,7 @@ class MCP3561 : public Component,
     OFFSETCAL = 0x9,
     GAINCAL = 0xA,
     LOCK = 0xD,
+    RESERVED = 0x0E,
     CRCCFG = 0xF
   };
 
@@ -81,7 +82,7 @@ class MCP3561 : public Component,
     kVCm = 0xf,
   };
 
-  MCP3561(kMux inn_channel, kOsr osr);
+  MCP3561(kMux inn_channel, kOsr osr, uint8_t device_address = 0);
 
   void setup() override;
   void dump_config() override;
@@ -89,8 +90,12 @@ class MCP3561 : public Component,
   int32_t read_data(uint8_t channel);  // reads data as a 24-bit signed value
 
 protected:
+  uint8_t writeReg8(uint8_t regAddr, uint8_t data);
+  uint8_t readReg8(uint8_t regAddr);
+
   kMux inn_channel_;
   kOsr osr_;
+  uint8_t device_address_;
 };
 
 }
