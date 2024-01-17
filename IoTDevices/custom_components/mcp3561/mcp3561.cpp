@@ -60,7 +60,6 @@ uint32_t MCP3561::readReg(uint8_t regAddr, uint8_t bytes) {
   return out;
 }
 
-
 int32_t MCP3561::read_data(uint8_t channel) {
   // this->transfer_byte();
   return 0;
