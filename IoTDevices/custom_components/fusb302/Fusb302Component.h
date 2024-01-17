@@ -43,7 +43,9 @@ public:
       ESP_LOGI(TAG, "got chip id 0x%02x", id_);
     } else {
       ESP_LOGE(TAG, "failed to read chip id");
-      sensor_status_->publish_state("Failed chip ID");
+      if (sensor_status_ != nullptr) {
+        sensor_status_->publish_state("Failed chip ID");
+      }
       mark_failed();
       return;
     }
@@ -54,7 +56,9 @@ public:
 
   void loop() override {
     if (pd_fsm_.updateVbus(lastVbusMv_)) {
-      sensor_vbus_->publish_state((float)lastVbusMv_ / 1000);
+      if (sensor_vbus_ != nullptr) {
+        sensor_vbus_->publish_state((float)lastVbusMv_ / 1000);
+      }
     }
 
     UsbPdStateMachine::UsbPdState state = UsbPdStateMachine::kStart;
@@ -63,25 +67,38 @@ public:
     } else {  // reset, likely source was disconnected
       pd_fsm_.reset();
       selectedVoltageMv_ = 0;
-      sensor_selected_voltage_->publish_state(0);
+      if (sensor_selected_voltage_ != nullptr) {
+        sensor_selected_voltage_->publish_state(0);
+      }
       selectedCurrentMa_ = 0;
-      sensor_selected_current_->publish_state(0);
-    }
-
-    if (state != last_state_) {
-      switch (state) {
-        case UsbPdStateMachine::kStart: sensor_status_->publish_state("Start"); break;
-        case UsbPdStateMachine::kDetectCc: sensor_status_->publish_state("Detect CC"); break;
-        case UsbPdStateMachine::kEnableTransceiver: sensor_status_->publish_state("Enable Transceiver"); break;
-        case UsbPdStateMachine::kWaitSourceCapabilities: sensor_status_->publish_state("Wait Capabilities"); break;
-        case UsbPdStateMachine::kConnected: sensor_status_->publish_state("Connected"); break;
+      if (sensor_selected_current_ != nullptr) {
+        sensor_selected_current_->publish_state(0);
       }
     }
 
+    if (state != last_state_) {
+      const char* status;
+      switch (state) {
+        case UsbPdStateMachine::kStart: status = "Start"; break;
+        case UsbPdStateMachine::kDetectCc: status = "Detect CC"; break;
+        case UsbPdStateMachine::kEnableTransceiver: status = "Enable Transceiver"; break;
+        case UsbPdStateMachine::kWaitSourceCapabilities: status = "Wait Capabilities"; break;
+        case UsbPdStateMachine::kConnected: status = "Connected"; break;
+      }
+      if (sensor_status_ != nullptr) {
+        sensor_status_->publish_state(status);
+      }
+    }
+
+    float cc_state;
     if (last_state_ < UsbPdStateMachine::kEnableTransceiver && state >= UsbPdStateMachine::kEnableTransceiver) {  // cc available
-      sensor_cc_->publish_state(pd_fsm_.getCcPin());
+      if (sensor_cc_ != nullptr) {
+        sensor_cc_->publish_state(pd_fsm_.getCcPin());
+      }
     } else if (last_state_ >= UsbPdStateMachine::kEnableTransceiver && state < UsbPdStateMachine::kEnableTransceiver) {  // disconnected
-      sensor_cc_->publish_state(0);
+      if (sensor_cc_ != nullptr) {
+        sensor_cc_->publish_state(0);
+      }
     }
 
     if (last_state_ < UsbPdStateMachine::kConnected && state >= UsbPdStateMachine::kConnected) {  // capabilities now available
@@ -110,9 +127,13 @@ public:
           ss << "unk battery";
         }
       }
-      sensor_capabilities_->publish_state(ss.str());
+      if (sensor_capabilities_ != nullptr) {
+        sensor_capabilities_->publish_state(ss.str());
+      }
     } else if (last_state_ >= UsbPdStateMachine::kConnected && state < UsbPdStateMachine::kConnected) {  // disconnected
-      sensor_capabilities_->publish_state("");
+      if (sensor_capabilities_ != nullptr) {
+        sensor_capabilities_->publish_state("");
+      }
     }
 
     // update current capability if not yet set, once the power is stable
@@ -123,9 +144,13 @@ public:
       if (currentCapability > 0) {
         UsbPd::Capability::Unpacked capability = capabilities[currentCapability - 1];
         selectedVoltageMv_ = capability.voltageMv;
-        sensor_selected_voltage_->publish_state((float)selectedVoltageMv_ / 1000);
+        if (sensor_selected_voltage_ != nullptr) {
+          sensor_selected_voltage_->publish_state((float)selectedVoltageMv_ / 1000);
+        }
         selectedCurrentMa_ = capability.maxCurrentMa;  // TODO not necessarily requested
-        sensor_selected_current_->publish_state((float)selectedCurrentMa_ / 1000);
+        if (sensor_selected_current_ != nullptr) {
+          sensor_selected_current_->publish_state((float)selectedCurrentMa_ / 1000);
+        }
       }
     }
 
@@ -153,9 +178,13 @@ public:
           ESP_LOGW(TAG, "request capability %i at %i mA failed", selectCapability, lastBestCurrentMa);
         }
         selectedVoltageMv_ = 0;
-        sensor_selected_voltage_->publish_state(0);
+        if (sensor_selected_voltage_ != nullptr) {
+          sensor_selected_voltage_->publish_state(0);
+        }
         selectedCurrentMa_ = 0;
-        sensor_selected_current_->publish_state(0);
+        if (sensor_selected_current_ != nullptr) {
+          sensor_selected_current_->publish_state(0);
+        }
       }
     }
 
