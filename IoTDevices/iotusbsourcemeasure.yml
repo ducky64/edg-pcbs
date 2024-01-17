@@ -192,13 +192,6 @@ mcp3561:
   id: adc_meas
   in_neg: CH0  # pin 0 is vcenter
 
-text_sensor:
-  - platform: fusb302
-    status:
-      name: "${name} PD Status"  
-    capabilities:
-      name: "${name} PD Capabilities"
-
 sensor:
   - platform: fusb302
     vbus:
