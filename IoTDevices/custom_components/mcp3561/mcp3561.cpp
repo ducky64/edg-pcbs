@@ -14,21 +14,18 @@ float MCP3561::get_setup_priority() const { return setup_priority::HARDWARE; }
 void MCP3561::setup() {
   this->spi_setup();
 
-  writeReg8(kRegister::CONFIG0, 0xE2);  // internal VREF, internal clock w/ no CLK out, ADC standby
-  uint8_t configReadback = readReg8(kRegister::CONFIG0);  // TODO should be 16b read
-  ESP_LOGE(TAG, "MCP356x CONFIG0 readback %02x", configReadback);
-
-  uint8_t reservedVal = readReg8(kRegister::RESERVED);  // TODO should be 16b read
+  uint8_t reservedVal = readReg(kRegister::RESERVED, 2);  // TODO should be 16b read
   if (reservedVal == 0x000c) {
-    ESP_LOGCONFIG(TAG, "Detected MCP3561");
+    ESP_LOGI(TAG, "Detected MCP3561");
   } else if (reservedVal == 0x000d) {
-    ESP_LOGCONFIG(TAG, "Detected MCP3562");
+    ESP_LOGI(TAG, "Detected MCP3562");
   } else if (reservedVal == 0x000e) {
-    ESP_LOGCONFIG(TAG, "Detected MCP3564");
+    ESP_LOGI(TAG, "Detected MCP3564");
   } else {
     ESP_LOGW(TAG, "MCP356x unexpected Reserved (device ID) value %04x", reservedVal);
   }
 
+  writeReg8(kRegister::CONFIG0, 0xE2);  // internal VREF, internal clock w/ no CLK out, ADC standby
   writeReg8(kRegister::CONFIG1, (this->osr_ & 0xf) << 2);
   writeReg8(kRegister::CONFIG3, 0x80);  // one-shot conversion into standby, 24b encoding
   writeReg8(kRegister::IRQ, 0x07);  // enable fast command and start-conversion IRQ, IRQ logic high)
@@ -50,13 +47,17 @@ uint8_t MCP3561::writeReg8(uint8_t regAddr, uint8_t data) {
   return result;
 }
 
-// reads 8 bits from a register, returning the read data
-uint8_t MCP3561::readReg8(uint8_t regAddr) {
+uint32_t MCP3561::readReg(uint8_t regAddr, uint8_t bytes) {
+  uint32_t out = 0;
   this->enable();
   this->transfer_byte(((this->device_address_ & 0x3) << 6) | ((regAddr & 0xf) << 2) | kCommandType::kStaticRead);
-  uint8_t result = this->transfer_byte(0);
+  for (uint8_t i=0; i<bytes; i++) {
+    uint8_t result = this->transfer_byte(0);
+    out = out << 8;
+    out |= result;
+  }
   this->disable();
-  return result;
+  return out;
 }
 
 

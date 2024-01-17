@@ -91,7 +91,7 @@ class MCP3561 : public Component,
 
 protected:
   uint8_t writeReg8(uint8_t regAddr, uint8_t data);
-  uint8_t readReg8(uint8_t regAddr);
+  uint32_t readReg(uint8_t regAddr, uint8_t bytes = 1);
 
   kMux inn_channel_;
   kOsr osr_;
