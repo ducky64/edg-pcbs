@@ -1,5 +1,5 @@
 substitutions:
-  name: "Usb Source Measure"
+  name: "UsbSMU"
 
 esphome:
   name: ducky-iotusbsmu
@@ -114,18 +114,19 @@ display:
 
       it.printf(0, 64-6, id(bdf4x6), "%s", WiFi.localIP().toString().c_str());
       it.printf(128-(8*4), 64-6, id(bdf4x6), "%2.0f, %2.0f C", id(temp_buckboost).state, id(temp_fets).state);
+
 binary_sensor:
-  - platform: gpio
-    id: encoder_sw
-    name: "${name} Encoder Sw"
-    pin: 
-      pca9554: pca9554a_device
-      number: 6
-      inverted: true
-      mode:
-        input: true
-    filters:
-      - delayed_on: 10ms
+  # - platform: gpio
+  #   id: encoder_sw
+  #   name: "${name} Encoder Sw"
+  #   pin: 
+  #     pca9554: pca9554a_device
+  #     number: 6
+  #     inverted: true
+  #     mode:
+  #       input: true
+  #   filters:
+  #     - delayed_on: 10ms
   - platform: gpio
     id: dir_sw
     name: "${name} Dir Sw"
@@ -137,50 +138,50 @@ binary_sensor:
         input: true
     filters:
       - delayed_on: 10ms
-  - platform: gpio
-    id: dir_a
-    name: "${name} Dir A"
-    pin: 
-      pca9554: pca9554a_device
-      number: 1
-      inverted: true
-      mode:
-        input: true
-    filters:
-      - delayed_on: 10ms
-  - platform: gpio
-    id: dir_b
-    name: "${name} Dir B"
-    pin: 
-      pca9554: pca9554a_device
-      number: 7
-      inverted: true
-      mode:
-        input: true
-    filters:
-      - delayed_on: 10ms
-  - platform: gpio
-    id: dir_c
-    name: "${name} Dir C"
-    pin: 
-      pca9554: pca9554a_device
-      number: 3
-      inverted: true
-      mode:
-        input: true
-    filters:
-      - delayed_on: 10ms
-  - platform: gpio
-    id: dir_d
-    name: "${name} Dir D"
-    pin: 
-      pca9554: pca9554a_device
-      number: 0
-      inverted: true
-      mode:
-        input: true
-    filters:
-      - delayed_on: 10ms
+  # - platform: gpio
+  #   id: dir_a
+  #   name: "${name} Dir U"
+  #   pin: 
+  #     pca9554: pca9554a_device
+  #     number: 1
+  #     inverted: true
+  #     mode:
+  #       input: true
+  #   filters:
+  #     - delayed_on: 10ms
+  # - platform: gpio
+  #   id: dir_b
+  #   name: "${name} Dir R"
+  #   pin: 
+  #     pca9554: pca9554a_device
+  #     number: 7
+  #     inverted: true
+  #     mode:
+  #       input: true
+  #   filters:
+  #     - delayed_on: 10ms
+  # - platform: gpio
+  #   id: dir_c
+  #   name: "${name} Dir L"
+  #   pin: 
+  #     pca9554: pca9554a_device
+  #     number: 3
+  #     inverted: true
+  #     mode:
+  #       input: true
+  #   filters:
+  #     - delayed_on: 10ms
+  # - platform: gpio
+  #   id: dir_d
+  #   name: "${name} Dir D"
+  #   pin: 
+  #     pca9554: pca9554a_device
+  #     number: 0
+  #     inverted: true
+  #     mode:
+  #       input: true
+  #   filters:
+  #     - delayed_on: 10ms
 
 fusb302:
   id: usbpd
@@ -200,8 +201,6 @@ text_sensor:
 
 sensor:
   - platform: fusb302
-    cc:
-      name: "${name} PD CC"
     vbus:
       id: fusb_vbus
       name: "${name} PD VBus"
@@ -212,15 +211,17 @@ sensor:
       id: fusb_selected_current
       name: "${name} PD Selected Current"
   - platform: mcp3561
-    update_interval: 1s
-    mcp3561_id: adc_meas
-    id: imeas
-    channel: CH1
-  - platform: mcp3561
-    update_interval: 1s
-    mcp3561_id: adc_meas
     id: vmeas
+    name: "${name} Output Voltage"
+    update_interval: 1s
+    mcp3561_id: adc_meas
     channel: CH2
+  - platform: mcp3561
+    id: imeas
+    name: "${name} Output Current"
+    update_interval: 1s
+    mcp3561_id: adc_meas
+    channel: CH1
 
   - platform: adc
     id: adc_vconv

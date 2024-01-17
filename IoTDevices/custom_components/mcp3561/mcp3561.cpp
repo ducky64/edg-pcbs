@@ -17,16 +17,12 @@ void MCP3561::setup() {
   uint8_t reservedVal = readReg8(kRegister::RESERVED);  // TODO should be 16b read
   if (reservedVal == 0x000c) {
     ESP_LOGCONFIG(TAG, "Detected MCP3561");
-    ESP_LOGI(TAG, "Detected MCP3561");
   } else if (reservedVal == 0x000d) {
     ESP_LOGCONFIG(TAG, "Detected MCP3562");
-    ESP_LOGI(TAG, "Detected MCP3562");
   } else if (reservedVal == 0x000e) {
     ESP_LOGCONFIG(TAG, "Detected MCP3564");
-    ESP_LOGI(TAG, "Detected MCP3564");
   } else {
-    this->mark_failed();
-    return;
+    ESP_LOGW(TAG, "MCP356x unexpected Reserved (device ID) value %04u", reservedVal);
   }
 
   writeReg8(kRegister::CONFIG0, 0xE2);  // internal VREF, internal clock w/ no CLK out, ADC standby
