@@ -123,6 +123,42 @@ display:
       it.printf(0, 64-6, id(bdf4x6), "%s", WiFi.localIP().toString().c_str());
       it.printf(128-(8*4), 64-6, id(bdf4x6), "%2.0f, %2.0f C", id(temp_buckboost).state, id(temp_fets).state);
 
+number:
+  - platform: template
+    name: "${name} Set Voltage"
+    id: set_voltage
+    icon: mdi:high-voltage
+    min_value: 0
+    max_value: 30
+    step: 0.001
+    unit_of_measurement: V
+    set_action:
+      - then:
+        - lambda: ESP_LOGI("", "IMax set %f", x);
+  - platform: template
+    name: "${name} Limit Current Min"
+    id: limit_current_min
+    icon: mdi:pan-up
+    min_value: -1
+    max_value: 1
+    step: 0.001
+    unit_of_measurement: A
+    set_action:
+      - then:
+        - lambda: x;
+  - platform: template
+    name: "${name} Limit Current Max"
+    id: limit_current_max
+    icon: mdi:pan-down
+    min_value: -1
+    max_value: 1
+    step: 0.001
+    unit_of_measurement: A
+    set_action:
+      - then:
+        - lambda: x;
+      
+
 binary_sensor:
   # - platform: gpio
   #   id: encoder_sw
