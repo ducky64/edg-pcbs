@@ -82,6 +82,15 @@ output:
   #   blank_frequency: 20Hz
   #   blank_time: 1ms
 
+switch:
+  - platform: gpio
+    name: "${name} Driver Enable"
+    pin: GPIO18
+  - platform: gpio
+    name: "${name} Control Enable"
+    pin: GPIO8
+    inverted: true
+
 pca9554:
   - id: pca9554a_device
     address: 0x38
@@ -157,7 +166,7 @@ number:
     set_action:
       - then:
         - lambda: x;
-      
+
 
 binary_sensor:
   # - platform: gpio
@@ -265,6 +274,12 @@ sensor:
     update_interval: 1s
     mcp3561_id: adc_meas
     channel: CH1
+    channel_neg: AGND
+  - platform: mcp3561  # TESTING OUTPUT for absolute ADC output
+    name: "${name} VCenter"
+    update_interval: 1s
+    mcp3561_id: adc_meas
+    channel: CH0
     channel_neg: AGND
 
   - platform: adc
