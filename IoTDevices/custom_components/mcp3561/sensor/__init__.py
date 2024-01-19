@@ -23,6 +23,7 @@ CONFIG_SCHEMA = (
     sensor.sensor_schema(
       MCP3561Sensor,
       unit_of_measurement=UNIT_VOLT,
+      accuracy_decimals=7,
       state_class=STATE_CLASS_MEASUREMENT,
       device_class=DEVICE_CLASS_VOLTAGE,
     ).extend(

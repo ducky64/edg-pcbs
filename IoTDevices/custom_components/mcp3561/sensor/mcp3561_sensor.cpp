@@ -19,7 +19,8 @@ void MCP3561Sensor::dump_config() {
 }
 
 float MCP3561Sensor::sample() { 
-  return this->parent_->read_data(this->channel_, this->channel_neg_); 
+  // in 24b encoding, full scale is 2Vref (-VRef to +VRef)
+  return this->parent_->read_data(this->channel_, this->channel_neg_) / (float)(1 << 23) * 2.4;
 }
 
 void MCP3561Sensor::update() {

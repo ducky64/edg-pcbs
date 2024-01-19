@@ -216,6 +216,12 @@ sensor:
     mcp3561_id: adc_meas
     channel: CH1
     channel_neg: CH0  # pin 0 is vcenter
+  - platform: mcp3561  # TESTING OUTPUT for absolute ADC output
+    name: "${name} Output Current AGND"
+    update_interval: 1s
+    mcp3561_id: adc_meas
+    channel: CH1
+    channel_neg: AGND
 
   - platform: adc
     id: adc_vconv
