@@ -6,6 +6,10 @@ esphome:
   name_add_mac_suffix: true
   platform: esp32
   board: esp32-s3-devkitc-1  # 8MB flash without PSRAM
+  on_boot:
+    - output.set_level:
+        id: boot_pwm
+        level: "50%"
 
 wifi:
   <<: !include ../wifi_config.yaml
@@ -63,6 +67,10 @@ output:
     platform: gpio
     pin: GPIO14
     inverted: true
+  - platform: ledc
+    pin: GPIO2
+    id: boot_pwm
+    frequency: 100 kHz
   # - platform: mcpwm_sync
   #   id: output_iron_pwm
   #   pin: GPIO5
