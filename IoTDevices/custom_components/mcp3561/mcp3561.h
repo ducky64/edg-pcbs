@@ -12,7 +12,7 @@ class MCP3561 : public Component,
                 public spi::SPIDevice<spi::BIT_ORDER_MSB_FIRST, spi::CLOCK_POLARITY_LOW, spi::CLOCK_PHASE_LEADING,
                                       spi::DATA_RATE_20MHZ> {
  public:
-  enum kRegister {
+  enum Register {
     ADCDATA = 0x0,
     CONFIG0 = 0x1,
     CONFIG1 = 0x2,
@@ -29,14 +29,14 @@ class MCP3561 : public Component,
     CRCCFG = 0xF
   };
 
-  enum kCommandType {
+  enum CommandType {
     kFastCommand = 0,
     kStaticRead = 1,
     kIncrementalWrite = 2,
     kIncrementalRead = 3
   };
 
-  enum kFastCommand {
+  enum FastCommand {
     kStartConversion = 0xA,  // ADC_MODE[1:0] = 0b11
     kStandbyMode = 0xB,  // ADC_MODE[1:0] = 0b10
     kShutdownMode = 0xC,  // ADC_MODE[1:0] = 0b00
@@ -44,7 +44,7 @@ class MCP3561 : public Component,
     kDeviceFullReset = 0xE  // resets entire register map
   };
 
-  enum kOsr {
+  enum Osr {
     k98304 = 0xf,
     k81920 = 0xe,
     k49152 = 0xd,
@@ -63,7 +63,7 @@ class MCP3561 : public Component,
     k32 = 0x0
   };
 
-  enum kMux {
+  enum Mux {
     kCh0 = 0x0,
     kCh1 = 0x1,
     kCh2 = 0x2,
@@ -82,19 +82,20 @@ class MCP3561 : public Component,
     kVCm = 0xf,
   };
 
-  MCP3561(kMux inn_channel, kOsr osr, uint8_t device_address = 1);
+  MCP3561(Osr osr, uint8_t device_address = 1);
 
   void setup() override;
   void dump_config() override;
   float get_setup_priority() const override;
-  int32_t read_data(uint8_t channel);  // reads data as a 24-bit signed value
+  int32_t read_data(Mux channel, Mux channel_neg);  // reads data as a 24-bit signed value
 
 protected:
+  uint8_t fastCommand(FastCommand fastCommandCode);
+  bool readRaw24(int32_t* outValue);
   uint8_t writeReg8(uint8_t regAddr, uint8_t data);
   uint32_t readReg(uint8_t regAddr, uint8_t bytes = 1);
 
-  kMux inn_channel_;
-  kOsr osr_;
+  Osr osr_;
   uint8_t device_address_;
 };
 

@@ -14,7 +14,7 @@ class MCP3561Sensor : public PollingComponent,
                       public voltage_sampler::VoltageSampler,
                       public Parented<MCP3561> {
  public:
-  MCP3561Sensor(MCP3561::kMux channel);
+  MCP3561Sensor(MCP3561::Mux channel, MCP3561::Mux channel_neg = MCP3561::kAGnd);
 
   void update() override;
   void dump_config() override;
@@ -22,7 +22,8 @@ class MCP3561Sensor : public PollingComponent,
   float sample() override;
 
  protected:
-  MCP3561::kMux channel_;
+  MCP3561::Mux channel_;
+  MCP3561::Mux channel_neg_;
 };
 
 }

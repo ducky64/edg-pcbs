@@ -6,13 +6,12 @@ from esphome.const import CONF_ID
 DEPENDENCIES = ["spi"]
 MULTI_CONF = True
 
-CONF_IN_NEG = "in_neg"
 CONF_OSR = "osr"
 
 mcp3561_ns = cg.esphome_ns.namespace("mcp3561")
 MCP3561 = mcp3561_ns.class_("MCP3561", cg.Component, spi.SPIDevice)
 
-MCP3561Mux = MCP3561.enum("kMux")  # Table 5-1
+MCP3561Mux = MCP3561.enum("Mux")  # Table 5-1
 MUX = {
     "CH0": MCP3561Mux.kCh0,
     "CH1": MCP3561Mux.kCh1,
@@ -31,7 +30,7 @@ MUX = {
     "VCM": MCP3561Mux.kVCm,
 }
 
-MCP3561Osr = MCP3561.enum("kOsr")  # Table 5-6
+MCP3561Osr = MCP3561.enum("Osr")  # Table 5-6
 OSR = {
     "32": MCP3561Osr.k32,  # 16b, 38400-153600 Hz
     "64": MCP3561Osr.k64,  # 19b, 19200-76800 Hz
@@ -58,7 +57,6 @@ CONFIG_SCHEMA = cv.Schema(
 ).extend(spi.spi_device_schema(cs_pin_required=True)
 ).extend(
   {
-        cv.Optional(CONF_IN_NEG, default='AGND'): cv.enum(MUX, upper=True),
         cv.Optional(CONF_OSR, default='256'): cv.enum(OSR),
   }
 )
@@ -67,7 +65,6 @@ CONFIG_SCHEMA = cv.Schema(
 async def to_code(config):
     var = cg.new_Pvariable(
       config[CONF_ID],
-      config[CONF_IN_NEG],
       config[CONF_OSR],
     )
     await cg.register_component(var, config)

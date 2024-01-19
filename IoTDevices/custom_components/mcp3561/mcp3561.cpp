@@ -6,15 +6,15 @@ namespace mcp3561 {
 
 static const char *const TAG = "mcp3561";
 
-MCP3561::MCP3561(kMux inn_channel, kOsr osr, uint8_t device_address) :
-  inn_channel_(inn_channel), osr_(osr), device_address_(device_address) {}
+MCP3561::MCP3561(Osr osr, uint8_t device_address) :
+  osr_(osr), device_address_(device_address) {}
 
 float MCP3561::get_setup_priority() const { return setup_priority::HARDWARE; }
 
 void MCP3561::setup() {
   this->spi_setup();
 
-  uint8_t reservedVal = readReg(kRegister::RESERVED, 2);  // TODO should be 16b read
+  uint8_t reservedVal = readReg(Register::RESERVED, 2);
   if (reservedVal == 0x000c) {
     ESP_LOGI(TAG, "Detected MCP3561");
   } else if (reservedVal == 0x000d) {
@@ -25,10 +25,10 @@ void MCP3561::setup() {
     ESP_LOGW(TAG, "MCP356x unexpected Reserved (device ID) value %04x", reservedVal);
   }
 
-  writeReg8(kRegister::CONFIG0, 0xE2);  // internal VREF, internal clock w/ no CLK out, ADC standby
-  writeReg8(kRegister::CONFIG1, (this->osr_ & 0xf) << 2);
-  writeReg8(kRegister::CONFIG3, 0x80);  // one-shot conversion into standby, 24b encoding
-  writeReg8(kRegister::IRQ, 0x07);  // enable fast command and start-conversion IRQ, IRQ logic high)
+  writeReg8(Register::CONFIG0, 0xE2);  // internal VREF, internal clock w/ no CLK out, ADC standby
+  writeReg8(Register::CONFIG1, (this->osr_ & 0xf) << 2);
+  writeReg8(Register::CONFIG3, 0x80);  // one-shot conversion into standby, 24b encoding
+  writeReg8(Register::IRQ, 0x07);  // enable fast command and start-conversion IRQ, IRQ logic high)
 }
 
 void MCP3561::dump_config() {
@@ -38,10 +38,46 @@ void MCP3561::dump_config() {
   ESP_LOGCONFIG(TAG, "  OSR: %u", this->osr_);
 }
 
+// sends a fast command, returning the status code
+uint8_t MCP3561::fastCommand(FastCommand fastCommandCode) {
+  this->enable();
+  uint8_t status = this->transfer_byte(
+    ((this->device_address_ & 0x3) << 6) | ((fastCommandCode & 0xf) << 2) | CommandType::kFastCommand);
+  this->disable();
+
+  return status;
+}
+
+// tries to reads the ADC as a signed 24-bit value, returning whether the ADC had new data
+// does NOT start a new conversion
+bool MCP3561::readRaw24(int32_t* outValue) {
+  bool valid = false;
+
+  this->enable();
+  uint8_t status = this->transfer_byte(
+    ((this->device_address_ & 0x3) << 6) | ((Register::ADCDATA & 0xf) << 2) | CommandType::kStaticRead);
+  if ((status & 0x04) == 0) {  // STAT[2] /DataReady
+    uint8_t result;
+    result = this->transfer_byte(0);
+    *outValue = result;
+    result = this->transfer_byte(0);
+    *outValue = *outValue << 8 | result;
+    result = this->transfer_byte(0);
+    *outValue = *outValue << 8 | result;
+    if (*outValue & (1 << 23)) {  // sign extend
+      *outValue |= (int32_t)0xff << 24;
+    }
+    valid = true;
+  }
+  this->disable();
+
+  return valid;
+}
+
 // writes 8 bits into a single register, returning the status code
 uint8_t MCP3561::writeReg8(uint8_t regAddr, uint8_t data) {
   this->enable();
-  uint8_t result = this->transfer_byte(((this->device_address_ & 0x3) << 6) | ((regAddr & 0xf) << 2) | kCommandType::kIncrementalWrite);
+  uint8_t result = this->transfer_byte(((this->device_address_ & 0x3) << 6) | ((regAddr & 0xf) << 2) | CommandType::kIncrementalWrite);
   this->transfer_byte(data);
   this->disable();
   return result;
@@ -50,7 +86,7 @@ uint8_t MCP3561::writeReg8(uint8_t regAddr, uint8_t data) {
 uint32_t MCP3561::readReg(uint8_t regAddr, uint8_t bytes) {
   uint32_t out = 0;
   this->enable();
-  this->transfer_byte(((this->device_address_ & 0x3) << 6) | ((regAddr & 0xf) << 2) | kCommandType::kStaticRead);
+  this->transfer_byte(((this->device_address_ & 0x3) << 6) | ((regAddr & 0xf) << 2) | CommandType::kStaticRead);
   for (uint8_t i=0; i<bytes; i++) {
     uint8_t result = this->transfer_byte(0);
     out = out << 8;
@@ -60,9 +96,14 @@ uint32_t MCP3561::readReg(uint8_t regAddr, uint8_t bytes) {
   return out;
 }
 
-int32_t MCP3561::read_data(uint8_t channel) {
-  // this->transfer_byte();
-  return 0;
+int32_t MCP3561::read_data(Mux channel, Mux channel_neg) {
+  writeReg8(Register::MUX, ((channel & 0xf) << 4) | (channel_neg & 0xf));
+  fastCommand(FastCommand::kStartConversion);
+
+  int32_t result;
+  while(!this->readRaw24(&result));
+
+  return result;
 }
 
 }

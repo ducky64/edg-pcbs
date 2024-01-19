@@ -7,17 +7,23 @@ namespace mcp3561 {
 
 static const char *const TAG = "mcp3561.sensor";
 
-MCP3561Sensor::MCP3561Sensor(MCP3561::kMux channel) : channel_(channel) {}
+MCP3561Sensor::MCP3561Sensor(MCP3561::Mux channel, MCP3561::Mux channel_neg) : channel_(channel), channel_neg_(channel_neg) {}
 
 float MCP3561Sensor::get_setup_priority() const { return setup_priority::DATA; }
 
 void MCP3561Sensor::dump_config() {
   LOG_SENSOR("", "MCP3561Sensor Sensor", this);
   ESP_LOGCONFIG(TAG, "  Pin: %u", this->channel_);
+  ESP_LOGCONFIG(TAG, "  Pin neg: %u", this->channel_neg_);
   LOG_UPDATE_INTERVAL(this);
 }
 
-float MCP3561Sensor::sample() { return this->parent_->read_data(this->channel_); }
-void MCP3561Sensor::update() { this->publish_state(this->sample()); }
+float MCP3561Sensor::sample() { 
+  return this->parent_->read_data(this->channel_, this->channel_neg_); 
+}
+
+void MCP3561Sensor::update() {
+  this->publish_state(this->sample()); 
+}
 
 }

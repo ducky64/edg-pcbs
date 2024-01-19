@@ -8,6 +8,8 @@ from .. import mcp3561_ns, MCP3561, MUX
 AUTO_LOAD = ["voltage_sampler"]
 DEPENDENCIES = ["mcp3561"]
 
+CONF_CHANNEL_NEG = "channel_neg"
+
 MCP3561Sensor = mcp3561_ns.class_(
     "MCP3561Sensor",
     sensor.Sensor,
@@ -27,6 +29,7 @@ CONFIG_SCHEMA = (
         {
             cv.GenerateID(CONF_MCP3561_ID): cv.use_id(MCP3561),
             cv.Required(CONF_CHANNEL): cv.enum(MUX, upper=True),
+            cv.Optional(CONF_CHANNEL_NEG, default="AGND"): cv.enum(MUX, upper=True),
         }
     )
     .extend(cv.polling_component_schema("60s"))
@@ -37,6 +40,7 @@ async def to_code(config):
     var = cg.new_Pvariable(
         config[CONF_ID],
         config[CONF_CHANNEL],
+        config[CONF_CHANNEL_NEG],
     )
     await cg.register_parented(var, config[CONF_MCP3561_ID])
     await cg.register_component(var, config)
