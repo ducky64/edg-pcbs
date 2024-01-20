@@ -312,12 +312,12 @@ sensor:
   - platform: tmp1075n
     id: temp_fets
     address: 0x48
-    name: "TMP1075 FETs"
+    name: "${name} TMP1075 FETs"
     update_interval: 10s
   - platform: tmp1075n
     id: temp_buckboost
     address: 0x49
-    name: "TMP1075 Buck-boost"
+    name: "${name} TMP1075 Buck-boost"
     update_interval: 10s
 
   # - platform: rotary_encoder
