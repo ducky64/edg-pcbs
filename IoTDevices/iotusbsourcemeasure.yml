@@ -82,10 +82,10 @@ output:
   #   blank_frequency: 20Hz
   #   blank_time: 1ms
 
-  # - platform: mcp4738
-  #   id: dac_voltage
-  #   mcp4738_id: dac_control
-  #   channel: 0
+  - platform: mcp4738
+    id: dac_voltage
+    mcp4738_id: dac_control
+    channel: 0
   # - platform: mcp4738
   #   id: dac_isink
   #   mcp4738_id: dac_control
@@ -104,10 +104,6 @@ switch:
     pin: GPIO8
     inverted: true
 
-pca9554:
-  - id: pca9554a_device
-    address: 0x38
-
 i2c:
   scl: GPIO15
   sda: GPIO16
@@ -118,6 +114,22 @@ spi:
   clk_pin: GPIO5
   mosi_pin: GPIO6
   miso_pin: GPIO7
+
+pca9554:
+  - id: pca9554a_device
+    address: 0x38
+
+fusb302:
+  id: usbpd
+  target: 5v
+
+mcp3561:
+  cs_pin: GPIO4
+  id: adc_meas
+  osr: 16384
+
+mcp4738:
+  id: dac_control
 
 font:
   - file: "resources/4x6.bdf"  # characters actually 3x5 plus 1px descender
@@ -248,18 +260,6 @@ binary_sensor:
   #       input: true
   #   filters:
   #     - delayed_on: 10ms
-
-fusb302:
-  id: usbpd
-  target: 5v
-
-mcp3561:
-  cs_pin: GPIO4
-  id: adc_meas
-  osr: 16384
-
-mcp4738:
-  id: dac_control
 
 sensor:
   - platform: fusb302
