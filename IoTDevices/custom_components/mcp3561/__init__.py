@@ -32,22 +32,22 @@ MUX = {
 
 MCP3561Osr = MCP3561.enum("Osr")  # Table 5-6
 OSR = {
-    "32": MCP3561Osr.k32,  # 16b, 38400-153600 Hz
-    "64": MCP3561Osr.k64,  # 19b, 19200-76800 Hz
-    "128": MCP3561Osr.k128,  # 22b, 9600-38400 Hz
-    "256": MCP3561Osr.k256,  # 24b, default, 4800-19200 Hz
-    "512": MCP3561Osr.k512,  # 2400-9600 Hz
-    "1024": MCP3561Osr.k1024,  # 1200-4800 Hz
-    "2048": MCP3561Osr.k2048,  # 600-2400 Hz
-    "4096": MCP3561Osr.k4096,  # 300-120 0Hz
-    "8192": MCP3561Osr.k8192,  # 150-600 Hz
-    "16384": MCP3561Osr.k16384,  # 75-300 Hz
-    "20480": MCP3561Osr.k20480,  # 60-240 Hz
-    "24576": MCP3561Osr.k24576,  # 50-200 Hz
-    "40960": MCP3561Osr.k40960,  # 30-120 Hz
-    "49152": MCP3561Osr.k49152,  # 25-100 Hz
-    "81920": MCP3561Osr.k81920,  # 15-60 Hz
-    "98304": MCP3561Osr.k98304,  # 12.5-50 Hz
+    32: MCP3561Osr.k32,  # 16b, 38400-153600 Hz
+    64: MCP3561Osr.k64,  # 19b, 19200-76800 Hz
+    128: MCP3561Osr.k128,  # 22b, 9600-38400 Hz
+    256: MCP3561Osr.k256,  # 24b, default, 4800-19200 Hz
+    512: MCP3561Osr.k512,  # 2400-9600 Hz
+    1024: MCP3561Osr.k1024,  # 1200-4800 Hz
+    2048: MCP3561Osr.k2048,  # 600-2400 Hz
+    4096: MCP3561Osr.k4096,  # 300-120 0Hz
+    8192: MCP3561Osr.k8192,  # 150-600 Hz
+    16384: MCP3561Osr.k16384,  # 75-300 Hz
+    20480: MCP3561Osr.k20480,  # 60-240 Hz
+    24576: MCP3561Osr.k24576,  # 50-200 Hz
+    40960: MCP3561Osr.k40960,  # 30-120 Hz
+    49152: MCP3561Osr.k49152,  # 25-100 Hz
+    81920: MCP3561Osr.k81920,  # 15-60 Hz
+    98304: MCP3561Osr.k98304,  # 12.5-50 Hz
 }
 
 CONFIG_SCHEMA = cv.Schema(
@@ -56,9 +56,9 @@ CONFIG_SCHEMA = cv.Schema(
     }
 ).extend(spi.spi_device_schema(cs_pin_required=True)
 ).extend(
-  {
+    {
         cv.Optional(CONF_OSR, default='256'): cv.enum(OSR),
-  }
+    }
 )
 
 

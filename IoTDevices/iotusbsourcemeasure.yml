@@ -70,7 +70,7 @@ output:
   - platform: ledc
     pin: GPIO2
     id: boot_pwm
-    frequency: 100 kHz
+    frequency: 1 MHz
   # - platform: mcpwm_sync
   #   id: output_iron_pwm
   #   pin: GPIO5
@@ -81,6 +81,19 @@ output:
   #   sample_adc: adc_thermocouple
   #   blank_frequency: 20Hz
   #   blank_time: 1ms
+
+  # - platform: mcp4738
+  #   id: dac_voltage
+  #   mcp4738_id: dac_control
+  #   channel: 0
+  # - platform: mcp4738
+  #   id: dac_isink
+  #   mcp4738_id: dac_control
+  #   channel: 1
+  # - platform: mcp4738
+  #   id: dac_isrc
+  #   mcp4738_id: dac_control
+  #   channel: 2
 
 switch:
   - platform: gpio
@@ -243,6 +256,10 @@ fusb302:
 mcp3561:
   cs_pin: GPIO4
   id: adc_meas
+  osr: 16384
+
+mcp4738:
+  id: dac_control
 
 sensor:
   - platform: fusb302
