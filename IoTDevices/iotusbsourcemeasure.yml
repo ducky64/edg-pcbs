@@ -38,6 +38,27 @@ logger:
 web_server:
     port: 80
 
+# device constants
+globals:
+  - id: kVoltageRatio
+    type: float
+    initial_value: '24'  # output volts per measured volt
+  - id: kCurrentRatio
+    type: float
+    initial_value: '10'  # output amps per measured volt, including accounting for resistor value
+  - id: kVCenter
+    type: float
+    initial_value: '1.498'  # theoretical and measured
+  - id: kDacVRef
+    type: float
+    initial_value: '3.284'  # measured, off a LDO
+  - id: kBuckBoostPwmDeadzone
+    type: float
+    initial_value: '0.05'  # in fractional duty-cycle, maximum / minimum duty cycle
+  - id: kMaxBoostRatio
+    type: float
+    initial_value: '1.5'  # in fractional duty-cycle, maximum / minimum duty cycle
+
 light:
   - platform: binary
     name: "${name} Dbg"
@@ -79,7 +100,7 @@ output:
     frequency: 200kHz
     deadtime_rising: 100ns
     deadtime_falling: 100ns
-    max_duty: 0.1
+    max_duty: 0.37  # up to 1.5x boost ratio + accounting for deadzone
 
   - platform: mcp4728
     id: dac_voltage
@@ -168,11 +189,8 @@ number:
     set_action:
       - then:
         - lambda: |-
-            float kVoltageRatio = 24.1;  // actual output volts per measured volt
-            float kVCenter = 1.498;  // measured; 1.498v theoretical
-            float kDacVRef = 3.284;  // measured
-            float targetVolts = kVCenter - (x / kVoltageRatio);
-            id(dac_voltage)->write_state(targetVolts / kDacVRef);
+            float targetVolts = id(kVCenter) - (x / id(kVoltageRatio));
+            id(dac_voltage)->write_state(targetVolts / id(kDacVRef));
             id(set_voltage).publish_state(x);
   - platform: template
     name: "${name} Set Current Min"
@@ -185,11 +203,8 @@ number:
     set_action:
       - then:
         - lambda: |-
-            float kCurrentRatio = 10;  // actual output amps per measured volt, including resistance
-            float kVCenter = 1.498;
-            float kDacVRef = 3.284;
-            float targetVolts = kVCenter - (x / kCurrentRatio);
-            id(dac_isink)->write_state(targetVolts / kDacVRef);
+            float targetVolts = id(kVCenter) - (x / id(kCurrentRatio));
+            id(dac_isink)->write_state(targetVolts / id(kDacVRef));
             id(limit_current_min).publish_state(x);
   - platform: template
     name: "${name} Set Current Max"
@@ -202,36 +217,34 @@ number:
     set_action:
       - then:
         - lambda: |-
-            float kCurrentRatio = 10;  // actual output amps per measured volt, including resistance
-            float kVCenter = 1.498;
-            float kDacVRef = 3.284;
-            float targetVolts = kVCenter - (x / kCurrentRatio);
-            id(dac_isrc)->write_state(targetVolts / kDacVRef);
+            float targetVolts = id(kVCenter) - (x / id(kCurrentRatio));
+            id(dac_isrc)->write_state(targetVolts / id(kDacVRef));
             id(limit_current_max).publish_state(x);
   - platform: template
-    name: "${name} Buck Duty"
-    id: buck_duty
+    name: "${name} Buck-boost ratio"
+    id: buckboost_ratio
     icon: mdi:pan-down
     min_value: 0
-    max_value: 1
+    max_value: 1.5
     step: 0.01
     set_action:
       - then:
         - lambda: |-
-            id(buck_pwm)->write_state(x);
-            id(buck_duty).publish_state(x);
-  - platform: template
-    name: "${name} Boost Duty"
-    id: boost_duty
-    icon: mdi:pan-down
-    min_value: 0
-    max_value: 1
-    step: 0.01
-    set_action:
-      - then:
-        - lambda: |-
-            id(boost_pwm)->write_state(x);
-            id(boost_duty).publish_state(x);
+            float buckDc = 1 - id(kBuckBoostPwmDeadzone), boostDc = id(kBuckBoostPwmDeadzone);
+            if (x > id(kMaxBoostRatio)) {  // clamp if needed
+              x = id(kMaxBoostRatio);
+            }
+            if (x <= 1) {  // adjust buck dc
+              float boostRatio = 1 / (1 - boostDc);
+              buckDc = x / boostRatio;  // offset the minimal boost PWM
+            } else {  // adjust boost dc
+              float boostRatio = x / buckDc;  // offset the maximum buck PWM
+              boostDc = 1 - (1 / boostRatio);
+            }
+            id(buck_pwm)->write_state(buckDc);
+            id(boost_pwm)->write_state(boostDc);
+            ESP_LOGI("BuckBoostCtl", "Target %.02f, buck %.02f, boost %.02f", x, buckDc, boostDc);
+            id(buckboost_ratio).publish_state(x);
 
 binary_sensor:
   # - platform: gpio
@@ -338,7 +351,7 @@ sensor:
     name: "${name} Int VConv"
     pin: GPIO10
     accuracy_decimals: 2
-    update_interval: 1s
+    update_interval: 0.25s
     attenuation: auto
     filters:
       - multiply: 14
