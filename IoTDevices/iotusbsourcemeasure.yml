@@ -339,6 +339,18 @@ sensor:
     mcp3561_id: adc_meas
     channel: CH1
     channel_neg: CH0  # pin 0 is vcenter
+    filters:
+      - lambda: return x * id(kCurrentRatio);
+      - calibrate_linear:
+          method: least_squares
+          datapoints:  # sensor -> true
+            - -0.0054274 -> 0.014
+            - 0.0344982 -> 0.032
+            - 0.0752420 -> 0.051
+            - 0.1582003 -> 0.089
+            - 0.247175 -> 0.130
+            - 0.3150415 -> 0.162
+    unit_of_measurement: A
   - platform: mcp3561  # TESTING OUTPUT for absolute ADC output
     name: "${name} Int VCenter"
     update_interval: 1s
