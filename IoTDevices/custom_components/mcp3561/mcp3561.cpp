@@ -101,7 +101,13 @@ int32_t MCP3561::read_data(Mux channel, Mux channel_neg) {
   fastCommand(FastCommand::kStartConversion);
 
   int32_t result;
-  while(!this->readRaw24(&result));
+  uint32_t startTime = esphome::millis();
+  while (!this->readRaw24(&result)) {
+    if ((esphome::millis() - startTime) >= 100) {  // TODO this is arbitrary
+      ESP_LOGE(TAG, "conversion timed out");
+      return 0;
+    }
+  }
 
   return result;
 }
