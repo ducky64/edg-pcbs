@@ -19,6 +19,9 @@ esphome:
     - number.set:
         id: limit_current_max
         value: 0.1
+    - number.set:
+        id: buckboost_ratio
+        value: 1.0
 
 wifi:
   <<: !include ../wifi_config.yaml
