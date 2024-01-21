@@ -10,6 +10,15 @@ esphome:
     - output.set_level:
         id: boot_pwm
         level: "50%"
+    - number.set:
+        id: set_voltage
+        value: 0
+    - number.set:
+        id: limit_current_min
+        value: -0.1
+    - number.set:
+        id: limit_current_max
+        value: 0.1
 
 wifi:
   <<: !include ../wifi_config.yaml
@@ -34,21 +43,6 @@ light:
     name: "${name} Dbg"
     id: debug_led
     output: output_debug_led
-  - platform: binary
-    name: "${name} RGB R"
-    output: output_rgb_r
-  - platform: binary
-    name: "${name} RGB G"
-    output: output_rgb_g
-  - platform: binary
-    name: "${name} RGB B"
-    output: output_rgb_b
-
-# fan:  # allows manual power control
-#   - platform: speed
-#     id: iron_control
-#     output: output_iron_command
-#     name: "Iron Command Power"
 
 output:
   - id: output_debug_led
@@ -164,33 +158,51 @@ number:
     icon: mdi:high-voltage
     min_value: 0
     max_value: 30
-    step: 0.001
+    step: 0.01
     unit_of_measurement: V
     set_action:
       - then:
-        - lambda: ESP_LOGI("", "IMax set %f", x);
+        - lambda: |-
+            float kVoltageRatio = 24.1;  // actual output volts per measured volt
+            float kVCenter = 1.5;
+            float kDacVRef = 3.3;
+            float targetVolts = kVCenter - (x / kVoltageRatio);
+            id(dac_voltage)->write_state(targetVolts / kDacVRef);
+            id(set_voltage).publish_state(x);
   - platform: template
     name: "${name} Limit Current Min"
     id: limit_current_min
     icon: mdi:pan-up
     min_value: -1
     max_value: 1
-    step: 0.001
+    step: 0.01
     unit_of_measurement: A
     set_action:
       - then:
-        - lambda: x;
+        - lambda: |-
+            float kCurrentRatio = 10;  // actual output amps per measured volt, including resistance
+            float kVCenter = 1.5;
+            float kDacVRef = 3.3;
+            float targetVolts = kVCenter - (x / kCurrentRatio);
+            id(dac_isink)->write_state(targetVolts / kDacVRef);
+            id(limit_current_min).publish_state(x);
   - platform: template
     name: "${name} Limit Current Max"
     id: limit_current_max
     icon: mdi:pan-down
     min_value: -1
     max_value: 1
-    step: 0.001
+    step: 0.01
     unit_of_measurement: A
     set_action:
       - then:
-        - lambda: x;
+        - lambda: |-
+            float kCurrentRatio = 10;  // actual output amps per measured volt, including resistance
+            float kVCenter = 1.5;
+            float kDacVRef = 3.3;
+            float targetVolts = kVCenter - (x / kCurrentRatio);
+            id(dac_isrc)->write_state(targetVolts / kDacVRef);
+            id(limit_current_max).publish_state(x);
 
 
 binary_sensor:

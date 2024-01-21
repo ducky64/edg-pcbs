@@ -34,7 +34,7 @@ class MCP4738 : public Component, public i2c::I2CDevice {
   void dump_config() override;
   float get_setup_priority() const override;
   
-  void writeChannel(uint8_t channel, uint16_t data, bool upload = true, Reference ref = kInternalVref, bool gain = false, PowerDown power = kNormal);
+  void writeChannel(uint8_t channel, uint16_t data, bool upload = true, Reference ref = kExternalVref, bool gain = false, PowerDown power = kNormal);
 };
 
 class MCP4738Output : public output::FloatOutput,
