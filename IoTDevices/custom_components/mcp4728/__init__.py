@@ -6,13 +6,13 @@ from esphome.const import CONF_ID
 DEPENDENCIES = ["i2c"]
 MULTI_CONF = True
 
-mcp4738_ns = cg.esphome_ns.namespace("mcp4738")
-MCP4738 = mcp4738_ns.class_("MCP4738", cg.Component, i2c.I2CDevice)
+mcp4728_ns = cg.esphome_ns.namespace("mcp4728")
+MCP4728 = mcp4728_ns.class_("MCP4728", cg.Component, i2c.I2CDevice)
 
 CONFIG_SCHEMA = (
     cv.Schema(
         {
-            cv.GenerateID(): cv.declare_id(MCP4738),
+            cv.GenerateID(): cv.declare_id(MCP4728),
         }
     )
     .extend(i2c.i2c_device_schema(0x60))

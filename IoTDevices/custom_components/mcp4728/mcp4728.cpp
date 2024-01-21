@@ -1,17 +1,17 @@
-#include "mcp4738.h"
+#include "mcp4728.h"
 #include "esphome/core/log.h"
 
 using namespace esphome;
-namespace mcp4738 {
+namespace mcp4728 {
 
-static const char *const TAG = "mcp4738";
+static const char *const TAG = "mcp4728";
 
-MCP4738::MCP4738() {
+MCP4728::MCP4728() {
 }
 
-float MCP4738::get_setup_priority() const { return setup_priority::HARDWARE; }
+float MCP4728::get_setup_priority() const { return setup_priority::HARDWARE; }
 
-void MCP4738::setup() {
+void MCP4728::setup() {
   uint8_t buf[1];
   if (!this->read_bytes_raw(buf, 1)) {
     ESP_LOGE(TAG, "device read failed");
@@ -19,11 +19,11 @@ void MCP4738::setup() {
   }
 }
 
-void MCP4738::dump_config() {
+void MCP4728::dump_config() {
   // no config to be dumped
 }
 
-void MCP4738::writeChannel(uint8_t channel, uint16_t data, bool upload, Reference ref, bool gain, PowerDown power) {
+void MCP4728::writeChannel(uint8_t channel, uint16_t data, bool upload, Reference ref, bool gain, PowerDown power) {
   if (channel > 3) {
     ESP_LOGE(TAG, "invalid channel %i", channel);
     return;
@@ -36,9 +36,9 @@ void MCP4738::writeChannel(uint8_t channel, uint16_t data, bool upload, Referenc
     (ref << 15) | (power << 13) | (gain << 12) | data);
 }
 
-MCP4738Output::MCP4738Output(uint8_t channel) : channel_(channel) {};
+MCP4728Output::MCP4728Output(uint8_t channel) : channel_(channel) {};
 
-void MCP4738Output::write_state(float state) {
+void MCP4728Output::write_state(float state) {
   uint16_t data = state * 4095;
   if (data > 4095) {
     ESP_LOGE(TAG, "data out of range, clamping: %f", state);

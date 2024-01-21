@@ -6,9 +6,9 @@
 #include "esphome/components/i2c/i2c.h"
 
 using namespace esphome;
-namespace mcp4738 {
+namespace mcp4728 {
 
-class MCP4738 : public Component, public i2c::I2CDevice {
+class MCP4728 : public Component, public i2c::I2CDevice {
  public:
   enum WriteCommand {  // 5-bit C2:0, W1:0, where LSb is W0
     kFastWrite = 0x00,  // only two MSbits are relevant, rest of the 'command field' is payload
@@ -28,7 +28,7 @@ class MCP4738 : public Component, public i2c::I2CDevice {
     kInternalVref = 1,  // 2.048v internal (2.007-2.089, +/- 2 %)
   };
 
-  MCP4738();
+  MCP4728();
 
   void setup() override;
   void dump_config() override;
@@ -37,10 +37,10 @@ class MCP4738 : public Component, public i2c::I2CDevice {
   void writeChannel(uint8_t channel, uint16_t data, bool upload = true, Reference ref = kExternalVref, bool gain = false, PowerDown power = kNormal);
 };
 
-class MCP4738Output : public output::FloatOutput,
-                      public Parented<MCP4738> {
+class MCP4728Output : public output::FloatOutput,
+                      public Parented<MCP4728> {
  public:
-  MCP4738Output(uint8_t channel);
+  MCP4728Output(uint8_t channel);
 
   void write_state(float state) override;
 

@@ -81,17 +81,17 @@ output:
     deadtime_falling: 100ns
     max_duty: 0.1
 
-  - platform: mcp4738
+  - platform: mcp4728
     id: dac_voltage
-    mcp4738_id: dac_control
+    mcp4728_id: dac_control
     channel: 0
-  - platform: mcp4738
+  - platform: mcp4728
     id: dac_isink
-    mcp4738_id: dac_control
+    mcp4728_id: dac_control
     channel: 1
-  - platform: mcp4738
+  - platform: mcp4728
     id: dac_isrc
-    mcp4738_id: dac_control
+    mcp4728_id: dac_control
     channel: 2
 
 switch:
@@ -127,7 +127,7 @@ mcp3561:
   id: adc_meas
   osr: 16384
 
-mcp4738:
+mcp4728:
   id: dac_control
 
 font:
