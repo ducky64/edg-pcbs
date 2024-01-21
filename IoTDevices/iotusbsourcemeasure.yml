@@ -72,13 +72,14 @@ output:
     frequency: 200kHz
     deadtime_rising: 100ns
     deadtime_falling: 100ns
-  # - platform: mcpwm_sync
-  #   id: boost_pwm
-  #   pin: GPIO39  # low-side
-  #   pin_comp: GPIO38  # high-side
-  #   frequency: 200kHz
-  #   deadtime_rising: 100ns
-  #   deadtime_falling: 100ns
+  - platform: mcpwm_sync
+    id: boost_pwm
+    pin: GPIO39  # low-side
+    pin_comp: GPIO38  # high-side
+    frequency: 200kHz
+    deadtime_rising: 100ns
+    deadtime_falling: 100ns
+    max_duty: 0.1
 
   - platform: mcp4738
     id: dac_voltage
@@ -219,6 +220,18 @@ number:
         - lambda: |-
             id(buck_pwm)->write_state(x);
             id(buck_duty).publish_state(x);
+  - platform: template
+    name: "${name} Boost Duty"
+    id: boost_duty
+    icon: mdi:pan-down
+    min_value: 0
+    max_value: 1
+    step: 0.01
+    set_action:
+      - then:
+        - lambda: |-
+            id(boost_pwm)->write_state(x);
+            id(boost_duty).publish_state(x);
 
 binary_sensor:
   # - platform: gpio

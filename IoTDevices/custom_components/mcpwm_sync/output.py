@@ -17,6 +17,8 @@ DEPENDENCIES = ["esp32"]
 CONF_PIN_COMP = 'pin_comp'  # complementary pin
 CONF_DEADTIME_RISING = 'deadtime_rising'
 CONF_DEADTIME_FALLING = 'deadtime_falling'
+CONF_MAX_DUTY = 'max_duty'
+
 CONF_SYNC_ADC = 'sample_adc'
 CONF_SAMPLE_FREQUENCY = 'blank_frequency'
 CONF_BLANK_TIME = 'blank_time'
@@ -33,6 +35,7 @@ CONFIG_SCHEMA = output.FLOAT_OUTPUT_SCHEMA.extend(
         cv.Optional(CONF_FREQUENCY, default="1kHz"): cv.frequency,
         cv.Optional(CONF_DEADTIME_RISING, default="1us"): cv_time_ns,
         cv.Optional(CONF_DEADTIME_FALLING, default="1us"): cv_time_ns,
+        cv.Optional(CONF_MAX_DUTY, default=1.0): cv.float_range(min=0, max=1),
         cv.Optional(CONF_SYNC_ADC, default=None): cv.use_id(sensor.ADCSensor),
         cv.Optional(CONF_SAMPLE_FREQUENCY, default="1Hz"): cv.frequency,
         cv.Optional(CONF_BLANK_TIME, default="0s"): cv_time_ns,  # 0 to disable
@@ -45,7 +48,7 @@ async def to_code(config):
     gpio_comp = await cg.gpio_pin_expression(config[CONF_PIN_COMP])
     sync_adc = await cg.get_variable(config[CONF_SYNC_ADC])
     var = cg.new_Pvariable(config[CONF_ID], gpio, gpio_comp,
-      config[CONF_FREQUENCY], config[CONF_DEADTIME_RISING], config[CONF_DEADTIME_FALLING],
+      config[CONF_FREQUENCY], config[CONF_DEADTIME_RISING], config[CONF_DEADTIME_FALLING], config[CONF_MAX_DUTY],
       sync_adc, config[CONF_SAMPLE_FREQUENCY], config[CONF_BLANK_TIME])
 
     await cg.register_component(var, config)
