@@ -164,8 +164,8 @@ number:
       - then:
         - lambda: |-
             float kVoltageRatio = 24.1;  // actual output volts per measured volt
-            float kVCenter = 1.5;
-            float kDacVRef = 3.3;
+            float kVCenter = 1.498;  // measured; 1.498v theoretical
+            float kDacVRef = 3.284;  // measured
             float targetVolts = kVCenter - (x / kVoltageRatio);
             id(dac_voltage)->write_state(targetVolts / kDacVRef);
             id(set_voltage).publish_state(x);
@@ -181,8 +181,8 @@ number:
       - then:
         - lambda: |-
             float kCurrentRatio = 10;  // actual output amps per measured volt, including resistance
-            float kVCenter = 1.5;
-            float kDacVRef = 3.3;
+            float kVCenter = 1.498;
+            float kDacVRef = 3.284;
             float targetVolts = kVCenter - (x / kCurrentRatio);
             id(dac_isink)->write_state(targetVolts / kDacVRef);
             id(limit_current_min).publish_state(x);
@@ -198,8 +198,8 @@ number:
       - then:
         - lambda: |-
             float kCurrentRatio = 10;  // actual output amps per measured volt, including resistance
-            float kVCenter = 1.5;
-            float kDacVRef = 3.3;
+            float kVCenter = 1.498;
+            float kDacVRef = 3.284;
             float targetVolts = kVCenter - (x / kCurrentRatio);
             id(dac_isrc)->write_state(targetVolts / kDacVRef);
             id(limit_current_max).publish_state(x);
@@ -287,23 +287,17 @@ sensor:
   - platform: mcp3561
     id: vmeas
     name: "${name} Output Voltage"
-    update_interval: 1s
+    update_interval: 0.25s
     mcp3561_id: adc_meas
     channel: CH2
     channel_neg: CH0  # pin 0 is vcenter
   - platform: mcp3561
     id: imeas
     name: "${name} Output Current"
-    update_interval: 1s
+    update_interval: 0.25s
     mcp3561_id: adc_meas
     channel: CH1
     channel_neg: CH0  # pin 0 is vcenter
-  - platform: mcp3561  # TESTING OUTPUT for absolute ADC output
-    name: "${name} Output Current AGND"
-    update_interval: 1s
-    mcp3561_id: adc_meas
-    channel: CH1
-    channel_neg: AGND
   - platform: mcp3561  # TESTING OUTPUT for absolute ADC output
     name: "${name} VCenter"
     update_interval: 1s
