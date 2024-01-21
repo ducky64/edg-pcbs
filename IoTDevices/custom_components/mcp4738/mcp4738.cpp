@@ -41,7 +41,8 @@ MCP4738Output::MCP4738Output(uint8_t channel) : channel_(channel) {};
 void MCP4738Output::write_state(float state) {
   uint16_t data = state * 4095;
   if (data > 4095) {
-    ESP_LOGE(TAG, "data out of range %f", state);
+    ESP_LOGE(TAG, "data out of range, clamping: %f", state);
+    data = 4095;
   }
   parent_->writeChannel(channel_, data, true);
 }
