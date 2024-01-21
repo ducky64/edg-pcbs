@@ -10,14 +10,31 @@ namespace mcp4738 {
 
 class MCP4738 : public Component, public i2c::I2CDevice {
  public:
+  enum WriteCommand {  // 5-bit C2:0, W1:0, where LSb is W0
+    kFastWrite = 0x00,  // only two MSbits are relevant, rest of the 'command field' is payload
+    kMultiWriteDac = 0x08,
+    kSingleWriteDacEeprom = 0x0b,
+  };
+
+  enum PowerDown {
+    kNormal = 0,
+    kPowerdown1kGnd = 1,  // powered down with Vout loaded with 1k to GND
+    kPowerdown100kGnd = 1,  // above, but 100k to GND
+    kPowerdown500kGnd = 1,  // above, but 500k to GND
+  };
+
+  enum Reference {
+    kExternalVref = 0,  // Vdd
+    kInternalVref = 1,  // 2.048v internal (2.007-2.089, +/- 2 %)
+  };
+
   MCP4738();
 
   void setup() override;
   void dump_config() override;
   float get_setup_priority() const override;
   
-protected:
-  
+  void writeChannel(uint8_t channel, uint16_t data, bool upload = true, Reference ref = kInternalVref, bool gain = false, PowerDown power = kNormal);
 };
 
 class MCP4738Output : public output::FloatOutput,
