@@ -65,16 +65,20 @@ output:
     pin: GPIO2
     id: boot_pwm
     frequency: 1 MHz
+  - platform: mcpwm_sync
+    id: buck_pwm
+    pin: GPIO40  # high-side
+    pin_comp: GPIO42  # low-side
+    frequency: 200kHz
+    deadtime_rising: 100ns
+    deadtime_falling: 100ns
   # - platform: mcpwm_sync
-  #   id: output_iron_pwm
-  #   pin: GPIO5
-  #   pin_comp: GPIO4
+  #   id: boost_pwm
+  #   pin: GPIO39  # low-side
+  #   pin_comp: GPIO38  # high-side
   #   frequency: 200kHz
   #   deadtime_rising: 100ns
   #   deadtime_falling: 100ns
-  #   sample_adc: adc_thermocouple
-  #   blank_frequency: 20Hz
-  #   blank_time: 1ms
 
   - platform: mcp4738
     id: dac_voltage
@@ -115,7 +119,7 @@ pca9554:
 
 fusb302:
   id: usbpd
-  target: 5v
+  target: 9v
 
 mcp3561:
   cs_pin: GPIO4
@@ -203,7 +207,18 @@ number:
             float targetVolts = kVCenter - (x / kCurrentRatio);
             id(dac_isrc)->write_state(targetVolts / kDacVRef);
             id(limit_current_max).publish_state(x);
-
+  - platform: template
+    name: "${name} Buck Duty"
+    id: buck_duty
+    icon: mdi:pan-down
+    min_value: 0
+    max_value: 1
+    step: 0.01
+    set_action:
+      - then:
+        - lambda: |-
+            id(buck_pwm)->write_state(x);
+            id(buck_duty).publish_state(x);
 
 binary_sensor:
   # - platform: gpio
@@ -319,12 +334,12 @@ sensor:
     id: temp_fets
     address: 0x48
     name: "${name} TMP1075 FETs"
-    update_interval: 10s
+    update_interval: 1s
   - platform: tmp1075n
     id: temp_buckboost
     address: 0x49
     name: "${name} TMP1075 Buck-boost"
-    update_interval: 10s
+    update_interval: 1s
 
   # - platform: rotary_encoder
   #   id: encoder

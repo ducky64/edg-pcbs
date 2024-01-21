@@ -33,7 +33,7 @@ CONFIG_SCHEMA = output.FLOAT_OUTPUT_SCHEMA.extend(
         cv.Optional(CONF_FREQUENCY, default="1kHz"): cv.frequency,
         cv.Optional(CONF_DEADTIME_RISING, default="1us"): cv_time_ns,
         cv.Optional(CONF_DEADTIME_FALLING, default="1us"): cv_time_ns,
-        cv.Optional(CONF_SYNC_ADC): cv.use_id(sensor.ADCSensor),
+        cv.Optional(CONF_SYNC_ADC, default=None): cv.use_id(sensor.ADCSensor),
         cv.Optional(CONF_SAMPLE_FREQUENCY, default="1Hz"): cv.frequency,
         cv.Optional(CONF_BLANK_TIME, default="0s"): cv_time_ns,  # 0 to disable
     }
