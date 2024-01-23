@@ -59,6 +59,7 @@ SPIClass spi(HSPI);  // for ESP32S3
 // GxEPD2_3C<GxEPD2_290_C90c, GxEPD2_290_C90c::HEIGHT> display(GxEPD2_290_C90c(kOledCsPin, kOledDcPin, kOledRstPin, kEpdBusyPin));  // SSD1680, compatible w/ ER-EPD029-2R
 
 GxEPD2_7C<GxEPD2_565c, GxEPD2_565c::HEIGHT / 4> display(GxEPD2_565c(kOledCsPin, kOledDcPin, kOledRstPin, kEpdBusyPin)); // Waveshare 5.65" 7-color
+// GxEPD2_3C<GxEPD2_290_C90c, GxEPD2_290_C90c::HEIGHT> display(GxEPD2_290_C90c(kOledCsPin, kOledDcPin, kOledRstPin, kEpdBusyPin));  // SSD1680, compatible w/ ER-EPD029-2R
 
 
 #include "esp_wifi.h"  // support wifi stop
@@ -105,14 +106,6 @@ void setup() {
 
   pinMode(kOledRstPin, OUTPUT);
   digitalWrite(kOledRstPin, 0);  // assert reset
-
-  spi.begin(kOledSckPin, -1, kOledMosiPin, -1);
-  display.epd2.selectSPI(spi, SPISettings(4000000, MSBFIRST, SPI_MODE0));
-  display.init(0);
-  display.firstPage();  // if this isn't here, the later display code doesn't draw
-  // do {  // not necessary on GxEPD 1.5.2, commented out to avoid a lengthy refresh
-  //   // display.fillScreen(GxEPD_GREEN);  // test code
-  // } while (display.nextPage());
   
   log_i("Total heap: %d, PSRAM: %d", ESP.getHeapSize(), ESP.getPsramSize());
   digitalWrite(kLedR, 1);
@@ -187,6 +180,8 @@ void setup() {
 
   // DISPLAY RENDERING CODE
   //
+  spi.begin(kOledSckPin, -1, kOledMosiPin, -1);
+  display.epd2.selectSPI(spi, SPISettings(4000000, MSBFIRST, SPI_MODE0));
   display.init(0);
   display.setRotation(3);
   display.firstPage();
