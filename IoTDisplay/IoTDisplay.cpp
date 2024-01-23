@@ -76,10 +76,12 @@ PNG png;
 uint8_t streamData[65536] = {0};  // allocate in static memory
 uint8_t* streamDataPtr = streamData;
 
+size_t maxWidth = 480;
+
 
 void PNGDraw(PNGDRAW *pDraw) {
-  uint16_t usPixels[448];
-  uint8_t ucMask[448/8];
+  uint16_t usPixels[maxWidth];
+  uint8_t ucMask[maxWidth/8];
   
   png.getLineAsRGB565(pDraw, usPixels, PNG_RGB565_BIG_ENDIAN, 0xffffffff);
   png.getAlphaMask(pDraw, ucMask, 255);
