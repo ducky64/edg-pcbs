@@ -112,13 +112,6 @@ void setup() {
   display.epd2.selectSPI(spi, SPISettings(4000000, MSBFIRST, SPI_MODE0));
   display.init(0);
 
-  display.setRotation(3);
-  display.firstPage();
-  do {
-    display.fillScreen(GxEPD_WHITE);
-  } while (display.nextPage());
-
-
   // NETWORK CODE
   //
   long int timeStartWifi = millis();
