@@ -10,7 +10,6 @@ esphome:
     - climate.control:  # turn off iron at power on
         id: iron_control
         mode: "OFF"
-    - lambda: id(api_id)->set_reboot_timeout(0);
 
 wifi:
   <<: !include ../wifi_config.yaml
@@ -18,7 +17,7 @@ wifi:
 
 # HASS API
 api:
-  id: api_id
+  reboot_timeout: 0s
 
 # Allow API
 ota:

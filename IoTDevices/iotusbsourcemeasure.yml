@@ -29,6 +29,7 @@ wifi:
 
 # HASS API
 api:
+  reboot_timeout: 0s
 
 # Allow API
 ota:
