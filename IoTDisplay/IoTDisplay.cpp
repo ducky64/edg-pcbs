@@ -58,9 +58,8 @@ SPIClass spi(HSPI);  // for ESP32S3
 
 // GxEPD2_3C<GxEPD2_290_C90c, GxEPD2_290_C90c::HEIGHT> display(GxEPD2_290_C90c(kOledCsPin, kOledDcPin, kOledRstPin, kEpdBusyPin));  // SSD1680, compatible w/ ER-EPD029-2R
 
-GxEPD2_7C<GxEPD2_565c, GxEPD2_565c::HEIGHT/2> display(GxEPD2_565c(kOledCsPin, kOledDcPin, kOledRstPin, kEpdBusyPin)); // Waveshare 5.65" 7-color
-// GxEPD2_3C<GxEPD2_290_C90c, GxEPD2_290_C90c::HEIGHT> display(GxEPD2_290_C90c(kOledCsPin, kOledDcPin, kOledRstPin, kEpdBusyPin));  // SSD1680, compatible w/ ER-EPD029-2R
-
+// GxEPD2_7C<GxEPD2_565c, GxEPD2_565c::HEIGHT/2> display(GxEPD2_565c(kOledCsPin, kOledDcPin, kOledRstPin, kEpdBusyPin)); // Waveshare 5.65" 7-color
+GxEPD2_3C<GxEPD2_750c_Z08, GxEPD2_750c_Z08::HEIGHT> display(GxEPD2_750c_Z08(kOledCsPin, kOledDcPin, kOledRstPin, kEpdBusyPin)); // works with Waveshare 3C 7.5" B
 
 #include "esp_wifi.h"  // support wifi stop
 #include <WiFi.h>
@@ -112,6 +111,13 @@ void setup() {
   spi.begin(kOledSckPin, -1, kOledMosiPin, -1);
   display.epd2.selectSPI(spi, SPISettings(4000000, MSBFIRST, SPI_MODE0));
   display.init(0);
+
+  display.setRotation(3);
+  display.firstPage();
+  do {
+    display.fillScreen(GxEPD_WHITE);
+  } while (display.nextPage());
+
 
   // NETWORK CODE
   //
