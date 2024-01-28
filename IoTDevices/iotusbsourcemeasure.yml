@@ -127,10 +127,17 @@ switch:
     id: driver_enable
     name: "${name} Driver Enable"
     pin: GPIO18
+    on_turn_on:
+    - then:
+      - switch.turn_on: control_enable
+    on_turn_off:
+    - then:
+      - switch.turn_off: control_enable
   - platform: gpio
+    id: control_enable
+    internal: true
     name: "${name} Control Enable"
     pin: GPIO8
-    inverted: true
 
 i2c:
   scl: GPIO15
@@ -176,18 +183,16 @@ display:
 
       it.printf(0, 12, id(bdf6x10), "SET  %2.1f V  % 2.2f A", id(set_voltage).state, id(limit_current_min).state);
       it.printf(0, 20, id(bdf6x10), "     %s    % 2.2f A", id(driver_enable).state ? "ON " : "OFF", id(limit_current_max).state);
-      it.printf(0, 32, id(bdf6x10), "MES  %2.1f V  %1.2f A", id(meas_voltage).get_state(), id(meas_current).get_state());
+      it.printf(0, 32, id(bdf6x10), "MES  %2.1f V  % 2.2f A", id(meas_voltage).get_state(), id(meas_current).get_state());
 
       const char* pdState;
       switch (id(usbpd).get_state()) {
-        case UsbPdStateMachine::kStart: pdState = "DIS";
-        case UsbPdStateMachine::kConnected: pdState = "CON";
-        default: pdState = "...";
+        case UsbPdStateMachine::kConnected: pdState = "PD"; break;
+        default: pdState = "  ";
       }
-      it.printf(0, 64-6-10, id(bdf6x10), "USB  %2.1f V  %s", id(fusb_vbus).get_state(), pdState);
 
       it.printf(0, 64-6, id(bdf4x6), "%s", WiFi.localIP().toString().c_str());
-      it.printf(128-(8*4), 64-6, id(bdf4x6), "%2.0f, %2.0f C", id(temp_buckboost).state, id(temp_fets).state);
+      it.printf(128-(17*4), 64-6, id(bdf4x6), "%s %2.1f V  %2.0f,%2.0f C", pdState, id(fusb_vbus).get_state(), id(temp_buckboost).state, id(temp_fets).state);
 
 number:
   - platform: template
