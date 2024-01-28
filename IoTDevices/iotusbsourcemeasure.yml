@@ -121,6 +121,7 @@ output:
 
 switch:
   - platform: gpio
+    id: driver_enable
     name: "${name} Driver Enable"
     pin: GPIO18
   - platform: gpio
@@ -169,6 +170,10 @@ display:
     update_interval : 200ms
     lambda: |-
       it.printf(0, 0, id(bdf6x10), "Ducky SMU");
+
+      it.printf(0, 12, id(bdf6x10), "SET  %2.1f V  % 2.2f A", id(set_voltage).state, id(limit_current_min).state);
+      it.printf(0, 20, id(bdf6x10), "     %s    % 2.2f A", id(driver_enable).state ? "ON " : "OFF", id(limit_current_max).state);
+      it.printf(0, 32, id(bdf6x10), "MES  %2.1f V  %1.2f A", id(meas_voltage).get_state(), id(meas_current).get_state());
 
       const char* pdState;
       switch (id(usbpd).get_state()) {
@@ -330,32 +335,50 @@ sensor:
       id: fusb_selected_current
       name: "${name} PD Selected Current"
   - platform: mcp3561
-    id: vmeas
+    id: meas_voltage
     name: "${name} Meas Voltage"
-    update_interval: 0.25s
+    update_interval: 0.2s
     mcp3561_id: adc_meas
     channel: CH2
     channel_neg: CH0  # pin 0 is vcenter
+    filters:
+      - lambda: return x * id(kVoltageRatio);
+      # - calibrate_linear:
+      #     method: least_squares
+      #     datapoints:  # sensor -> true, 50 ohm load
+      #       - 0.0962471 -> 0.006  # set = 0v
+      #       - 0.7580704 -> 0.678  # set = 1v
+      #       - 1.6609200 -> 1.473  # set = 2v
+      #       - 3.5083532 -> 3.463  # set = 4v
+      #       - 8.2696228 -> 8.22  # set = 8v
+      #       - 12.2803879 -> 12.22  # set = 12v
+      #       # 50ohm loaded
+      #       - 0.7347107 -> 0.657  # set = 1v, 10.76 mA
+      #       - 1.6379104 -> 1.570  # set = 2v, 25.74 mA
+      #       - 3.4808600 -> 3.430  # set = 4v, 69 mA
+      #       - 8.2677402 -> 8.22  # set = 8v, 165 mA
+      #       - 12.2277975 -> 12.17 # set = 12v, 245 mA
+
   - platform: mcp3561
-    id: imeas
+    id: meas_current
     name: "${name} Meas Current"
-    update_interval: 0.25s
+    update_interval: 0.2s
     mcp3561_id: adc_meas
     channel: CH1
     channel_neg: CH0  # pin 0 is vcenter
     filters:
       - lambda: return x * id(kCurrentRatio);
-      - calibrate_linear:
-          method: least_squares
-          datapoints:  # sensor -> true, 50 ohm load
-            - -0.0051015 -> 0
-            - 0.0328085 -> 0.032
-            - 0.0773658 -> 0.070
-            - 0.1424263 -> 0.124
-            - 0.1910073 -> 0.165
-            - 0.2388536 -> 0.205
-            - 0.2864064 -> 0.245
-            - -0.0050609 -> 0
+      # - calibrate_linear:
+      #     method: least_squares
+      #     datapoints:  # sensor -> true, 50 ohm load
+      #       - -0.0051015 -> 0
+      #       - 0.0328085 -> 0.032
+      #       - 0.0773658 -> 0.070
+      #       - 0.1424263 -> 0.124
+      #       - 0.1910073 -> 0.165
+      #       - 0.2388536 -> 0.205
+      #       - 0.2864064 -> 0.245
+            # - -0.0050609 -> 0
             # - 0.2566624 -> 0.249  # 10 ohm load constants below
             # - 0.5583450 -> 0.532
             # - 0.7941853 -> 0.756
