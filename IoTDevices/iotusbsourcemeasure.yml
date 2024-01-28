@@ -53,6 +53,9 @@ globals:
   - id: kVCenter
     type: float
     initial_value: '1.498'  # theoretical and measured
+  - id: kAdcVref
+    type: float
+    initial_value: '2.4'  # theoretical, 2% tolerance
   - id: kDacVRef
     type: float
     initial_value: '3.284'  # measured, off a LDO
@@ -342,7 +345,9 @@ sensor:
     channel: CH2
     channel_neg: CH0  # pin 0 is vcenter
     filters:
-      - lambda: return x * id(kVoltageRatio);
+      - lambda: |-
+          id(adc_voltage).publish_state(id(meas_voltage).rawValue);
+          return x * id(kAdcVref) * id(kVoltageRatio);
       # - calibrate_linear:
       #     method: least_squares
       #     datapoints:  # sensor -> true, 50 ohm load
@@ -367,7 +372,9 @@ sensor:
     channel: CH1
     channel_neg: CH0  # pin 0 is vcenter
     filters:
-      - lambda: return x * id(kCurrentRatio);
+      - lambda: |-
+          id(adc_current).publish_state(id(meas_current).rawValue);
+          return x * id(kAdcVref) * id(kCurrentRatio);
       # - calibrate_linear:
       #     method: least_squares
       #     datapoints:  # sensor -> true, 50 ohm load
@@ -384,12 +391,23 @@ sensor:
             # - 0.7941853 -> 0.756
             # - 1.0255989 -> 0.975
     unit_of_measurement: A
+  - platform: template
+    name: "${name} Meas ADC Voltage"
+    id: adc_voltage
+    accuracy_decimals: 0
+  - platform: template
+    name: "${name} Meas ADC Current"
+    id: adc_current
+    accuracy_decimals: 0
   - platform: mcp3561  # TESTING OUTPUT for absolute ADC output
     name: "${name} Int VCenter"
     update_interval: 1s
     mcp3561_id: adc_meas
     channel: CH0
     channel_neg: AGND
+    filters:
+      - lambda: |-
+          return x * id(kAdcVref);
 
   - platform: adc
     id: adc_vconv
