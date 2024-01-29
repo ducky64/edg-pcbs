@@ -1,3 +1,4 @@
+import itertools
 from socket import socket
 
 import aioesphomeapi
@@ -23,27 +24,48 @@ kSetData = [
   'UsbSMU Set Current Max',
 ]
 
+# Calibration with external reference
+# ask_user_reference = True
+# calibration_points = [  # as kSetData tuples
+#   # unloaded
+#   (0.0, -1, 1),
+#   (1.0, -1, 1),
+#   (2.0, -1, 1),
+#   (4.0, -1, 1),
+#   (7.0, -1, 1),
+#   (10.0, -1, 1),
+#   # 50 ohm
+#   (0.0, -1, 1),
+#   (1.0, -1, 1),
+#   (2.0, -1, 1),
+#   (4.0, -1, 1),
+#   (7.0, -1, 1),
+#   (10.0, -1, 1),
+#   # 10 ohm
+#   (0.0, -1, 1),
+#   (1.0, -1, 1),
+#   (2.0, -1, 1),
+#   (4.0, -1, 1),
+#   (8.0, -1, 1),
+# ]
+
+# Quick self-cal after measurements calibrated
+import decimal
+def drange(x, y, jump):
+  while (x < y and jump > 0) or (x > y and jump < 0):
+    yield float(x)
+    x += decimal.Decimal(jump)
+
+ask_user_reference = False
+voltage_points = itertools.chain(*[
+  drange(0, 10, 0.2),
+  drange(10, 0, -0.2),
+  drange(10, 0, -0.5),
+  drange(0, 10, 0.5),
+])
 calibration_points = [  # as kSetData tuples
-  # unloaded
-  (0.0, -1, 1),
-  (1.0, -1, 1),
-  (2.0, -1, 1),
-  (4.0, -1, 1),
-  (7.0, -1, 1),
-  (10.0, -1, 1),
-  # 50 ohm
-  (0.0, -1, 1),
-  (1.0, -1, 1),
-  (2.0, -1, 1),
-  (4.0, -1, 1),
-  (7.0, -1, 1),
-  (10.0, -1, 1),
-  # 10 ohm
-  (0.0, -1, 1),
-  (1.0, -1, 1),
-  (2.0, -1, 1),
-  (4.0, -1, 1),
-  (8.0, -1, 1),
+  (float(voltage), -0.3, 0.3)
+  for voltage in voltage_points
 ]
 
 state_queues: dict[int, asyncio.Queue[aioesphomeapi.SensorState]] = {}
@@ -120,8 +142,12 @@ async def main():
         await get_next_states(*[keys_by_name[record_name] for record_name in kRecordData])]
 
       print(f"{calibration_point} => {values}: ")
-      user_data = await asyncio.to_thread(sys.stdin.readline)
-      user_data_split = [elt.strip() for elt in user_data.split(',')]
+      if ask_user_reference:
+        user_data = await asyncio.to_thread(sys.stdin.readline)
+        user_data_split = [elt.strip() for elt in user_data.split(',')]
+      else:
+        user_data_split = []
+
       csvwriter.writerow(list(calibration_point) + values + user_data_split)
       csvfile.flush()
 
