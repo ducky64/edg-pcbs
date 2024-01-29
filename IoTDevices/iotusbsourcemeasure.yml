@@ -339,6 +339,10 @@ sensor:
     vbus:
       id: fusb_vbus
       name: "${name} PD VBus"
+      filters:  # limit to 1 update/s or on fast change
+        - or:
+          - throttle : 1s
+          - delta: 1.0
     selected_voltage:
       id: fusb_selected_voltage
       name: "${name} PD Selected Voltage"
@@ -348,7 +352,7 @@ sensor:
   - platform: mcp3561
     id: meas_voltage
     name: "${name} Meas Voltage"
-    update_interval: 0.2s
+    update_interval: 0.1s
     mcp3561_id: adc_meas
     channel: CH2
     channel_neg: CH0  # pin 0 is vcenter
@@ -375,7 +379,7 @@ sensor:
   - platform: mcp3561
     id: meas_current
     name: "${name} Meas Current"
-    update_interval: 0.2s
+    update_interval: 0.1s
     mcp3561_id: adc_meas
     channel: CH1
     channel_neg: CH0  # pin 0 is vcenter
@@ -407,15 +411,15 @@ sensor:
     name: "${name} Meas ADC Current"
     id: adc_current
     accuracy_decimals: 0
-  - platform: mcp3561  # TESTING OUTPUT for absolute ADC output
-    name: "${name} Int VCenter"
-    update_interval: 1s
-    mcp3561_id: adc_meas
-    channel: CH0
-    channel_neg: AGND
-    filters:
-      - lambda: |-
-          return x * id(kAdcVref);
+  # - platform: mcp3561  # TESTING OUTPUT for absolute ADC output
+  #   name: "${name} Int VCenter"
+  #   update_interval: 1s
+  #   mcp3561_id: adc_meas
+  #   channel: CH0
+  #   channel_neg: AGND
+  #   filters:
+  #     - lambda: |-
+  #         return x * id(kAdcVref);
 
   - platform: adc
     id: adc_vconv
