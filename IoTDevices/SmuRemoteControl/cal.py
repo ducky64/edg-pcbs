@@ -58,13 +58,13 @@ def drange(x, y, jump):
 
 ask_user_reference = False
 voltage_points = itertools.chain(*[
-  drange(0, 10, 0.2),
-  drange(10, 0, -0.2),
-  drange(10, 0, -0.5),
-  drange(0, 10, 0.5),
+  drange(0, 10, 0.02),
+  drange(10, 0, -0.02),
+  # drange(10, 0, -0.5),
+  # drange(0, 10, 0.5),
 ])
 calibration_points = [  # as kSetData tuples
-  (float(voltage), -0.3, 0.3)
+  (float(voltage), -1, 1)
   for voltage in voltage_points
 ]
 

@@ -19,8 +19,8 @@ class MCP4728 : public Component, public i2c::I2CDevice {
   enum PowerDown {
     kNormal = 0,
     kPowerdown1kGnd = 1,  // powered down with Vout loaded with 1k to GND
-    kPowerdown100kGnd = 1,  // above, but 100k to GND
-    kPowerdown500kGnd = 1,  // above, but 500k to GND
+    kPowerdown100kGnd = 2,  // above, but 100k to GND
+    kPowerdown500kGnd = 3,  // above, but 500k to GND
   };
 
   enum Reference {
