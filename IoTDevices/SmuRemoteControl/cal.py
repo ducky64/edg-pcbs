@@ -114,7 +114,7 @@ async def main():
     for calibration_point in calibration_points:
       for set_name, set_value in zip(kSetData, calibration_point):
         await api.number_command(keys_by_name[set_name], set_value)
-      await asyncio.sleep(0.1)
+      await asyncio.sleep(0.25)
 
       values = [state.state for state in
         await get_next_states(*[keys_by_name[record_name] for record_name in kRecordData])]
