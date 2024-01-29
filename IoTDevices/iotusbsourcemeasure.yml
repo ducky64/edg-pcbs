@@ -58,13 +58,28 @@ globals:
     initial_value: '2.4'  # theoretical, 2% tolerance
   - id: kDacVRef
     type: float
-    initial_value: '3.284'  # measured, off a LDO
+    initial_value: '3.3'  # theoretical
   - id: kBuckBoostPwmDeadzone
     type: float
     initial_value: '0.05'  # in fractional duty-cycle, maximum / minimum duty cycle
   - id: kMaxBoostRatio
     type: float
     initial_value: '1.5'  # in fractional duty-cycle, maximum / minimum duty cycle
+  - id: kCalVoltageFactor
+    type: float
+    initial_value: '1.0'  # multiply measured volts by this to get true volts
+  - id: kCalVoltageOffset
+    type: float
+    initial_value: '0'  # add to measured volts (post-scaling) to get true volts
+  - id: kCalCurrentFactor
+    type: float
+    initial_value: '1.0'  # multiply measured amps by this to get true amps
+  - id: kCalCurrentOffset
+    type: float
+    initial_value: '0'  # add to measured amps (post-scaling) to get true amps
+  - id: kCalCurrentVoltageFactor
+    type: float
+    initial_value: '0'  # multiply by measured volts (post-calibration, then add to measured amps (post-scaling) to get true amps
 
 light:
   - platform: binary
@@ -156,7 +171,7 @@ pca9554:
 
 fusb302:
   id: usbpd
-  target: 9v
+  target: 12v
 
 mcp3561:
   cs_pin: GPIO4
@@ -192,7 +207,7 @@ display:
       }
 
       it.printf(0, 64-6, id(bdf4x6), "%s", WiFi.localIP().toString().c_str());
-      it.printf(128-(18*4), 64-6, id(bdf4x6), "%s %2.1f V  %2.0f,%2.0f C", pdState, id(fusb_vbus).get_state(), id(temp_buckboost).state, id(temp_fets).state);
+      it.printf(128-(17*4), 64-6, id(bdf4x6), "%s % 2.1fv %2.0f,%2.0fc", pdState, id(fusb_vbus).get_state(), id(temp_buckboost).state, id(temp_fets).state);
       if (millis() % 2000 >= 1000) {
         it.printf(128-4, 64-6, id(bdf4x6), ".");  // liveness indicator
       }
@@ -359,22 +374,7 @@ sensor:
     filters:
       - lambda: |-
           id(adc_voltage).publish_state(id(meas_voltage).rawValue);
-          return x * id(kAdcVref) * id(kVoltageRatio);
-      # - calibrate_linear:
-      #     method: least_squares
-      #     datapoints:  # sensor -> true, 50 ohm load
-      #       - 0.0962471 -> 0.006  # set = 0v
-      #       - 0.7580704 -> 0.678  # set = 1v
-      #       - 1.6609200 -> 1.473  # set = 2v
-      #       - 3.5083532 -> 3.463  # set = 4v
-      #       - 8.2696228 -> 8.22  # set = 8v
-      #       - 12.2803879 -> 12.22  # set = 12v
-      #       # 50ohm loaded
-      #       - 0.7347107 -> 0.657  # set = 1v, 10.76 mA
-      #       - 1.6379104 -> 1.570  # set = 2v, 25.74 mA
-      #       - 3.4808600 -> 3.430  # set = 4v, 69 mA
-      #       - 8.2677402 -> 8.22  # set = 8v, 165 mA
-      #       - 12.2277975 -> 12.17 # set = 12v, 245 mA
+          return x * id(kAdcVref) * id(kVoltageRatio) * id(kCalVoltageFactor) + id(kCalVoltageOffset);
 
   - platform: mcp3561
     id: meas_current
@@ -386,22 +386,7 @@ sensor:
     filters:
       - lambda: |-
           id(adc_current).publish_state(id(meas_current).rawValue);
-          return x * id(kAdcVref) * id(kCurrentRatio);
-      # - calibrate_linear:
-      #     method: least_squares
-      #     datapoints:  # sensor -> true, 50 ohm load
-      #       - -0.0051015 -> 0
-      #       - 0.0328085 -> 0.032
-      #       - 0.0773658 -> 0.070
-      #       - 0.1424263 -> 0.124
-      #       - 0.1910073 -> 0.165
-      #       - 0.2388536 -> 0.205
-      #       - 0.2864064 -> 0.245
-            # - -0.0050609 -> 0
-            # - 0.2566624 -> 0.249  # 10 ohm load constants below
-            # - 0.5583450 -> 0.532
-            # - 0.7941853 -> 0.756
-            # - 1.0255989 -> 0.975
+          return x * id(kAdcVref) * id(kCurrentRatio) * id(kCalCurrentFactor) + id(kCalCurrentOffset) + id(kCalCurrentVoltageFactor) * id(meas_voltage).get_state();
     unit_of_measurement: A
   - platform: template
     name: "${name} Meas ADC Voltage"

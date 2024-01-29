@@ -4,6 +4,47 @@ import aioesphomeapi
 import asyncio
 import datetime
 import logging
+import csv
+import sys
+
+
+kOutputFile = 'calibration.csv'
+
+kRecordData = [
+  'UsbSMU Meas ADC Voltage',
+  'UsbSMU Meas ADC Current',
+  'UsbSMU Meas Voltage',
+  'UsbSMU Meas Current',
+]
+
+kSetData = [
+  'UsbSMU Set Voltage',
+  'UsbSMU Set Current Min',
+  'UsbSMU Set Current Max',
+]
+
+calibration_points = [  # as kSetData tuples
+  # unloaded
+  (0.0, -1, 1),
+  (1.0, -1, 1),
+  (2.0, -1, 1),
+  (4.0, -1, 1),
+  (7.0, -1, 1),
+  (10.0, -1, 1),
+  # 50 ohm
+  (0.0, -1, 1),
+  (1.0, -1, 1),
+  (2.0, -1, 1),
+  (4.0, -1, 1),
+  (7.0, -1, 1),
+  (10.0, -1, 1),
+  # 10 ohm
+  (0.0, -1, 1),
+  (1.0, -1, 1),
+  (2.0, -1, 1),
+  (4.0, -1, 1),
+  (8.0, -1, 1),
+]
 
 state_queues: dict[int, asyncio.Queue[aioesphomeapi.SensorState]] = {}
 
@@ -16,15 +57,24 @@ def change_callback(state):
       if not state_queue.full():
         state_queue.put_nowait(state)
 
-async def get_next_state(key: int) -> aioesphomeapi.SensorState:
+async def get_next_states(*keys: int) -> list[aioesphomeapi.SensorState]:
   """Get the next state for a given key."""
-  state_queue = state_queues.get(key, None)
-  if state_queue is None:
-    state_queue = asyncio.Queue(maxsize=1)
-    state_queues[key] = state_queue
-  while not state_queue.empty():
-    await state_queue.get()  # flush prior entries
-  return await state_queue.get()
+  key_queues = []
+  for key in keys:
+    state_queue = state_queues.get(key, None)
+    if state_queue is None:
+      state_queue = asyncio.Queue(maxsize=1)
+      state_queues[key] = state_queue
+    key_queues.append(state_queue)
+
+  for key_queue in key_queues:
+    while not key_queue.empty():
+      await key_queue.get()  # flush prior entries
+
+  values = []
+  for key_queue in key_queues:
+    values.append(await key_queue.get())
+  return values
 
 
 async def main():
@@ -49,14 +99,31 @@ async def main():
   print(sensors)
   print(services)
 
-  await api.number_command(keys_by_name["UsbSMU Set Voltage"], 0)
+
   await api.number_command(keys_by_name["UsbSMU Set Current Max"], 0.5)
   await api.number_command(keys_by_name["UsbSMU Set Current Min"], -0.1)
 
   await api.subscribe_states(change_callback)
 
-  volts = (await get_next_state(keys_by_name["UsbSMU Meas Voltage"])).state
-  print(volts)
+
+  with open(kOutputFile, 'w', newline='') as csvfile:
+    csvwriter = csv.writer(csvfile, delimiter=',', quoting=csv.QUOTE_MINIMAL)
+    csvwriter.writerow(kSetData + kRecordData)
+    csvfile.flush()
+
+    for calibration_point in calibration_points:
+      for set_name, set_value in zip(kSetData, calibration_point):
+        await api.number_command(keys_by_name[set_name], set_value)
+      await asyncio.sleep(0.1)
+
+      values = [state.state for state in
+        await get_next_states(*[keys_by_name[record_name] for record_name in kRecordData])]
+
+      print(f"{calibration_point} => {values}: ")
+      user_data = await asyncio.to_thread(sys.stdin.readline)
+      user_data_split = [elt.strip() for elt in user_data.split(',')]
+      csvwriter.writerow(list(calibration_point) + values + user_data_split)
+      csvfile.flush()
 
 
 if __name__ == "__main__":
