@@ -90,6 +90,22 @@ globals:
     # initial_value: '0'
     initial_value: '-0.00355'  # multiply by measured volts (post-calibration, then add to measured amps (post-scaling) to get true amps
     # obtained using https://stats.blue/Stats_Suite/multiple_linear_regression_calculator.html
+  - id: kCalSetVoltageFactor
+    type: float
+    # initial_value: '1'
+    initial_value: '1.0005'  # multiply by set volts to get true volts
+  - id: kCalSetVoltageOffset
+    type: float
+    # initial_value: '1'
+    initial_value: '0.3813'  # add to set volts to get true volts
+  - id: kCalSetCurrentFactor
+    type: float
+    # initial_value: '1'
+    initial_value: '0.9534'  # multiply by set amps to get true amps - note varies with voltage!
+  - id: kCalSetCurrentOffset
+    type: float
+    # initial_value: '1'
+    initial_value: '0.0252'  # add to set amps to get true amps
 
 light:
   - platform: binary

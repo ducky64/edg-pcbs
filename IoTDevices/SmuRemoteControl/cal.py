@@ -47,29 +47,29 @@ def drange(x, y, jump):
 
 
 # Quick voltage self-cal after measurements calibrated
-ask_user_reference = False
-voltage_points = itertools.chain(*[
-  drange(0, 12, 0.1),
-  drange(12, 0, -0.1),
-  # drange(10, 0, -0.5),
-  # drange(0, 10, 0.5),
-])
-calibration_points = [  # as kSetData tuples
-  (float(voltage), -1, 1)
-  for voltage in voltage_points
-]
+# ask_user_reference = False
+# voltage_points = itertools.chain(*[
+#   drange(0, 12, 0.1),
+#   drange(12, 0, -0.1),
+#   # drange(10, 0, -0.5),
+#   # drange(0, 10, 0.5),
+# ])
+# calibration_points = [  # as kSetData tuples
+#   (float(voltage), -1, 1)
+#   for voltage in voltage_points
+# ]
 
 
 # Quick current self-cal after measurements calibrated
-# ask_user_reference = False
-# current_points = itertools.chain(*[
-#   drange(0, 1, 0.025),
-#   drange(1, 0, -0.025),
-# ])
-# calibration_points = [  # as kSetData tuples
-#   (12, -0.1, current)
-#   for current in current_points
-# ]
+ask_user_reference = False
+current_points = itertools.chain(*[
+  drange(0, 1, 0.025),
+  drange(1, 0, -0.025),
+])
+calibration_points = [  # as kSetData tuples
+  (12, -0.1, current)
+  for current in current_points
+]
 
 
 
