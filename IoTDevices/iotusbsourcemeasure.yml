@@ -25,6 +25,9 @@ esphome:
 
 wifi:
   <<: !include ../wifi_config.yaml
+  ap:
+    ap_timeout: 15s
+
   reboot_timeout: 0s
 
 # HASS API
@@ -197,9 +200,9 @@ display:
     lambda: |-
       it.printf(0, 0, id(bdf6x10), "Ducky SMU");
 
-      it.printf(0, 12, id(bdf6x10), "SET  %2.1f V  % 2.2f A", id(set_voltage).state, id(limit_current_min).state);
-      it.printf(0, 20, id(bdf6x10), "     %s    % 2.2f A", id(driver_enable).state ? "ON " : "OFF", id(limit_current_max).state);
-      it.printf(0, 32, id(bdf6x10), "MES  %2.1f V  % 2.2f A", id(meas_voltage).get_state(), id(meas_current).get_state());
+      it.printf(0, 12, id(bdf6x10), "SET  %4.1f V  %5.2f A", id(set_voltage).state, id(limit_current_min).state);
+      it.printf(0, 20, id(bdf6x10), "     %s     %5.2f A", id(driver_enable).state ? "ON " : "OFF", id(limit_current_max).state);
+      it.printf(0, 32, id(bdf6x10), "MES  %4.1f V  %5.2f A", id(meas_voltage).get_state(), id(meas_current).get_state());
 
       const char* pdState;
       switch (id(usbpd).get_state()) {
@@ -208,7 +211,7 @@ display:
       }
 
       it.printf(0, 64-6, id(bdf4x6), "%s", WiFi.localIP().toString().c_str());
-      it.printf(128-(17*4), 64-6, id(bdf4x6), "%s % 2.1fv %2.0f,%2.0fc", pdState, id(fusb_vbus).get_state(), id(temp_buckboost).state, id(temp_fets).state);
+      it.printf(128-(16*4), 64-6, id(bdf4x6), "%s %4.1fv %2.f,%2.fc", pdState, id(fusb_vbus).get_state(), id(temp_buckboost).state, id(temp_fets).state);
       if (millis() % 2000 >= 1000) {
         it.printf(128-4, 64-6, id(bdf4x6), ".");  // liveness indicator
       }

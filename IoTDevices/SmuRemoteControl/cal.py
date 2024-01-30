@@ -52,14 +52,16 @@ kSetData = [
 # Quick self-cal after measurements calibrated
 import decimal
 def drange(x, y, jump):
+  x = decimal.Decimal(x)
+  y = decimal.Decimal(y)
   while (x < y and jump > 0) or (x > y and jump < 0):
     yield float(x)
     x += decimal.Decimal(jump)
 
 ask_user_reference = False
 voltage_points = itertools.chain(*[
-  drange(0, 10, 0.02),
-  drange(10, 0, -0.02),
+  drange(0, 12, 1),
+  drange(12, 0, -1),
   # drange(10, 0, -0.5),
   # drange(0, 10, 0.5),
 ])
@@ -67,6 +69,18 @@ calibration_points = [  # as kSetData tuples
   (float(voltage), -1, 1)
   for voltage in voltage_points
 ]
+
+
+# ask_user_reference = False
+# current_points = itertools.chain(*[
+#   drange(0, 1, 0.025),
+#   drange(1, 0, -0.025),
+# ])
+# calibration_points = [  # as kSetData tuples
+#   (12, -0.1, current)
+#   for current in current_points
+# ]
+
 
 state_queues: dict[int, asyncio.Queue[aioesphomeapi.SensorState]] = {}
 
@@ -136,7 +150,9 @@ async def main():
     for calibration_point in calibration_points:
       for set_name, set_value in zip(kSetData, calibration_point):
         await api.number_command(keys_by_name[set_name], set_value)
-      await asyncio.sleep(0.25)
+      await asyncio.sleep(0.1)
+
+      await get_next_states(*[keys_by_name[record_name] for record_name in kRecordData])  # discard prior sample
 
       values = [state.state for state in
         await get_next_states(*[keys_by_name[record_name] for record_name in kRecordData])]
