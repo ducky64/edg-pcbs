@@ -12,50 +12,51 @@ kSetReadDelay = 0.2  # seconds
 
 
 # Calibration with external reference
-# ask_user_reference = True
-# calibration_points = [  # as voltage, current min, current max
-#   # unloaded
-#   (0.0, -1, 1),
-#   (1.0, -1, 1),
-#   (2.0, -1, 1),
-#   (4.0, -1, 1),
-#   (7.0, -1, 1),
-#   (10.0, -1, 1),
-#   # 50 ohm
-#   (0.0, -1, 1),
-#   (1.0, -1, 1),
-#   (2.0, -1, 1),
-#   (4.0, -1, 1),
-#   (7.0, -1, 1),
-#   (10.0, -1, 1),
-#   # 10 ohm
-#   (0.0, -1, 1),
-#   (1.0, -1, 1),
-#   (2.0, -1, 1),
-#   (4.0, -1, 1),
-#   (8.0, -1, 1),
-# ]
+ask_user_reference = True
+calibration_points = [  # as voltage, current min, current max
+  # unloaded
+  (0.0, -1, 1),
+  (1.0, -1, 1),
+  (2.0, -1, 1),
+  (4.0, -1, 1),
+  (7.0, -1, 1),
+  (10.0, -1, 1),
+  # 50 ohm
+  (0.0, -1, 1),
+  (1.0, -1, 1),
+  (2.0, -1, 1),
+  (4.0, -1, 1),
+  (7.0, -1, 1),
+  (10.0, -1, 1),
+  # 10 ohm
+  (0.0, -1, 1),
+  (1.0, -1, 1),
+  (2.0, -1, 1),
+  (4.0, -1, 1),
+  (8.0, -1, 1),
+]
+
 
 # Quick self-cal after measurements calibrated
-import decimal
-def drange(x, y, jump):
-  x = decimal.Decimal(x)
-  y = decimal.Decimal(y)
-  while (x < y and jump > 0) or (x > y and jump < 0):
-    yield float(x)
-    x += decimal.Decimal(jump)
-
-ask_user_reference = False
-voltage_points = itertools.chain(*[
-  drange(0, 12, 1),
-  drange(12, 0, -1),
-  # drange(10, 0, -0.5),
-  # drange(0, 10, 0.5),
-])
-calibration_points = [  # as kSetData tuples
-  (float(voltage), -1, 1)
-  for voltage in voltage_points
-]
+# import decimal
+# def drange(x, y, jump):
+#   x = decimal.Decimal(x)
+#   y = decimal.Decimal(y)
+#   while (x < y and jump > 0) or (x > y and jump < 0):
+#     yield float(x)
+#     x += decimal.Decimal(jump)
+#
+# ask_user_reference = False
+# voltage_points = itertools.chain(*[
+#   drange(0, 12, 0.1),
+#   drange(12, 0, -0.1),
+#   # drange(10, 0, -0.5),
+#   # drange(0, 10, 0.5),
+# ])
+# calibration_points = [  # as kSetData tuples
+#   (float(voltage), -1, 1)
+#   for voltage in voltage_points
+# ]
 
 
 # ask_user_reference = False

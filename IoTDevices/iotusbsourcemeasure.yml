@@ -71,19 +71,25 @@ globals:
     initial_value: '1.5'  # in fractional duty-cycle, maximum / minimum duty cycle
   - id: kCalVoltageFactor
     type: float
-    initial_value: '1.0029'  # multiply measured volts by this to get true volts
+    # initial_value: '1'
+    initial_value: '1.0000'  # multiply measured volts by this to get true volts
   - id: kCalVoltageOffset
     type: float
-    initial_value: '-0.0775'  # add to measured volts (post-scaling) to get true volts
+    # initial_value: '0'
+    initial_value: '0.0247'  # add to measured volts (post-scaling) to get true volts
   - id: kCalCurrentFactor
     type: float
-    initial_value: '0.978'  # multiply measured amps by this to get true amps
+    # initial_value: '1'
+    initial_value: '0.9824'  # multiply measured amps by this to get true amps
   - id: kCalCurrentOffset
     type: float
-    initial_value: '0.0047'  # add to measured amps (post-scaling) to get true amps
+    # initial_value: '0'
+    initial_value: '0.0114'  # add to measured amps (post-scaling) to get true amps
   - id: kCalCurrentVoltageFactor
     type: float
-    initial_value: '-0.0029'  # multiply by measured volts (post-calibration, then add to measured amps (post-scaling) to get true amps
+    # initial_value: '0'
+    initial_value: '-0.0035'  # multiply by measured volts (post-calibration, then add to measured amps (post-scaling) to get true amps
+    # obtained using https://stats.blue/Stats_Suite/multiple_linear_regression_calculator.html
 
 light:
   - platform: binary
