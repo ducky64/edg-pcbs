@@ -93,11 +93,11 @@ globals:
   - id: kCalSetVoltageFactor
     type: float
     # initial_value: '1'
-    initial_value: '1.0005'  # multiply by set volts to get true volts
+    initial_value: '1.00063'  # multiply by set volts to get true volts
   - id: kCalSetVoltageOffset
     type: float
     # initial_value: '1'
-    initial_value: '0.3813'  # add to set volts to get true volts
+    initial_value: '0.3811'  # add to set volts to get true volts
   - id: kCalSetCurrentFactor
     type: float
     # initial_value: '1'
@@ -250,7 +250,8 @@ number:
     set_action:
       - then:
         - lambda: |-
-            float targetVolts = id(kVCenter) - (x / id(kVoltageRatio));
+            float correctedX = (x - id(kCalSetVoltageOffset)) / id(kCalSetVoltageFactor);
+            float targetVolts = id(kVCenter) - (correctedX / id(kVoltageRatio));
             id(dac_voltage)->write_state(targetVolts / id(kDacVRef));
             id(set_voltage).publish_state(x);
   - platform: template
@@ -264,7 +265,8 @@ number:
     set_action:
       - then:
         - lambda: |-
-            float targetVolts = id(kVCenter) - (x / id(kCurrentRatio));
+            float correctedX = (x - id(kCalSetCurrentOffset)) / id(kCalSetCurrentFactor);
+            float targetVolts = id(kVCenter) - (correctedX / id(kCurrentRatio));
             id(dac_isink)->write_state(targetVolts / id(kDacVRef));
             id(limit_current_min).publish_state(x);
   - platform: template
@@ -278,7 +280,8 @@ number:
     set_action:
       - then:
         - lambda: |-
-            float targetVolts = id(kVCenter) - (x / id(kCurrentRatio));
+            float correctedX = (x - id(kCalSetCurrentOffset)) / id(kCalSetCurrentFactor);
+            float targetVolts = id(kVCenter) - (correctedX / id(kCurrentRatio));
             id(dac_isrc)->write_state(targetVolts / id(kDacVRef));
             id(limit_current_max).publish_state(x);
   - platform: template
@@ -308,17 +311,17 @@ number:
             id(buckboost_ratio).publish_state(x);
 
 binary_sensor:
-  # - platform: gpio
-  #   id: encoder_sw
-  #   name: "${name} Encoder Sw"
-  #   pin: 
-  #     pca9554: pca9554a_device
-  #     number: 6
-  #     inverted: true
-  #     mode:
-  #       input: true
-  #   filters:
-  #     - delayed_on: 10ms
+  - platform: gpio
+    id: encoder_sw
+    name: "${name} Encoder Sw"
+    pin: 
+      pca9554: pca9554a_device
+      number: 6
+      inverted: true
+      mode:
+        input: true
+    filters:
+      - delayed_on: 10ms
   - platform: gpio
     id: dir_sw
     name: "${name} Dir Sw"
@@ -330,50 +333,46 @@ binary_sensor:
         input: true
     filters:
       - delayed_on: 10ms
-  # - platform: gpio
-  #   id: dir_a
-  #   name: "${name} Dir U"
-  #   pin: 
-  #     pca9554: pca9554a_device
-  #     number: 1
-  #     inverted: true
-  #     mode:
-  #       input: true
-  #   filters:
-  #     - delayed_on: 10ms
-  # - platform: gpio
-  #   id: dir_b
-  #   name: "${name} Dir R"
-  #   pin: 
-  #     pca9554: pca9554a_device
-  #     number: 7
-  #     inverted: true
-  #     mode:
-  #       input: true
-  #   filters:
-  #     - delayed_on: 10ms
-  # - platform: gpio
-  #   id: dir_c
-  #   name: "${name} Dir L"
-  #   pin: 
-  #     pca9554: pca9554a_device
-  #     number: 3
-  #     inverted: true
-  #     mode:
-  #       input: true
-  #   filters:
-  #     - delayed_on: 10ms
-  # - platform: gpio
-  #   id: dir_d
-  #   name: "${name} Dir D"
-  #   pin: 
-  #     pca9554: pca9554a_device
-  #     number: 0
-  #     inverted: true
-  #     mode:
-  #       input: true
-  #   filters:
-  #     - delayed_on: 10ms
+  - platform: gpio
+    id: dir_a
+    pin: 
+      pca9554: pca9554a_device
+      number: 1
+      inverted: true
+      mode:
+        input: true
+    filters:
+      - delayed_on: 10ms
+  - platform: gpio
+    id: dir_b
+    pin: 
+      pca9554: pca9554a_device
+      number: 7
+      inverted: true
+      mode:
+        input: true
+    filters:
+      - delayed_on: 10ms
+  - platform: gpio
+    id: dir_c
+    pin: 
+      pca9554: pca9554a_device
+      number: 3
+      inverted: true
+      mode:
+        input: true
+    filters:
+      - delayed_on: 10ms
+  - platform: gpio
+    id: dir_d
+    pin: 
+      pca9554: pca9554a_device
+      number: 0
+      inverted: true
+      mode:
+        input: true
+    filters:
+      - delayed_on: 10ms
 
 sensor:
   - platform: fusb302

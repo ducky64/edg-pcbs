@@ -47,29 +47,27 @@ def drange(x, y, jump):
 
 
 # Quick voltage self-cal after measurements calibrated
-# ask_user_reference = False
-# voltage_points = itertools.chain(*[
-#   drange(0, 12, 0.1),
-#   drange(12, 0, -0.1),
-#   # drange(10, 0, -0.5),
-#   # drange(0, 10, 0.5),
-# ])
-# calibration_points = [  # as kSetData tuples
-#   (float(voltage), -1, 1)
-#   for voltage in voltage_points
-# ]
+ask_user_reference = False
+voltage_points = itertools.chain(*[
+  drange(0, 2.6, 0.1),
+  # drange(7, 0, -0.1),
+])
+calibration_points = [  # as kSetData tuples
+  (float(voltage), -1, 0.02)
+  for voltage in voltage_points
+]
 
 
 # Quick current self-cal after measurements calibrated
-ask_user_reference = False
-current_points = itertools.chain(*[
-  drange(0, 1, 0.025),
-  drange(1, 0, -0.025),
-])
-calibration_points = [  # as kSetData tuples
-  (12, -0.1, current)
-  for current in current_points
-]
+# ask_user_reference = False
+# current_points = itertools.chain(*[
+#   drange(0, 1, 0.025),
+#   drange(1, 0, -0.025),
+# ])
+# calibration_points = [  # as kSetData tuples
+#   (12, -0.1, current)
+#   for current in current_points
+# ]
 
 
 
@@ -140,8 +138,8 @@ if __name__ == "__main__":
         component = ((max_idx - idx) / (max_idx) * 0.8) + 0.1
         return (component, component, component)
 
-      xs = [row[0] for row in cal_rows]  # set_voltage
-      ys = [row[5] for row in cal_rows]  # meas_voltage
+      xs = [row[5] for row in cal_rows]  # meas_voltage
+      ys = [row[6] for row in cal_rows]  # meas_current
       cs = [index_to_color(idx, len(cal_rows) - 1)
             for idx, row in enumerate(cal_rows)]
       plt.plot(xs, ys)  # line
