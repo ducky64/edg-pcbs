@@ -52,7 +52,7 @@ voltage_points = itertools.chain(*[
   drange(0, 2.6, 0.1),
   # drange(7, 0, -0.1),
 ])
-calibration_points = [  # as kSetData tuples
+calibration_points = [
   (float(voltage), -1, 0.02)
   for voltage in voltage_points
 ]
@@ -64,25 +64,10 @@ calibration_points = [  # as kSetData tuples
 #   drange(0, 1, 0.025),
 #   drange(1, 0, -0.025),
 # ])
-# calibration_points = [  # as kSetData tuples
+# calibration_points = [
 #   (12, -0.1, current)
 #   for current in current_points
 # ]
-
-
-
-kRecordData = [
-  'UsbSMU Meas ADC Voltage',
-  'UsbSMU Meas ADC Current',
-  'UsbSMU Meas Voltage',
-  'UsbSMU Meas Current',
-]
-
-kSetData = [
-  'UsbSMU Set Voltage',
-  'UsbSMU Set Current Min',
-  'UsbSMU Set Current Max',
-]
 
 
 if __name__ == "__main__":
