@@ -20,8 +20,7 @@ class SmuInterface:
     return name.replace(' ', '_').lower()
 
   def _set(self, service: str, name: str, value: float) -> None:
-    resp = requests.post(f'http://{self.addr}/{service}/{self._webapi_name(name)}/set',
-                         json={'value': value})
+    resp = requests.post(f'http://{self.addr}/{service}/{self._webapi_name(name)}/set?value={value}')
     if resp.status_code != 200:
       raise Exception(f'Request failed: {resp.status_code}')
 

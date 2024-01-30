@@ -2,24 +2,14 @@ import argparse
 import itertools
 import time
 import csv
+from typing import Tuple
 
 from SmuInterface import SmuInterface
 
 
 kOutputFile = 'calibration.csv'
+kSetReadDelay = 0.2  # seconds
 
-kRecordData = [
-  'UsbSMU Meas ADC Voltage',
-  'UsbSMU Meas ADC Current',
-  'UsbSMU Meas Voltage',
-  'UsbSMU Meas Current',
-]
-
-kSetData = [
-  'UsbSMU Set Voltage',
-  'UsbSMU Set Current Min',
-  'UsbSMU Set Current Max',
-]
 
 # Calibration with external reference
 # ask_user_reference = True
@@ -79,99 +69,78 @@ calibration_points = [  # as kSetData tuples
 # ]
 
 
-# state_queues: dict[int, asyncio.Queue[aioesphomeapi.SensorState]] = {}
-#
-# def change_callback(state):
-#   """Print the state changes of the device.."""
-#   # print(f"{datetime.datetime.now().time()}: {state}")
-#   if isinstance(state, aioesphomeapi.SensorState):
-#     state_queue = state_queues.get(state.key, None)
-#     if state_queue is not None:
-#       if not state_queue.full():
-#         state_queue.put_nowait(state)
-#
-# async def get_next_states(*keys: int) -> list[aioesphomeapi.SensorState]:
-#   """Get the next state for a given key."""
-#   key_queues = []
-#   for key in keys:
-#     state_queue = state_queues.get(key, None)
-#     if state_queue is None:
-#       state_queue = asyncio.Queue(maxsize=1)
-#       state_queues[key] = state_queue
-#     key_queues.append(state_queue)
-#
-#   for key_queue in key_queues:
-#     while not key_queue.empty():
-#       await key_queue.get()  # flush prior entries
-#
-#   values = []
-#   for key_queue in key_queues:
-#     values.append(await key_queue.get())
-#   return values
-#
-#
-# async def main():
-#   """Connect to an ESPHome device and get details."""
-#
-#   # Establish connection
-#   api = aioesphomeapi.APIClient("ducky-iotusbsmu-565574.lan", port=6053, password=None)
-#   await api.connect(login=True)
-#   # logging.basicConfig(level=logging.DEBUG)
-#   # api.set_debug(True)  # must be set after connection is made
-#
-#   # Get API version of the device's firmware
-#   print(api.api_version)
-#
-#   # Show device details
-#   device_info = await api.device_info()
-#   print(device_info)
-#
-#   # List all entities of the device
-#   sensors, services = await api.list_entities_services()
-#   keys_by_name = dict((sensor.name, sensor.key) for sensor in sensors)
-#   print(sensors)
-#   print(services)
-#
-#
-#   await api.number_command(keys_by_name["UsbSMU Set Current Max"], 0.5)
-#   await api.number_command(keys_by_name["UsbSMU Set Current Min"], -0.1)
-#
-#   await api.subscribe_states(change_callback)
-#
-#
-#   with open(kOutputFile, 'w', newline='') as csvfile:
-#     csvwriter = csv.writer(csvfile, delimiter=',', quoting=csv.QUOTE_MINIMAL)
-#     csvwriter.writerow(kSetData + kRecordData)
-#     csvfile.flush()
-#
-#     for calibration_point in calibration_points:
-#       for set_name, set_value in zip(kSetData, calibration_point):
-#         await api.number_command(keys_by_name[set_name], set_value)
-#       await asyncio.sleep(0.1)
-#
-#       await get_next_states(*[keys_by_name[record_name] for record_name in kRecordData])  # discard prior sample
-#
-#       values = [state.state for state in
-#         await get_next_states(*[keys_by_name[record_name] for record_name in kRecordData])]
-#
-#       print(f"{calibration_point} => {values}: ")
-#       if ask_user_reference:
-#         user_data = await asyncio.to_thread(sys.stdin.readline)
-#         user_data_split = [elt.strip() for elt in user_data.split(',')]
-#       else:
-#         user_data_split = []
-#
-#       csvwriter.writerow(list(calibration_point) + values + user_data_split)
-#       csvfile.flush()
+
+kRecordData = [
+  'UsbSMU Meas ADC Voltage',
+  'UsbSMU Meas ADC Current',
+  'UsbSMU Meas Voltage',
+  'UsbSMU Meas Current',
+]
+
+kSetData = [
+  'UsbSMU Set Voltage',
+  'UsbSMU Set Current Min',
+  'UsbSMU Set Current Max',
+]
 
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(prog='SmuCal')
   parser.add_argument('addr', type=str)
+  parser.add_argument('--plot', action='store_true')
   args = parser.parse_args()
 
   smu = SmuInterface(args.addr)
-  print(smu.get_voltage_current())
-  smu.enable(True)
-  time.sleep(1)
-  smu.enable(False)
+
+  with open(kOutputFile, 'w', newline='') as csvfile:
+    csvwriter = csv.writer(csvfile, delimiter=',', quoting=csv.QUOTE_MINIMAL)
+    csvwriter.writerow([
+      'set_voltage', 'set_current_min', 'set_current_max',
+      'adc_voltage', 'adc_current', 'meas_voltage', 'meas_current',
+    ])
+    csvfile.flush()
+
+    cal_rows = []
+    smu.enable(True)
+
+    for calibration_point in calibration_points:
+      (set_voltage, set_current_min, set_current_max) = calibration_point
+      smu.set_current_limits(set_current_min, set_current_max)
+      smu.set_voltage(set_voltage)
+
+      time.sleep(kSetReadDelay)
+
+      meas_voltage, meas_current = smu.get_voltage_current()
+      adc_voltage, adc_current = smu.get_raw_voltage_current()
+      values = [adc_voltage, adc_current, meas_voltage, meas_current]
+
+      print(f"{calibration_point} => {values}", end='')
+
+      if ask_user_reference:
+        print(': ', end='')
+        user_data = input()
+        user_data_split = [elt.strip() for elt in user_data.split(',')]
+      else:
+        user_data_split = []
+        print('')  # endline
+
+      row = list(calibration_point) + values + user_data_split
+      csvwriter.writerow(row)
+      cal_rows.append(row)
+      csvfile.flush()
+
+    smu.enable(False)
+
+    if args.plot:
+      import matplotlib.pyplot as plt
+      def index_to_color(idx: int, max_idx: int) -> Tuple[float, float, float]:
+        component = ((max_idx - idx) / (max_idx) * 0.8) + 0.1
+        return (component, component, component)
+
+      xs = [row[0] for row in cal_rows]  # set_voltage
+      ys = [row[5] for row in cal_rows]  # meas_voltage
+      cs = [index_to_color(idx, len(cal_rows) - 1)
+            for idx, row in enumerate(cal_rows)]
+      plt.plot(xs, ys)  # line
+      plt.scatter(xs, ys, c=cs)  # index-coded marker
+      plt.show()
