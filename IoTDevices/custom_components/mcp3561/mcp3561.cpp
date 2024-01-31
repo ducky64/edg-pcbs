@@ -34,7 +34,6 @@ void MCP3561::setup() {
 void MCP3561::dump_config() {
   ESP_LOGCONFIG(TAG, "MCP3561:");
   LOG_PIN("  CS Pin:", this->cs_);
-  ESP_LOGCONFIG(TAG, "  IN-: %u", this->inn_channel_);
   ESP_LOGCONFIG(TAG, "  OSR: %u", this->osr_);
 }
 
