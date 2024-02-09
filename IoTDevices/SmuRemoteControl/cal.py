@@ -49,11 +49,11 @@ def drange(x, y, jump):
 # Quick voltage self-cal after measurements calibrated
 ask_user_reference = False
 voltage_points = itertools.chain(*[
-  drange(0, 2.6, 0.1),
+  drange(0, 3.6, 0.1),
   # drange(7, 0, -0.1),
 ])
 calibration_points = [
-  (float(voltage), -1, 0.02)
+  (float(voltage), -0.01, 0.4)
   for voltage in voltage_points
 ]
 
@@ -87,12 +87,15 @@ if __name__ == "__main__":
     csvfile.flush()
 
     cal_rows = []
-    smu.enable(True)
 
+    enabled = False
     for calibration_point in calibration_points:
       (set_voltage, set_current_min, set_current_max) = calibration_point
       smu.set_current_limits(set_current_min, set_current_max)
       smu.set_voltage(set_voltage)
+      if not enabled:
+        smu.enable(True)
+        enabled = True
 
       time.sleep(kSetReadDelay)
 
