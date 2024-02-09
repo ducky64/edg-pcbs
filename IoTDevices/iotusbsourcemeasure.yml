@@ -171,9 +171,11 @@ switch:
     on_turn_on:
     - then:
       - switch.turn_on: control_enable
+      - output.turn_on: output_rgb_b
     on_turn_off:
     - then:
       - switch.turn_off: control_enable
+      - output.turn_off: output_rgb_b
   - platform: gpio
     id: control_enable
     internal: true
@@ -254,6 +256,10 @@ number:
             float targetVolts = id(kVCenter) - (correctedX / id(kVoltageRatio));
             id(dac_voltage)->write_state(targetVolts / id(kDacVRef));
             id(set_voltage).publish_state(x);
+
+            // set buck-boost to minimum needed - +2v for gate driver headroom, or 5v to power sense amps
+            float convTarget = max(x + 2.0, 5.0);
+            id(buckboost_ratio).make_call().set_value(convTarget / (id(fusb_vbus).state - 0.4)).perform();
   - platform: template
     name: "${name} Set Current Min"
     id: limit_current_min
@@ -333,8 +339,16 @@ binary_sensor:
         input: true
     filters:
       - delayed_on: 10ms
+    on_click:
+    - then:
+        - lambda: |-
+            if (!id(driver_enable)->state) {
+              id(driver_enable)->turn_on();
+            } else {
+              id(driver_enable)->turn_off();
+            }
   - platform: gpio
-    id: dir_a
+    id: dir_a  # up
     pin: 
       pca9554: pca9554a_device
       number: 1
@@ -343,18 +357,12 @@ binary_sensor:
         input: true
     filters:
       - delayed_on: 10ms
+    on_click:
+    - then:
+        - lambda: |-
+            id(set_voltage)->make_call().set_value(id(set_voltage)->state + 0.2).perform();
   - platform: gpio
-    id: dir_b
-    pin: 
-      pca9554: pca9554a_device
-      number: 7
-      inverted: true
-      mode:
-        input: true
-    filters:
-      - delayed_on: 10ms
-  - platform: gpio
-    id: dir_c
+    id: dir_c  # left
     pin: 
       pca9554: pca9554a_device
       number: 3
@@ -363,8 +371,29 @@ binary_sensor:
         input: true
     filters:
       - delayed_on: 10ms
+    on_click:
+    - then:
+        - lambda: |-
+            id(set_voltage)->make_call().set_value(id(set_voltage)->state - 0.2).perform();
   - platform: gpio
-    id: dir_d
+    id: dir_b  # down
+    pin: 
+      pca9554: pca9554a_device
+      number: 7
+      inverted: true
+      mode:
+        input: true
+    filters:
+      - delayed_on: 10ms
+    on_click:
+    - then:
+        - lambda: |-
+            if (id(limit_current_max)->state > id(limit_current_min)->state + 0.2) {  // don't allow crossover - dangerous
+              id(limit_current_max)->make_call().set_value(id(limit_current_max)->state - 0.05).perform();
+              id(limit_current_min)->make_call().set_value(id(limit_current_min)->state + 0.05).perform();
+            }
+  - platform: gpio
+    id: dir_d  # right
     pin: 
       pca9554: pca9554a_device
       number: 0
@@ -373,6 +402,11 @@ binary_sensor:
         input: true
     filters:
       - delayed_on: 10ms
+    on_click:
+    - then:
+        - lambda: |-
+            id(limit_current_max)->make_call().set_value(id(limit_current_max)->state + 0.05).perform();
+            id(limit_current_min)->make_call().set_value(id(limit_current_min)->state - 0.05).perform();
 
 sensor:
   - platform: fusb302
