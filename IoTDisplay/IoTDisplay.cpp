@@ -1,46 +1,42 @@
 #include <Arduino.h>
 #include <SPI.h>
 
-// ESP32-S3 variant
-const int kSw0Pin = 8;
-const int kSw1Pin = 18;
-const int kSw2Pin = 17;
-const int kOledRstPin = 2;
-const int kOledDcPin = 39;
-const int kOledCsPin = 38;
-const int kEpdBusyPin = 42;
+// ESP32-S3 variant, new version
+// touch_duck=TOUCH13, 21,
+// touch_lemur=TOUCH14, 22,
+// vbat_sense=ADC1_CH6, 7,
+// epd=SPI2,
+// epd.sck=GPIO40, 33,
+// epd.mosi=GPIO42, 35,
+// sd=SPI3, 
+// sd.sck=GPIO9, 17, 
+// sd.mosi=GPIO10, 18, 
+// sd.miso=GPIO3, 15, 
+// ledr=GPIO1, 39, 
+// ledg=GPIO2, 38, 
+// ledb=GPIO4, 4, 
+// sw=GPIO5, 5, 
+// vbat_sense_gate=GPIO6, 6, 
+// epd_rst=GPIO15, 8, 
+// epd_dc=GPIO38, 31, 
+// epd_cs=GPIO39, 32, 
+// epd_busy=GPIO16, 9, 
+// sd_cs=GPIO11, 19
 
-const int kOledSckPin = 40;
-const int kOledMosiPin = 41;
+const int kSwPin = 5;
+const int kEpdRstPin = 15;
+const int kEpdDcPin = 38;
+const int kEpdCsPin = 39;
+const int kEpdBusyPin = 16;
 
-const int kLedR = 7;
-const int kLedG = 15;
-const int kLedB = 16;
+const int kEpdSckPin = 40;
+const int kEpdMosiPin = 42;
+
+const int kLedR = 1;
+const int kLedG = 2;
+const int kLedB = 4;
 
 SPIClass spi(HSPI);  // for ESP32S3
-
-
-// ESP32-C6 variant
-// Currently requires the esp32 3.0.0-alpha board
-// add this to the Arduino IDE board managers URL (comma-separated):
-// https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_dev_index.json
-// does not appear to be supported by PlatformIO yet
-// const int kSw0Pin = 11;
-// const int kSw1Pin = 10;
-// const int kSw2Pin = 8;
-// const int kOledRstPin = 3;
-// const int kOledDcPin = 22;
-// const int kOledCsPin = 21;
-// const int kEpdBusyPin = 15;
-
-// const int kOledSckPin = 23;
-// const int kOledMosiPin = 20;  // NOTE - needs a jumper, otherwise pad on PCB is NC!
-
-// const int kLedR = 7;
-// const int kLedG = 0;
-// const int kLedB = 1;
-
-// SPIClass spi(FSPI);  // for ESP32C6 - only has FSPI
 
 
 #include <GxEPD2_BW.h>
@@ -49,17 +45,8 @@ SPIClass spi(HSPI);  // for ESP32S3
 #include <Fonts/FreeMonoBold9pt7b.h>
 // Full displays list at
 // https://github.com/ZinggJM/GxEPD2/tree/master/examples/GxEPD2_Example
-// GxEPD2_BW<GxEPD2_290_I6FD, GxEPD2_290_I6FD::HEIGHT> display(GxEPD2_290_I6FD(kOledCsPin, kOledDcPin, kOledRstPin, kEpdBusyPin)); // compatible w/ Waveshare 2.9 flexible
-
-// These in concept should support ER-EPD-027-1/2 but don't work =()
-// #include <epd3c/GxEPD2_270c.h>  // default include file is broken
-// GxEPD2_BW<GxEPD2_270, GxEPD2_270::HEIGHT> display(GxEPD2_270(kOledCsPin, kOledDcPin, kOledRstPin, kEpdBusyPin)); // GDEW027W3 176x264, EK79652 (IL91874)
-// GxEPD2_3C<GxEPD2_270c, GxEPD2_270c::HEIGHT> display(GxEPD2_270c(kOledCsPin, kOledDcPin, kOledRstPin, kEpdBusyPin)); // GDEW027C44 176x264, IL91874
-
-// GxEPD2_3C<GxEPD2_290_C90c, GxEPD2_290_C90c::HEIGHT> display(GxEPD2_290_C90c(kOledCsPin, kOledDcPin, kOledRstPin, kEpdBusyPin));  // SSD1680, compatible w/ ER-EPD029-2R
-
-// GxEPD2_7C<GxEPD2_565c, GxEPD2_565c::HEIGHT/2> display(GxEPD2_565c(kOledCsPin, kOledDcPin, kOledRstPin, kEpdBusyPin)); // Waveshare 5.65" 7-color
-GxEPD2_3C<GxEPD2_750c_Z08, GxEPD2_750c_Z08::HEIGHT> display(GxEPD2_750c_Z08(kOledCsPin, kOledDcPin, kOledRstPin, kEpdBusyPin)); // works with Waveshare 3C 7.5" B
+// GxEPD2_7C<GxEPD2_565c, GxEPD2_565c::HEIGHT/2> display(GxEPD2_565c(kEpdCsPin, kEpdDcPin, kOledRstPin, kEpdBusyPin)); // Waveshare 5.65" 7-color, flakey
+GxEPD2_3C<GxEPD2_750c_Z08, GxEPD2_750c_Z08::HEIGHT> display(GxEPD2_750c_Z08(kEpdCsPin, kEpdDcPin, kEpdRstPin, kEpdBusyPin)); // works with Waveshare 3C 7.5" B
 
 #include "esp_wifi.h"  // support wifi stop
 #include <WiFi.h>
@@ -110,7 +97,7 @@ void setup() {
   digitalWrite(kLedG, 0);
   digitalWrite(kLedB, 0);
 
-  spi.begin(kOledSckPin, -1, kOledMosiPin, -1);
+  spi.begin(kEpdSckPin, -1, kEpdMosiPin, -1);
   display.epd2.selectSPI(spi, SPISettings(4000000, MSBFIRST, SPI_MODE0));
   display.init(0);
 
