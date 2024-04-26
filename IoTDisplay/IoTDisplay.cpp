@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <SPI.h>
+#include "esp_sleep.h"
 
 // ESP32-S3 variant, new version
 // touch_duck=TOUCH13, 21,
@@ -36,6 +37,9 @@ const int kLedR = 1;
 const int kLedG = 2;
 const int kLedB = 4;
 
+const int kVsenseGate = 6;
+const int kVsense = 7;
+
 SPIClass spi(HSPI);  // for ESP32S3
 
 
@@ -66,6 +70,9 @@ uint8_t* streamDataPtr = streamData;
 size_t maxWidth = 480;
 
 
+RTC_DATA_ATTR int bootCount = 0;
+
+
 void PNGDraw(PNGDRAW *pDraw) {
   uint16_t usPixels[maxWidth];
   uint8_t ucMask[maxWidth/8];
@@ -84,13 +91,24 @@ void setup() {
   Serial.begin(115200);
   esp_log_level_set("*", ESP_LOG_DEBUG);
 
+  bootCount++;
+  log_i("Boot %d", bootCount);
+
   pinMode(kLedR, OUTPUT);
   pinMode(kLedG, OUTPUT);
   pinMode(kLedB, OUTPUT);
+  pinMode(kVsenseGate, OUTPUT);
 
   digitalWrite(kLedR, 1);
   digitalWrite(kLedG, 1);
   digitalWrite(kLedB, 1);
+
+
+  digitalWrite(kVsenseGate, 1);
+  delay(10);
+  int vbat = analogRead(kVsense);
+  log_i("Vbat: %d", vbat);
+  digitalWrite(kVsenseGate, 0);
 
   log_i("Total heap: %d, PSRAM: %d", ESP.getHeapSize(), ESP.getPsramSize());
   digitalWrite(kLedR, 1);
@@ -111,7 +129,7 @@ void setup() {
   }
   log_i("Connected WiFi: %s, RSSI=%i", WiFi.localIP().toString(), WiFi.RSSI());
   digitalWrite(kLedR, 1);
-  digitalWrite(kLedG, 1);
+  digitalWrite(kLedB, 1);
 
   // see https://randomnerdtutorials.com/esp32-ntp-timezones-daylight-saving/
   long int timeStartNtp = millis();
@@ -154,7 +172,6 @@ void setup() {
       }
     }
   }
-
   http.end();
 
   // done with all network tasks, stop wifi to save power
@@ -165,15 +182,13 @@ void setup() {
   long int timeStopWifi = millis();
   log_i("Total network active time: %.1f", (float)(timeStopWifi - timeStartWifi) / 1000);
   digitalWrite(kLedR, 0);
-  digitalWrite(kLedG, 1);
+  digitalWrite(kLedB, 1);
 
   // DISPLAY RENDERING CODE
   //
   display.setRotation(3);
   display.firstPage();
   do {
-    // display.fillScreen(GxEPD_YELLOW);  // test code
-
     if (streamDataPtr > streamData) {  // got a PNG
       int rc = png.openRAM((uint8_t *)streamData, sizeof(streamData), PNGDraw);
       if (rc == PNG_SUCCESS) {
@@ -200,13 +215,18 @@ void setup() {
   display.hibernate();
 
   digitalWrite(kLedR, 0);
-  digitalWrite(kLedG, 0);
+  digitalWrite(kLedB, 0);
+
+  // put device to sleep
+  esp_sleep_enable_timer_wakeup(30 * 1000000);
+  esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_OFF);
+  esp_deep_sleep_start();
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
   digitalWrite(kLedG, 0);
   delay(100);
-  digitalWrite(kLedG, 1);
+  digitalWrite(kLedB, 1);
   delay(100);
 }
