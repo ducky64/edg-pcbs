@@ -21,7 +21,7 @@ esphome:
         value: 0.1
     - number.set:
         id: buckboost_ratio
-        value: 1.0
+        value: 0.0
 
 wifi:
   <<: !include ../wifi_config.yaml
@@ -199,7 +199,7 @@ pca9554:
 
 fusb302:
   id: usbpd
-  target: 12v
+  target: 9v
 
 mcp3561:
   cs_pin: GPIO4
