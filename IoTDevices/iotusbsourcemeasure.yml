@@ -138,7 +138,7 @@ output:
     id: buck_pwm
     frequency: 250 kHz
   - platform: ledc
-    pin: GPIO39
+    pin: GPIO39  # IMPORTANT! this controls the HIGH SIDE switch, so the duty is 1-D
     id: boost_pwm
     frequency: 250 kHz
   # - platform: mcpwm_sync
@@ -341,7 +341,7 @@ number:
               boostDc = 1 - (1 / boostRatio);
             }
             id(buck_pwm)->write_state(buckDc);
-            id(boost_pwm)->write_state(boostDc);
+            id(boost_pwm)->write_state(1 - boostDc);
             ESP_LOGI("BuckBoostCtl", "Target %.02f, buck %.02f, boost %.02f", x, buckDc, boostDc);
             id(buckboost_ratio).publish_state(x);
 
