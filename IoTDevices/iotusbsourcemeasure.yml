@@ -7,9 +7,6 @@ esphome:
   platform: esp32
   board: esp32-s3-devkitc-1  # 8MB flash without PSRAM
   on_boot:
-    - output.set_level:
-        id: boot_pwm
-        level: "50%"
     - number.set:
         id: set_voltage
         value: 0
@@ -56,10 +53,10 @@ globals:
     initial_value: '1'  # output amps per measured volt, including accounting for resistor value
   - id: kVCenter
     type: float
-    initial_value: '1.498'  # theoretical and measured
+    initial_value: '1.65'  # theoretical and measured
   - id: kAdcVref
     type: float
-    initial_value: '2.4'  # theoretical, 2% tolerance
+    initial_value: '3.3'  # theoretical, 2% tolerance
   - id: kDacVRef
     type: float
     initial_value: '3.3'  # theoretical
@@ -71,41 +68,41 @@ globals:
     initial_value: '1.5'  # in fractional duty-cycle, maximum / minimum duty cycle
   - id: kCalVoltageFactor
     type: float
-    # initial_value: '1'
-    initial_value: '1.00063'  # multiply measured volts by this to get true volts
+    initial_value: '1'
+    # initial_value: '1.00063'  # multiply measured volts by this to get true volts
   - id: kCalVoltageOffset
     type: float
-    # initial_value: '0'
-    initial_value: '0.02526'  # add to measured volts (post-scaling) to get true volts
+    initial_value: '0'
+    # initial_value: '0.02526'  # add to measured volts (post-scaling) to get true volts
   - id: kCalCurrentFactor
     type: float
-    # initial_value: '1'
-    initial_value: '0.98227'  # multiply measured amps by this to get true amps
+    initial_value: '1'
+    # initial_value: '0.98227'  # multiply measured amps by this to get true amps
   - id: kCalCurrentOffset
     type: float
-    # initial_value: '0'
-    initial_value: '0.01144'  # add to measured amps (post-scaling) to get true amps
+    initial_value: '0'
+    # initial_value: '0.01144'  # add to measured amps (post-scaling) to get true amps
   - id: kCalCurrentVoltageFactor
     type: float
-    # initial_value: '0'
-    initial_value: '-0.00355'  # multiply by measured volts (post-calibration, then add to measured amps (post-scaling) to get true amps
+    initial_value: '0'
+    # initial_value: '-0.00355'  # multiply by measured volts (post-calibration, then add to measured amps (post-scaling) to get true amps
     # obtained using https://stats.blue/Stats_Suite/multiple_linear_regression_calculator.html
   - id: kCalSetVoltageFactor
     type: float
-    # initial_value: '1'
-    initial_value: '1.00063'  # multiply by set volts to get true volts
+    initial_value: '1'
+    # initial_value: '1.00063'  # multiply by set volts to get true volts
   - id: kCalSetVoltageOffset
     type: float
-    # initial_value: '1'
-    initial_value: '0.3811'  # add to set volts to get true volts
+    initial_value: '0'
+    # initial_value: '0.3811'  # add to set volts to get true volts
   - id: kCalSetCurrentFactor
     type: float
-    # initial_value: '1'
-    initial_value: '0.9534'  # multiply by set amps to get true amps - note varies with voltage!
+    initial_value: '1'
+    # initial_value: '0.9534'  # multiply by set amps to get true amps - note varies with voltage!
   - id: kCalSetCurrentOffset
     type: float
-    # initial_value: '1'
-    initial_value: '0.0252'  # add to set amps to get true amps
+    initial_value: '1'
+    # initial_value: '0.0252'  # add to set amps to get true amps
 
 light:
   - platform: binary
@@ -120,35 +117,40 @@ output:
     inverted: true
   - id: output_rgb_r
     platform: gpio
-    pin: GPIO13
-    inverted: true
+    pin:
+      pca9554: pca9554a_device
+      number: 6
+      inverted: true
   - id: output_rgb_g
     platform: gpio
-    pin: GPIO12
-    inverted: true
+    pin:
+      pca9554: pca9554a_device
+      number: 7
+      inverted: true
   - id: output_rgb_b
     platform: gpio
-    pin: GPIO14
-    inverted: true
+    pin:
+      pca9554: pca9554a_device
+      number: 5
+      inverted: true
   - platform: ledc
-    pin: GPIO2
-    id: boot_pwm
-    frequency: 1 MHz
-  - platform: mcpwm_sync
+    pin: GPIO42
     id: buck_pwm
-    pin: GPIO40  # high-side
-    pin_comp: GPIO42  # low-side
-    frequency: 200kHz
-    deadtime_rising: 100ns
-    deadtime_falling: 100ns
-  - platform: mcpwm_sync
+    frequency: 250 kHz
+  - platform: ledc
+    pin: GPIO39
     id: boost_pwm
-    pin: GPIO39  # low-side
-    pin_comp: GPIO38  # high-side
-    frequency: 200kHz
-    deadtime_rising: 100ns
-    deadtime_falling: 100ns
-    max_duty: 0.37  # up to 1.5x boost ratio + accounting for deadzone
+    frequency: 250 kHz
+  # - platform: mcpwm_sync
+  #   id: buck_pwm
+  #   pin: GPIO42
+  #   frequency: 200kHz
+  # - platform: mcpwm_sync
+  #   id: boost_pwm
+  #   pin: GPIO39  # low-side
+  #   pin_comp: NC
+  #   frequency: 200kHz
+  #   max_duty: 0.37  # up to 1.5x boost ratio + accounting for deadzone
 
   - platform: mcp4728
     id: dac_voltage
@@ -165,12 +167,26 @@ output:
 
 switch:
   - platform: gpio
-    id: driver_enable
-    name: "${name} Driver Enable"
+    id: range0
+    name: "${name} Range0"
+    pin: GPIO8
+    on_turn_on:
+    - then:
+      - switch.turn_on: control_enable
+      - switch.turn_off: range1
+      - output.turn_on: output_rgb_b
+    on_turn_off:
+    - then:
+      - switch.turn_off: control_enable
+      - output.turn_off: output_rgb_b
+  - platform: gpio
+    id: range1
+    name: "${name} Range1"
     pin: GPIO18
     on_turn_on:
     - then:
       - switch.turn_on: control_enable
+      - switch.turn_off: range0
       - output.turn_on: output_rgb_b
     on_turn_off:
     - then:
@@ -178,20 +194,30 @@ switch:
       - output.turn_off: output_rgb_b
   - platform: gpio
     id: control_enable
-    internal: true
+    # internal: true
     name: "${name} Control Enable"
-    pin: GPIO8
+    pin: GPIO38
+    inverted: true
+  - platform: gpio
+    id: conv_en
+    name: "${name} Conv Enable"
+    pin: GPIO40
+    inverted: true  # active-low enable
+  - platform: gpio
+    id: fan
+    name: "${name} Fan"
+    pin: GPIO11
 
 i2c:
-  scl: GPIO15
-  sda: GPIO16
+  scl: GPIO1
+  sda: GPIO2
   frequency: 400kHz
   scan: false
 
 spi:
-  clk_pin: GPIO5
-  mosi_pin: GPIO6
-  miso_pin: GPIO7
+  clk_pin: GPIO15
+  mosi_pin: GPIO16
+  miso_pin: GPIO17
 
 pca9554:
   - id: pca9554a_device
@@ -202,7 +228,7 @@ fusb302:
   target: 9v
 
 mcp3561:
-  cs_pin: GPIO4
+  cs_pin: GPIO7
   id: adc_meas
   osr: 16384
 
@@ -219,13 +245,13 @@ display:
   - platform: ssd1306_i2c
     model: "SSD1306 128x64"
     address: 0x3c
-    reset_pin: GPIO21
+    reset_pin: GPIO12
     update_interval : 200ms
     lambda: |-
       it.printf(0, 0, id(bdf6x10), "Ducky SMU");
 
       it.printf(0, 12, id(bdf6x10), "SET  %4.1f V  %5.2f A", id(set_voltage).state, id(limit_current_min).state);
-      it.printf(0, 20, id(bdf6x10), "     %s     %5.2f A", id(driver_enable).state ? "ON " : "OFF", id(limit_current_max).state);
+      it.printf(0, 20, id(bdf6x10), "     %s     %5.2f A", id(range0).state ? "ON " : "OFF", id(limit_current_max).state);
       it.printf(0, 32, id(bdf6x10), "MES  %4.1f V  %5.2f A", id(meas_voltage).get_state(), id(meas_current).get_state());
 
       const char* pdState;
@@ -246,7 +272,7 @@ number:
     id: set_voltage
     icon: mdi:high-voltage
     mode: box
-    min_value: 0
+    min_value: -30
     max_value: 30
     step: 0.01
     unit_of_measurement: V
@@ -258,9 +284,9 @@ number:
             id(dac_voltage)->write_state(targetVolts / id(kDacVRef));
             id(set_voltage).publish_state(x);
 
-            // set buck-boost to minimum needed - +2v for gate driver headroom, or 5v to power sense amps
-            float convTarget = max(x + 2.0, 5.0);
-            id(buckboost_ratio).make_call().set_value(convTarget / (id(fusb_vbus).state - 0.4)).perform();
+            // set buck-boost to minimum needed + 1v for headroom
+            // float convTarget = x + 1.0;
+            // id(buckboost_ratio).make_call().set_value(convTarget / (id(fusb_vbus).state - 0.4)).perform();
   - platform: template
     name: "${name} Set Current Min"
     id: limit_current_min
@@ -321,14 +347,21 @@ number:
 
 binary_sensor:
   - platform: gpio
+    id: conv_en_sense
+    name: "${name} Conv En Sen"
+    pin: 
+      number: GPIO21
+      mode:
+        input: true
+  - platform: gpio
     id: encoder_sw
     name: "${name} Encoder Sw"
     pin: 
-      pca9554: pca9554a_device
-      number: 6
+      number: GPIO4
       inverted: true
       mode:
         input: true
+        pullup: true
     filters:
       - delayed_on: 10ms
   - platform: gpio
@@ -336,7 +369,7 @@ binary_sensor:
     name: "${name} Dir Sw"
     pin: 
       pca9554: pca9554a_device
-      number: 2
+      number: 0
       inverted: true
       mode:
         input: true
@@ -345,10 +378,10 @@ binary_sensor:
     on_click:
     - then:
         - lambda: |-
-            if (!id(driver_enable)->state) {
-              id(driver_enable)->turn_on();
+            if (!id(range0)->state) {
+              id(range0)->turn_on();
             } else {
-              id(driver_enable)->turn_off();
+              id(range0)->turn_off();
             }
   - platform: gpio
     id: dir_a  # up
@@ -368,7 +401,7 @@ binary_sensor:
     id: dir_c  # left
     pin: 
       pca9554: pca9554a_device
-      number: 3
+      number: 4
       inverted: true
       mode:
         input: true
@@ -382,7 +415,7 @@ binary_sensor:
     id: dir_b  # down
     pin: 
       pca9554: pca9554a_device
-      number: 7
+      number: 2
       inverted: true
       mode:
         input: true
@@ -399,7 +432,7 @@ binary_sensor:
     id: dir_d  # right
     pin: 
       pca9554: pca9554a_device
-      number: 0
+      number: 3
       inverted: true
       mode:
         input: true
@@ -489,25 +522,25 @@ sensor:
     name: "${name} Temp Buck-boost"
     update_interval: 1s
 
-  # - platform: rotary_encoder
-  #   id: encoder
-  #   name: "${name} Encoder"
-  #   resolution: 2  # so each detent generates one action
-  #   pin_a:
-  #     number: 4
-  #     inverted: true
-  #     mode:
-  #       input: true
-  #       pullup: true
-  #   pin_b:
-  #     number: GPIO16
-  #     inverted: true
-  #     mode:
-  #       input: true
-  #       pullup: true
-  #   on_clockwise:
-  #   - then:
-  #       - lambda: ;
-  #   on_anticlockwise:
-  #   - then:
-  #       - lambda: ;
+  - platform: rotary_encoder
+    id: encoder
+    name: "${name} Encoder"
+    resolution: 2  # so each detent generates one action
+    pin_a:
+      number: GPIO5
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    pin_b:
+      number: GPIO6
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    on_clockwise:
+    - then:
+        - lambda: ;
+    on_anticlockwise:
+    - then:
+        - lambda: ;
