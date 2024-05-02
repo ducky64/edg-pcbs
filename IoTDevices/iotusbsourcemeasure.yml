@@ -101,7 +101,7 @@ globals:
     # initial_value: '0.9534'  # multiply by set amps to get true amps - note varies with voltage!
   - id: kCalSetCurrentOffset
     type: float
-    initial_value: '1'
+    initial_value: '0'
     # initial_value: '0.0252'  # add to set amps to get true amps
 
 light:
