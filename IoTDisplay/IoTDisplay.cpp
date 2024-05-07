@@ -73,8 +73,12 @@ size_t maxWidth = 480;
 
 
 RTC_DATA_ATTR int bootCount = 0;
-// RTC_DATA_ATTR int failureCount = 0;
-// const int kMaxFailureCount = 5;  // number of consecutive network failures before displaying error
+RTC_DATA_ATTR int failureCount = 0;
+
+const int kMaxWifiConnectSec = 30;  // max to wait for wifi to come up before sleeping
+const int kRetrySleepSec = 120;  // on error, how long to wait to retry
+const int kMaxErrorCount = 3;  // number of consecutive network failures before displaying error
+const int kErrSleepSec = 3600;  // on exceeding max errors, how long to wait until next attempt
 
 
 void PNGDraw(PNGDRAW *pDraw) {
@@ -94,9 +98,10 @@ void PNGDraw(PNGDRAW *pDraw) {
 void setup() {
   Serial.begin(115200);
   esp_log_level_set("*", ESP_LOG_DEBUG);
+  const char* errorStatus = NULL;  // set when an error occurs, to a short descriptive string
 
   bootCount++;
-  log_i("Boot %d", bootCount);
+  log_i("Boot %d, failures %d", bootCount, failureCount);
 
   pinMode(kLedR, OUTPUT);
   pinMode(kLedG, OUTPUT);
@@ -115,7 +120,7 @@ void setup() {
   digitalWrite(kVsenseGate, 0);
 
   log_i("Total heap: %d, PSRAM: %d", ESP.getHeapSize(), ESP.getPsramSize());
-  digitalWrite(kLedR, 1);
+  digitalWrite(kLedR, 0);
   digitalWrite(kLedG, 0);
   digitalWrite(kLedB, 0);
 
@@ -128,41 +133,53 @@ void setup() {
   long int timeStartWifi = millis();
   WiFi.begin(ssid, password);
   while(WiFi.status() != WL_CONNECTED) {
-    delay(100);
-    log_i("...");
+    if (millis() % 250 >= 125) {
+      digitalWrite(kLedR, 1);
+    } else {
+      digitalWrite(kLedR, 0);
+    }
+    if ((millis() - timeStartWifi) > kMaxWifiConnectSec * 1000) {
+      errorStatus = "no wifi";
+      break;
+    }
   }
   log_i("Connected WiFi: %s, RSSI=%i", WiFi.localIP().toString(), WiFi.RSSI());
   digitalWrite(kLedR, 1);
   digitalWrite(kLedB, 1);
 
-  long int timeStartGet = millis();
-  HTTPClient http;
-  http.useHTTP10(true);  // disabe chunked encoding, since the stream doesn't remove metadata
-  http.setTimeout(15*1000);
-  http.begin(kHttpGetUrl);
-  int httpResponseCode = http.GET();
-  int httpResponseLen = http.getSize();
-  log_i("GET: %i (%i KiB) <= %s", httpResponseCode, httpResponseLen / 1024, kHttpGetUrl);
+  int httpResponseCode = 0;
+  if (errorStatus == NULL) {
+    long int timeStartGet = millis();
+    HTTPClient http;
+    http.useHTTP10(true);  // disabe chunked encoding, since the stream doesn't remove metadata
+    http.setTimeout(15*1000);
+    http.begin(kHttpGetUrl);
+    httpResponseCode = http.GET();
+    int httpResponseLen = http.getSize();
 
-  if (httpResponseCode == 200) {
-    WiFiClient* stream = http.getStreamPtr();
-    while(http.connected()) {
-      size_t streamSize = stream->available();
-      size_t bufferLeft = sizeof(streamData) - (streamDataPtr - streamData);
-      log_i("  Stream: %i / %i free", streamSize, bufferLeft);
+    log_i("GET: %i (%i KiB) <= %s", httpResponseCode, httpResponseLen / 1024, kHttpGetUrl);
+    if (httpResponseCode == 200) {
+      WiFiClient* stream = http.getStreamPtr();
+      while(http.connected()) {
+        size_t streamSize = stream->available();
+        size_t bufferLeft = sizeof(streamData) - (streamDataPtr - streamData);
+        log_i("  Stream: %i / %i free", streamSize, bufferLeft);
 
-      int c = stream->readBytes(streamDataPtr, ((streamSize > bufferLeft) ? bufferLeft : streamSize));
-      streamDataPtr += c;
+        int c = stream->readBytes(streamDataPtr, ((streamSize > bufferLeft) ? bufferLeft : streamSize));
+        streamDataPtr += c;
 
-      if (bufferLeft <= 0) {
-        break;
+        if (bufferLeft <= 0) {
+          break;
+        }
+        if (streamSize == 0) {  // wait for more data transfer
+          delay(1);
+        }
       }
-      if (streamSize == 0) {  // wait for more data transfer
-        delay(1);
-      }
+      http.end();
+    } else {
+      errorStatus = "response error";
     }
   }
-  http.end();
 
   // done with all network tasks, stop wifi to save power
   WiFi.disconnect();
@@ -176,57 +193,63 @@ void setup() {
 
   // DISPLAY RENDERING CODE
   //
-  bool imageSuccess = false;
-  unsigned long sleepTimeSec;
-  DeserializationError error = deserializeJson(doc, streamData);
-  if (!error) {
-    const unsigned char* base64Data = doc["image_b64"].as<const unsigned char*>();
-    unsigned int decodedLength = decode_base64(base64Data, imageData);
-    sleepTimeSec = doc["nextUpdateSec"].as<unsigned long>();
-    log_i("Decoded %i, sleep %i", decodedLength, sleepTimeSec);
-    imageSuccess = true;
-  } else {
-    log_e("JSON error: %s", error.c_str());
+  unsigned long sleepTimeSec = 0;
+  if (errorStatus == NULL) {
+    DeserializationError error = deserializeJson(doc, streamData);
+    if (!error) {
+      const unsigned char* base64Data = doc["image_b64"].as<const unsigned char*>();
+      unsigned int decodedLength = decode_base64(base64Data, imageData);
+      sleepTimeSec = doc["nextUpdateSec"].as<unsigned long>();
+      log_i("Decoded %i, sleep %i", decodedLength, sleepTimeSec);
+    } else {
+      errorStatus = "bad decode";
+      log_e("JSON error: %s", error.c_str());
+    }
   }
 
-  if (imageSuccess || failureCount > 3) {
-    display.setRotation(3);
+  if (errorStatus != NULL) {
+    failureCount++;
+  } else {
+    failureCount = 0;
+  }
+
+  display.setRotation(3);
+  if (errorStatus == NULL) {  
     display.firstPage();
     do {
-      if (imageSuccess) {
-        int rc = png.openRAM((uint8_t *)imageData, sizeof(imageData), PNGDraw);
-        if (rc == PNG_SUCCESS) {
-          rc = png.decode(NULL, 0);
-          png.close();
-        }
-      } else {  // failed for whatever reason
-        int16_t tbx, tby; uint16_t tbw, tbh;
-
-        const char* kErrMsg = "error fetching image";
-        display.getTextBounds(kErrMsg, 0, 0, &tbx, &tby, &tbw, &tbh);
-        // center the bounding box by transposition of the origin:
-        uint16_t x = ((display.width() - tbw) / 2) - tbx;
-        uint16_t y = ((display.height() - tbh) / 2) - tby;
-
-        display.fillScreen(GxEPD_YELLOW);
-
-        display.setTextColor(GxEPD_RED);
-        display.setFont(&FreeMonoBold9pt7b);
-        display.setCursor(x, y);
-        display.print(kErrMsg);
-      }
+      int rc = png.openRAM((uint8_t *)imageData, sizeof(imageData), PNGDraw);
+      if (rc == PNG_SUCCESS) {
+        rc = png.decode(NULL, 0);
+        png.close();
+      }    
     } while (display.nextPage());
-    display.hibernate();
-  } else {
-    
+  } else if (failureCount > kMaxErrorCount) {
+    display.firstPage();
+    do {
+      // center error text on the screen
+      int16_t tbx, tby; uint16_t tbw, tbh;
+      display.getTextBounds(errorStatus, 0, 0, &tbx, &tby, &tbw, &tbh);
+      uint16_t x = ((display.width() - tbw) / 2);
+      uint16_t y = ((display.height() - tbh) / 2);
+
+      display.setTextColor(GxEPD_RED);
+      display.setFont(&FreeMonoBold9pt7b);
+      display.setCursor(x, y);
+      display.print(errorStatus);
+    } while (display.nextPage());
   }
+  display.hibernate();
   log_i("Display done");
 
   digitalWrite(kLedR, 0);
   digitalWrite(kLedB, 0);
 
   // put device to sleep
-  if (sleepTimeSec == 0) {
+  if (failureCount > kMaxErrorCount) {
+    sleepTimeSec = kErrSleepSec;
+  } else if (errorStatus != NULL) {
+    sleepTimeSec = kRetrySleepSec;
+  } else if (sleepTimeSec == 0) {
     sleepTimeSec = 60 * 60;  // default one hour
   }
 
