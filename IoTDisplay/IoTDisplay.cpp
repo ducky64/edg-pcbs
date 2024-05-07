@@ -72,7 +72,6 @@ JsonDocument doc;
 size_t maxWidth = 480;
 
 
-RTC_DATA_ATTR int bootCount = 0;
 RTC_DATA_ATTR int failureCount = 0;
 
 const int kMaxWifiConnectSec = 30;  // max to wait for wifi to come up before sleeping
@@ -99,9 +98,6 @@ void setup() {
   Serial.begin(115200);
   esp_log_level_set("*", ESP_LOG_DEBUG);
   const char* errorStatus = NULL;  // set when an error occurs, to a short descriptive string
-
-  bootCount++;
-  log_i("Boot %d, failures %d", bootCount, failureCount);
 
   pinMode(kLedR, OUTPUT);
   pinMode(kLedG, OUTPUT);
@@ -133,7 +129,7 @@ void setup() {
   long int timeStartWifi = millis();
   WiFi.begin(ssid, password);
   while(WiFi.status() != WL_CONNECTED) {
-    if (millis() % 250 >= 125) {
+    if (millis() % 200 >= 100) {
       digitalWrite(kLedR, 1);
     } else {
       digitalWrite(kLedR, 0);
@@ -147,14 +143,13 @@ void setup() {
   digitalWrite(kLedR, 1);
   digitalWrite(kLedB, 1);
 
-  int httpResponseCode = 0;
   if (errorStatus == NULL) {
     long int timeStartGet = millis();
     HTTPClient http;
     http.useHTTP10(true);  // disabe chunked encoding, since the stream doesn't remove metadata
     http.setTimeout(15*1000);
     http.begin(kHttpGetUrl);
-    httpResponseCode = http.GET();
+    int httpResponseCode = http.GET();
     int httpResponseLen = http.getSize();
 
     log_i("GET: %i (%i KiB) <= %s", httpResponseCode, httpResponseLen / 1024, kHttpGetUrl);
@@ -191,8 +186,6 @@ void setup() {
   digitalWrite(kLedR, 0);
   digitalWrite(kLedB, 1);
 
-  // DISPLAY RENDERING CODE
-  //
   unsigned long sleepTimeSec = 0;
   if (errorStatus == NULL) {
     DeserializationError error = deserializeJson(doc, streamData);
@@ -209,10 +202,13 @@ void setup() {
 
   if (errorStatus != NULL) {
     failureCount++;
+    log_e("Failure %d, error: %s", failureCount, errorStatus);
   } else {
     failureCount = 0;
   }
 
+  // DISPLAY RENDERING CODE
+  //
   display.setRotation(3);
   if (errorStatus == NULL) {  
     display.firstPage();
@@ -223,14 +219,14 @@ void setup() {
         png.close();
       }    
     } while (display.nextPage());
-  } else if (failureCount > kMaxErrorCount) {
+  } else if (failureCount >= kMaxErrorCount) {
     display.firstPage();
     do {
       // center error text on the screen
       int16_t tbx, tby; uint16_t tbw, tbh;
       display.getTextBounds(errorStatus, 0, 0, &tbx, &tby, &tbw, &tbh);
-      uint16_t x = ((display.width() - tbw) / 2);
-      uint16_t y = ((display.height() - tbh) / 2);
+      uint16_t x = (display.width() - tbw) / 2;
+      uint16_t y = (display.height() - tbh) / 2;
 
       display.setTextColor(GxEPD_RED);
       display.setFont(&FreeMonoBold9pt7b);
@@ -245,11 +241,13 @@ void setup() {
   digitalWrite(kLedB, 0);
 
   // put device to sleep
-  if (failureCount > kMaxErrorCount) {
+  if (failureCount >= kMaxErrorCount) {
     sleepTimeSec = kErrSleepSec;
   } else if (errorStatus != NULL) {
     sleepTimeSec = kRetrySleepSec;
-  } else if (sleepTimeSec == 0) {
+  }
+  
+  if (sleepTimeSec == 0) {
     sleepTimeSec = 60 * 60;  // default one hour
   }
 
@@ -262,6 +260,6 @@ void loop() {
   // put your main code here, to run repeatedly:
   digitalWrite(kLedG, 0);
   delay(100);
-  digitalWrite(kLedB, 1);
+  digitalWrite(kLedG, 1);
   delay(100);
 }
