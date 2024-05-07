@@ -1,4 +1,6 @@
 #include <Arduino.h>
+#include <ArduinoJson.h>
+#include "base64.hpp"
 #include <SPI.h>
 #include "esp_sleep.h"
 
@@ -56,21 +58,23 @@ GxEPD2_3C<GxEPD2_750c_Z08, GxEPD2_750c_Z08::HEIGHT> display(GxEPD2_750c_Z08(kEpd
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include "WifiConfig.h"  // must define 'const char* ssid' and 'const char* password'
-const char* kNtpServer = "time.google.com";
-const char* kTimezone = "PST8PDT,M3.2.0,M11.1.0";  // https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv
-const char* kHttpGetUrl = "http://192.168.2.188:8000";
+const char* kHttpGetUrl = "http://192.168.2.188:8080/render";
 
 #include <PNGdec.h>
 PNG png;
 
 
-uint8_t streamData[65536] = {0};  // allocate in static memory
+uint8_t streamData[32768] = {0};  // allocate in static memory
 uint8_t* streamDataPtr = streamData;
+uint8_t imageData[32768] = {0};  // decoded image data
+JsonDocument doc;
 
 size_t maxWidth = 480;
 
 
 RTC_DATA_ATTR int bootCount = 0;
+// RTC_DATA_ATTR int failureCount = 0;
+// const int kMaxFailureCount = 5;  // number of consecutive network failures before displaying error
 
 
 void PNGDraw(PNGDRAW *pDraw) {
@@ -131,20 +135,6 @@ void setup() {
   digitalWrite(kLedR, 1);
   digitalWrite(kLedB, 1);
 
-  // see https://randomnerdtutorials.com/esp32-ntp-timezones-daylight-saving/
-  long int timeStartNtp = millis();
-  configTime(0, 0, "pool.ntp.org");
-  setenv("TZ", kTimezone, 1);
-  tzset();
-  struct tm timeinfo;
-  if (!getLocalTime(&timeinfo)){
-    log_e("Failed to get NTP time");
-  } else {
-  }
-  log_i("%04i-%02i-%02i %02i:%02i:%02i%s", timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday, 
-      timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec, 
-      timeinfo.tm_isdst ? " DST" : "");
-
   long int timeStartGet = millis();
   HTTPClient http;
   http.useHTTP10(true);  // disabe chunked encoding, since the stream doesn't remove metadata
@@ -186,39 +176,61 @@ void setup() {
 
   // DISPLAY RENDERING CODE
   //
-  display.setRotation(3);
-  display.firstPage();
-  do {
-    if (streamDataPtr > streamData) {  // got a PNG
-      int rc = png.openRAM((uint8_t *)streamData, sizeof(streamData), PNGDraw);
-      if (rc == PNG_SUCCESS) {
-        rc = png.decode(NULL, 0);
-        png.close();
+  bool imageSuccess = false;
+  unsigned long sleepTimeSec;
+  DeserializationError error = deserializeJson(doc, streamData);
+  if (!error) {
+    const unsigned char* base64Data = doc["image_b64"].as<const unsigned char*>();
+    unsigned int decodedLength = decode_base64(base64Data, imageData);
+    sleepTimeSec = doc["nextUpdateSec"].as<unsigned long>();
+    log_i("Decoded %i, sleep %i", decodedLength, sleepTimeSec);
+    imageSuccess = true;
+  } else {
+    log_e("JSON error: %s", error.c_str());
+  }
+
+  if (imageSuccess || failureCount > 3) {
+    display.setRotation(3);
+    display.firstPage();
+    do {
+      if (imageSuccess) {
+        int rc = png.openRAM((uint8_t *)imageData, sizeof(imageData), PNGDraw);
+        if (rc == PNG_SUCCESS) {
+          rc = png.decode(NULL, 0);
+          png.close();
+        }
+      } else {  // failed for whatever reason
+        int16_t tbx, tby; uint16_t tbw, tbh;
+
+        const char* kErrMsg = "error fetching image";
+        display.getTextBounds(kErrMsg, 0, 0, &tbx, &tby, &tbw, &tbh);
+        // center the bounding box by transposition of the origin:
+        uint16_t x = ((display.width() - tbw) / 2) - tbx;
+        uint16_t y = ((display.height() - tbh) / 2) - tby;
+
+        display.fillScreen(GxEPD_YELLOW);
+
+        display.setTextColor(GxEPD_RED);
+        display.setFont(&FreeMonoBold9pt7b);
+        display.setCursor(x, y);
+        display.print(kErrMsg);
       }
-    } else {  // failed for whatever reason
-      int16_t tbx, tby; uint16_t tbw, tbh;
-
-      const char* kErrMsg = "error fetching image";
-      display.getTextBounds(kErrMsg, 0, 0, &tbx, &tby, &tbw, &tbh);
-      // center the bounding box by transposition of the origin:
-      uint16_t x = ((display.width() - tbw) / 2) - tbx;
-      uint16_t y = ((display.height() - tbh) / 2) - tby;
-
-      display.fillScreen(GxEPD_YELLOW);
-
-      display.setTextColor(GxEPD_RED);
-      display.setFont(&FreeMonoBold9pt7b);
-      display.setCursor(x, y);
-      display.print(kErrMsg);
-    }
-  } while (display.nextPage());
-  display.hibernate();
+    } while (display.nextPage());
+    display.hibernate();
+  } else {
+    
+  }
+  log_i("Display done");
 
   digitalWrite(kLedR, 0);
   digitalWrite(kLedB, 0);
 
   // put device to sleep
-  esp_sleep_enable_timer_wakeup(30 * 1000000);
+  if (sleepTimeSec == 0) {
+    sleepTimeSec = 60 * 60;  // default one hour
+  }
+
+  esp_sleep_enable_timer_wakeup(sleepTimeSec * 1000000);
   esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_OFF);
   esp_deep_sleep_start();
 }
