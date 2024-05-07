@@ -64,10 +64,9 @@ const char* kHttpGetUrl = "http://192.168.2.188:8080/render";
 PNG png;
 
 
-uint8_t streamData[32768] = {0};  // allocate in static memory
+uint8_t streamData[32768] = {0};  // allocate in static memory, overwritten with image data
 uint8_t* streamDataPtr = streamData;
-uint8_t imageData[32768] = {0};  // decoded image data
-JsonDocument doc;
+StaticJsonDocument<32768> doc;
 
 size_t maxWidth = 480;
 
@@ -111,9 +110,14 @@ void setup() {
 
   digitalWrite(kVsenseGate, 1);
   delay(10);
-  int vbat = analogRead(kVsense);
-  log_i("Vbat: %d", vbat);
+  int vbatMv = analogRead(kVsense) * 3300 * 57 / 10 / 4096;
+  log_i("Vbat: %d", vbatMv);
   digitalWrite(kVsenseGate, 0);
+
+  uint8_t mac[6];
+  WiFi.macAddress(mac);
+  char macStr[13];
+  sprintf(macStr, "%02x%02x%02x%02x%02x%02x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 
   log_i("Total heap: %d, PSRAM: %d", ESP.getHeapSize(), ESP.getPsramSize());
   digitalWrite(kLedR, 0);
@@ -148,11 +152,13 @@ void setup() {
     HTTPClient http;
     http.useHTTP10(true);  // disabe chunked encoding, since the stream doesn't remove metadata
     http.setTimeout(15*1000);
-    http.begin(kHttpGetUrl);
+    String httpUrl = kHttpGetUrl;
+    httpUrl = httpUrl + "?mac=" + macStr + "&vbat=" + vbatMv;
+    http.begin(httpUrl);
     int httpResponseCode = http.GET();
     int httpResponseLen = http.getSize();
 
-    log_i("GET: %i (%i KiB) <= %s", httpResponseCode, httpResponseLen / 1024, kHttpGetUrl);
+    log_i("GET: %i (%i KiB) <= %s", httpResponseCode, httpResponseLen / 1024, httpUrl.c_str());
     if (httpResponseCode == 200) {
       WiFiClient* stream = http.getStreamPtr();
       while(http.connected()) {
@@ -171,6 +177,7 @@ void setup() {
         }
       }
       http.end();
+      log_i("Got %i", streamDataPtr - streamData);
     } else {
       errorStatus = "response error";
     }
@@ -182,18 +189,20 @@ void setup() {
     log_e("Failed disable WiFi");
   }
   long int timeStopWifi = millis();
-  log_i("Total network active time: %.1f", (float)(timeStopWifi - timeStartWifi) / 1000);
+  log_i("Network active time: %.1f", (float)(timeStopWifi - timeStartWifi) / 1000);
   digitalWrite(kLedR, 0);
   digitalWrite(kLedB, 1);
 
   unsigned long sleepTimeSec = 0;
   if (errorStatus == NULL) {
+    log_i("Deserialize");
     DeserializationError error = deserializeJson(doc, streamData);
     if (!error) {
-      const unsigned char* base64Data = doc["image_b64"].as<const unsigned char*>();
-      unsigned int decodedLength = decode_base64(base64Data, imageData);
+      const char* base64Data = doc["image_b64"].as<const char*>();
+      log_i("De-base64 %d", strlen(base64Data));
+      unsigned int decodedLength = decode_base64((const unsigned char*)base64Data, streamData);
       sleepTimeSec = doc["nextUpdateSec"].as<unsigned long>();
-      log_i("Decoded %i, sleep %i", decodedLength, sleepTimeSec);
+      log_i("Decoded %d, sleep %d", decodedLength, sleepTimeSec);
     } else {
       errorStatus = "bad decode";
       log_e("JSON error: %s", error.c_str());
@@ -210,27 +219,35 @@ void setup() {
   // DISPLAY RENDERING CODE
   //
   display.setRotation(3);
+  display.setFont(&FreeMonoBold9pt7b);
+
+  String selfData = String(macStr) + " " + vbatMv + "mV";
+  int16_t tbx, tby; uint16_t tbw, tbh;
+  display.getTextBounds(selfData, 0, 0, &tbx, &tby, &tbw, &tbh);
+
   if (errorStatus == NULL) {  
     display.firstPage();
     do {
-      int rc = png.openRAM((uint8_t *)imageData, sizeof(imageData), PNGDraw);
+      int rc = png.openRAM((uint8_t *)streamData, sizeof(streamData), PNGDraw);
       if (rc == PNG_SUCCESS) {
         rc = png.decode(NULL, 0);
         png.close();
-      }    
+      }
+
+      display.setTextColor(GxEPD_BLACK);
+      display.setCursor(display.width() - tbw, display.height() - tbh);
+      display.print(selfData);
     } while (display.nextPage());
   } else if (failureCount >= kMaxErrorCount) {
     display.firstPage();
     do {
-      // center error text on the screen
-      int16_t tbx, tby; uint16_t tbw, tbh;
-      display.getTextBounds(errorStatus, 0, 0, &tbx, &tby, &tbw, &tbh);
-      uint16_t x = (display.width() - tbw) / 2;
-      uint16_t y = (display.height() - tbh) / 2;
+      display.setTextColor(GxEPD_BLACK);
+      display.setCursor(display.width() - tbw, display.height() - tbh);
+      display.print(selfData);
 
       display.setTextColor(GxEPD_RED);
-      display.setFont(&FreeMonoBold9pt7b);
-      display.setCursor(x, y);
+      display.getTextBounds(errorStatus, 0, 0, &tbx, &tby, &tbw, &tbh);
+      display.setCursor((display.width() - tbw) / 2, (display.height() - tbh) / 2);
       display.print(errorStatus);
     } while (display.nextPage());
   }
