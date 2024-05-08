@@ -57,8 +57,7 @@ GxEPD2_3C<GxEPD2_750c_Z08, GxEPD2_750c_Z08::HEIGHT> display(GxEPD2_750c_Z08(kEpd
 #include "esp_wifi.h"  // support wifi stop
 #include <WiFi.h>
 #include <HTTPClient.h>
-#include "WifiConfig.h"  // must define 'const char* ssid' and 'const char* password'
-const char* kHttpGetUrl = "http://192.168.2.188:8080/render";
+#include "WifiConfig.h"  // must define 'const char* ssid' and 'const char* password' and 'const char* kHttpGetUrl'
 
 #include <PNGdec.h>
 PNG png;
@@ -99,17 +98,19 @@ void PNGDraw(PNGDRAW *pDraw) {
 
 void setup() {
   Serial.begin(115200);
-  esp_log_level_set("*", ESP_LOG_DEBUG);
+  esp_log_level_set("*", ESP_LOG_INFO);
   const char* errorStatus = NULL;  // set when an error occurs, to a short descriptive string
+
+  setCpuFrequencyMhz(80);  // downclock to reduce power draw
 
   pinMode(kLedR, OUTPUT);
   pinMode(kLedG, OUTPUT);
   pinMode(kLedB, OUTPUT);
   pinMode(kVsenseGate, OUTPUT);
 
-  digitalWrite(kLedR, 1);
-  digitalWrite(kLedG, 1);
-  digitalWrite(kLedB, 1);
+  digitalWrite(kLedR, 0);
+  digitalWrite(kLedG, 0);
+  digitalWrite(kLedB, 0);
 
 
   digitalWrite(kVsenseGate, 1);
@@ -149,7 +150,6 @@ void setup() {
   }
   log_i("Connected WiFi: %s, RSSI=%i", WiFi.localIP().toString(), WiFi.RSSI());
   digitalWrite(kLedR, 1);
-  digitalWrite(kLedB, 1);
 
   if (errorStatus == NULL) {
     long int timeStartGet = millis();
@@ -226,7 +226,7 @@ void setup() {
   display.setFont(&FreeMonoBold9pt7b);
 
   // last character gets cut off for some reason
-  String selfData = String(macStr) + " " + vbatMv / 1000 + "." + (vbatMv % 1000 / 10) + "V ";
+  String selfData = String(macStr) + " " + vbatMv / 1000 + "." + (vbatMv % 1000 / 10) + "V  ";
   int16_t tbx, tby; uint16_t tbw, tbh;
   display.getTextBounds(selfData, 0, 0, &tbx, &tby, &tbw, &tbh);
 
@@ -259,7 +259,6 @@ void setup() {
   display.hibernate();
   log_i("Display done");
 
-  digitalWrite(kLedR, 0);
   digitalWrite(kLedB, 0);
 
   // put device to sleep
@@ -280,8 +279,8 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-  digitalWrite(kLedG, 0);
+  digitalWrite(kLedB, 0);
   delay(100);
-  digitalWrite(kLedG, 1);
+  digitalWrite(kLedB, 1);
   delay(100);
 }
