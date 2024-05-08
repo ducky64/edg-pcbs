@@ -70,6 +70,9 @@ StaticJsonDocument<32768> doc;
 size_t maxWidth = 480;
 
 
+const char* kFwVerStr = "v1";
+
+RTC_DATA_ATTR int bootCount = 0;
 RTC_DATA_ATTR int failureCount = 0;
 
 const int kMaxWifiConnectSec = 30;  // max to wait for wifi to come up before sleeping
@@ -97,11 +100,29 @@ void PNGDraw(PNGDRAW *pDraw) {
 }
 
 void setup() {
+  bootCount++;
+
+  const char* resetReason = "";
+  switch (esp_reset_reason()) {
+      case ESP_RST_POWERON: resetReason = "POWERON"; break;
+      case ESP_RST_SW: resetReason = "SW"; break;
+      case ESP_RST_PANIC: resetReason = "PANIC"; break;
+      case ESP_RST_INT_WDT: resetReason = "INT_WDT"; break;
+      case ESP_RST_WDT: resetReason = "WDT"; break;
+      case ESP_RST_DEEPSLEEP: resetReason = "DEEPSLEEP"; break;
+      case ESP_RST_BROWNOUT: resetReason = "BROWNOUT"; break;
+      case ESP_RST_UNKNOWN: resetReason = "UNKNOWN"; break;
+      default: resetReason = "other"; break;
+      break;
+  }
+
   Serial.begin(115200);
   esp_log_level_set("*", ESP_LOG_INFO);
   const char* errorStatus = NULL;  // set when an error occurs, to a short descriptive string
 
   setCpuFrequencyMhz(80);  // downclock to reduce power draw
+
+  log_i("Boot %d, %s", bootCount, resetReason);
 
   pinMode(kLedR, OUTPUT);
   pinMode(kLedG, OUTPUT);
@@ -157,7 +178,10 @@ void setup() {
     http.useHTTP10(true);  // disabe chunked encoding, since the stream doesn't remove metadata
     http.setTimeout(15*1000);
     String httpUrl = kHttpGetUrl;
-    httpUrl = httpUrl + "?mac=" + macStr + "&vbat=" + vbatMv;
+    httpUrl = httpUrl + "?mac=" + macStr + "&vbat=" + vbatMv + "&fwVer=" + kFwVerStr + "&boot=" + bootCount + "&rst=" + resetReason;
+    if (failureCount > 0) {
+      httpUrl = httpUrl + "&fail=" + failureCount;
+    }
     http.begin(httpUrl);
     int httpResponseCode = http.GET();
     int httpResponseLen = http.getSize();
@@ -226,7 +250,7 @@ void setup() {
   display.setFont(&FreeMonoBold9pt7b);
 
   // last character gets cut off for some reason
-  String selfData = String(macStr) + " " + vbatMv / 1000 + "." + (vbatMv % 1000 / 10) + "V  ";
+  String selfData = String(kFwVerStr) + " " + macStr + " " + vbatMv / 1000 + "." + (vbatMv % 1000 / 10) + "V  ";
   int16_t tbx, tby; uint16_t tbw, tbh;
   display.getTextBounds(selfData, 0, 0, &tbx, &tby, &tbw, &tbh);
 
