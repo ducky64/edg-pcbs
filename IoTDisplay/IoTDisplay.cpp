@@ -113,8 +113,8 @@ void setup() {
 
 
   digitalWrite(kVsenseGate, 1);
-  delay(10);
-  int vbatMv = analogRead(kVsense) * 3300 * 57 / 10 / 4096;
+  delay(2);
+  int vbatMv = (uint32_t)analogRead(kVsense) * 3300 * (47+10) / 10 / 4096;
   log_i("Vbat: %d", vbatMv);
   digitalWrite(kVsenseGate, 0);
 
@@ -225,7 +225,8 @@ void setup() {
   display.setRotation(3);
   display.setFont(&FreeMonoBold9pt7b);
 
-  String selfData = String(macStr) + " " + vbatMv + "mV";
+  // last character gets cut off for some reason
+  String selfData = String(macStr) + " " + vbatMv / 1000 + "." + (vbatMv % 1000 / 10) + "V ";
   int16_t tbx, tby; uint16_t tbw, tbh;
   display.getTextBounds(selfData, 0, 0, &tbx, &tby, &tbw, &tbh);
 
