@@ -296,7 +296,7 @@ void setup() {
     sleepTimeSec = 60 * 60;  // default one hour
   }
 
-  esp_sleep_enable_timer_wakeup(sleepTimeSec * 1000000);
+  esp_sleep_enable_timer_wakeup(sleepTimeSec * 1000000ull);
   esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_OFF);
   esp_deep_sleep_start();
 }
