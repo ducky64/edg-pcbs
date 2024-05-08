@@ -1,4 +1,5 @@
 #include "mcp3561.h"
+#include "sensor/mcp3561_sensor.h"
 #include "esphome/core/log.h"
 
 using namespace esphome;
@@ -95,20 +96,65 @@ uint32_t MCP3561::readReg(uint8_t regAddr, uint8_t bytes) {
   return out;
 }
 
-int32_t MCP3561::read_data(Mux channel, Mux channel_neg) {
-  writeReg8(Register::MUX, ((channel & 0xf) << 4) | (channel_neg & 0xf));
+void MCP3561::start_conversion(MCP3561Sensor* sensor) {
+  writeReg8(Register::MUX, ((sensor->channel_ & 0xf) << 4) | (sensor->channel_neg_ & 0xf));
   fastCommand(FastCommand::kStartConversion);
+  conversionStartMillis_ = esphome::millis();
+}
 
-  int32_t result;
-  uint32_t startTime = esphome::millis();
-  while (!this->readRaw24(&result)) {
-    if ((esphome::millis() - startTime) >= 100) {  // TODO this is arbitrary
-      ESP_LOGE(TAG, "conversion timed out");
-      return 0;
+void MCP3561::enqueue(MCP3561Sensor* sensor) {
+  if (((queueWrite_ + 1) % kQueueDepth) == queueRead_) {
+    ESP_LOGE(TAG, "queue full, dropping request");
+    return;
+  }
+  // don't allow enqueueing duplicates - silently discard if there is a fundamental rate mismatch
+  if (queueRead_ <= queueWrite_) {  // doesn't wraparound
+    for (size_t i=queueRead_; i<queueWrite_; i++) {
+      if (queue_[i] == sensor) {
+        return;
+      }
+    }
+  } else {  // wraps around
+    for (size_t i=queueRead_; i<kQueueDepth; i++) {
+      if (queue_[i] == sensor) {
+        return;
+      }
+    }
+    for (size_t i=0; i<queueWrite_; i++) {
+      if (queue_[i] == sensor) {
+        return;
+      }
     }
   }
 
-  return result;
+
+  queue_[queueWrite_] = sensor;
+  if (queueWrite_ == queueRead_) {  // queue empty, start a conversion
+    start_conversion(sensor);
+  }
+  queueWrite_ = (queueWrite_ + 1) % kQueueDepth;
+}
+
+void MCP3561::loop() {
+  if (queueWrite_ == queueRead_) {  // queue empty, no conversion in progress
+    return;
+  }
+
+  size_t prevQueueRead = queueRead_;
+  int32_t result;
+  if (this->readRaw24(&result)) {
+    queue_[queueRead_]->conversion_result(result);
+    queueRead_ = (queueRead_ + 1) % kQueueDepth;
+  } else {
+    if ((esphome::millis() - conversionStartMillis_) >= 100) {
+      ESP_LOGE(TAG, "conversion timed out");
+      queueRead_ = (queueRead_ + 1) % kQueueDepth;
+    }
+  }
+
+  if (queueRead_ != prevQueueRead && queueWrite_ != queueRead_) {  // finished conversion and another is in the queue
+    start_conversion(queue_[queueRead_]);
+  }
 }
 
 }

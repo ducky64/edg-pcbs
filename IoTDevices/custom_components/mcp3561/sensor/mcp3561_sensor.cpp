@@ -19,7 +19,10 @@ void MCP3561Sensor::dump_config() {
 }
 
 void MCP3561Sensor::update() {
-  auto adcCounts = this->parent_->read_data(this->channel_, this->channel_neg_);
+  this->parent_->enqueue(this);
+}
+
+void MCP3561Sensor::conversion_result(int32_t adcCounts) {
   rawValue = adcCounts;
   this->publish_state(adcCounts / (float)(1 << 23)); 
 }

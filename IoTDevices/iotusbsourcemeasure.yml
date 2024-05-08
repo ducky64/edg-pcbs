@@ -246,7 +246,8 @@ fusb302:
 mcp3561:
   cs_pin: GPIO7
   id: adc_meas
-  osr: 40960
+  osr: 49152  # up to 98304
+
 
 mcp4728:
   id: dac_control

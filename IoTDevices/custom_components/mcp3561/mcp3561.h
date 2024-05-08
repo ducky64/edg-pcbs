@@ -7,6 +7,10 @@
 using namespace esphome;
 namespace mcp3561 {
 
+const size_t kQueueDepth = 8;
+
+class MCP3561Sensor;
+
 // note: device compatible with SPI Modes 0,0 and 1,1
 class MCP3561 : public Component,
                 public spi::SPIDevice<spi::BIT_ORDER_MSB_FIRST, spi::CLOCK_POLARITY_LOW, spi::CLOCK_PHASE_LEADING,
@@ -85,18 +89,27 @@ class MCP3561 : public Component,
   MCP3561(Osr osr, uint8_t device_address = 1);
 
   void setup() override;
+  void loop() override;
   void dump_config() override;
   float get_setup_priority() const override;
-  int32_t read_data(Mux channel, Mux channel_neg);  // reads data as a 24-bit signed value
+
+  void enqueue(MCP3561Sensor* sensor);
 
 protected:
   uint8_t fastCommand(FastCommand fastCommandCode);
   bool readRaw24(int32_t* outValue);
   uint8_t writeReg8(uint8_t regAddr, uint8_t data);
   uint32_t readReg(uint8_t regAddr, uint8_t bytes = 1);
+  void start_conversion(MCP3561Sensor* sensor);
 
   Osr osr_;
   uint8_t device_address_;
+
+  uint32_t conversionStartMillis_ = 0;
+  MCP3561Sensor* queue_[kQueueDepth] = {0};
+  size_t queueWrite_ = 0;  // current conversion, index into queue
+  size_t queueRead_ = 0;  // last item in the queue, empty if read == write
+
 };
 
 }
