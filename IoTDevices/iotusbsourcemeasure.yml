@@ -503,18 +503,22 @@ sensor:
           id(meas_current_noise).publish_state(value);
           return value;
     unit_of_measurement: A
-  - platform: range_filter
+  - platform: template
     name: "${name} Meas Voltage Noise"
     id: meas_voltage_noise
     accuracy_decimals: 6
-    window_size: 25
-    send_every: 5
-  - platform: range_filter
+    filters:
+      - range:
+          window_size: 25
+          send_every: 5
+  - platform: template
     name: "${name} Meas Current Noise"
     id: meas_current_noise
     accuracy_decimals: 7
-    window_size: 25
-    send_every: 5
+    filters:
+      - range:
+          window_size: 25
+          send_every: 5
 
   - platform: template
     name: "${name} Meas ADC Voltage"
