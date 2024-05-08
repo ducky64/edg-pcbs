@@ -288,7 +288,7 @@ number:
     id: set_voltage
     icon: mdi:high-voltage
     mode: box
-    min_value: -30
+    min_value: 0
     max_value: 30
     step: 0.01
     unit_of_measurement: V
@@ -301,8 +301,8 @@ number:
             id(set_voltage).publish_state(x);
 
             // set buck-boost to minimum needed + 1v for headroom
-            // float convTarget = x + 1.0;
-            // id(buckboost_ratio).make_call().set_value(convTarget / (id(fusb_vbus).state - 0.4)).perform();
+            float convTarget = x + 1.0;
+            id(buckboost_ratio).make_call().set_value(convTarget / (id(fusb_vbus).state - 0.4)).perform();
   - platform: template
     name: "${name} Set Current Min"
     id: limit_current_min
