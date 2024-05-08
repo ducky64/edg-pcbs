@@ -485,8 +485,9 @@ sensor:
     filters:
       - lambda: |-
           id(adc_voltage).publish_state(id(meas_voltage).rawValue);
-          return x * id(kVref) * id(kVoltageRatio) * id(kCalVoltageFactor) + id(kCalVoltageOffset);
-
+          auto value = x * id(kVref) * id(kVoltageRatio) * id(kCalVoltageFactor) + id(kCalVoltageOffset);
+          id(meas_voltage_noise).publish_state(value);
+          return value;
   - platform: mcp3561
     id: meas_current
     name: "${name} Meas Current"
@@ -498,8 +499,23 @@ sensor:
     filters:
       - lambda: |-
           id(adc_current).publish_state(id(meas_current).rawValue);
-          return x * id(kVref) * id(kCurrentRatio0) * id(kCalCurrentFactor) + id(kCalCurrentOffset) + id(kCalCurrentVoltageFactor) * id(meas_voltage).get_state();
+          auto value = x * id(kVref) * id(kCurrentRatio0) * id(kCalCurrentFactor) + id(kCalCurrentOffset) + id(kCalCurrentVoltageFactor) * id(meas_voltage).get_state();
+          id(meas_current_noise).publish_state(value);
+          return value;
     unit_of_measurement: A
+  - platform: range_filter
+    name: "${name} Meas Voltage Noise"
+    id: meas_voltage_noise
+    accuracy_decimals: 6
+    window_size: 25
+    send_every: 5
+  - platform: range_filter
+    name: "${name} Meas Current Noise"
+    id: meas_current_noise
+    accuracy_decimals: 7
+    window_size: 25
+    send_every: 5
+
   - platform: template
     name: "${name} Meas ADC Voltage"
     id: adc_voltage
@@ -510,6 +526,7 @@ sensor:
     id: adc_current
     accuracy_decimals: 0
     internal: true
+    
   # - platform: mcp3561  # TESTING OUTPUT for absolute ADC output
   #   name: "${name} Int VCenter"
   #   update_interval: 1s

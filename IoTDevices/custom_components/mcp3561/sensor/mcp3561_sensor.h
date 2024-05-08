@@ -19,7 +19,6 @@ class MCP3561Sensor : public PollingComponent,
   void dump_config() override;
   float get_setup_priority() const override;
 
-  void conversion_start();  // start a conversion, directed by the parent
   void conversion_result(int32_t adcCounts);  // called by the parent on a conversion result for this sensor
 
   int32_t rawValue;
