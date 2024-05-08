@@ -83,7 +83,7 @@ void PNGDraw(PNGDRAW *pDraw) {
   uint8_t ucMask[maxWidth/8];
   
   png.getLineAsRGB565(pDraw, usPixels, PNG_RGB565_BIG_ENDIAN, 0xffffffff);
-  png.getAlphaMask(pDraw, ucMask, 255);
+  png.getAlphaMask(pDraw, ucMask, 127);
 
   for (size_t i=0; i<pDraw->iWidth; i++) {
     if (((usPixels[i] & 0x001f) < 0x10) && (((usPixels[i] & 0xf800) >> 11) < 0x10)
