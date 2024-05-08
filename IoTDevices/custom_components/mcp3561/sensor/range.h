@@ -4,17 +4,14 @@
 #include "esphome/components/sensor/filter.h"
 #include "esphome/core/component.h"
 
-#include "range.h"
-
 using namespace esphome;
 namespace range_filter {
 
-class RangeFilterSensor : public Component, public sensor::Sensor {
+class RangeFilter : public sensor::Filter {
  public:
-  RangeFilterSensor(size_t window_size, size_t send_every);
+  RangeFilter(size_t window_size, size_t send_every);
 
-  void dump_config() override;
-  float get_setup_priority() const override;
+  optional<float> new_value(float value) override;
 
 protected:
   size_t window_size_;
