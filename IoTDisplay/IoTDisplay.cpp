@@ -87,8 +87,12 @@ void PNGDraw(PNGDRAW *pDraw) {
   png.getAlphaMask(pDraw, ucMask, 255);
 
   for (size_t i=0; i<pDraw->iWidth; i++) {
-    if (((usPixels[i] & 0x1f) < 0x10) && ((ucMask[i/8] >> ((7-i) % 8)) & 0x1)) {  // darker than grey
+    if (((usPixels[i] & 0x001f) < 0x10) && (((usPixels[i] & 0xf800) >> 11) < 0x10)
+        && ((ucMask[i/8] >> ((7-i) % 8)) & 0x1)) {  // darker than grey
       display.drawPixel(i, pDraw->y, GxEPD_BLACK);
+    } else if (((usPixels[i] & 0x001f) > 0x10) && (((usPixels[i] & 0xf800) >> 11) < 0x10) 
+        && ((ucMask[i/8] >> ((7-i) % 8)) & 0x1)) {  // red
+      display.drawPixel(i, pDraw->y, GxEPD_RED);
     }
   }
 }
