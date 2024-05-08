@@ -19,6 +19,9 @@ esphome:
     - number.set:
         id: buckboost_ratio
         value: 0.0
+    - switch.turn_on: conv_enable
+    - delay: 0.1s
+    - switch.turn_off: conv_enable
 
 wifi:
   <<: !include ../wifi_config.yaml
@@ -45,27 +48,26 @@ web_server:
 
 # device constants
 globals:
-  - id: kVoltageRatio
-    type: float
-    initial_value: '24'  # output volts per measured volt
-  - id: kCurrentRatio
-    type: float
-    initial_value: '1'  # output amps per measured volt, including accounting for resistor value
-  - id: kVCenter
-    type: float
-    initial_value: '1.65'  # theoretical and measured
-  - id: kAdcVref
-    type: float
-    initial_value: '3.3'  # theoretical, 2% tolerance
-  - id: kDacVRef
-    type: float
-    initial_value: '3.3'  # theoretical
   - id: kBuckBoostPwmDeadzone
     type: float
     initial_value: '0.05'  # in fractional duty-cycle, maximum / minimum duty cycle
-  - id: kMaxBoostRatio
+    
+  - id: kVoltageRatio
     type: float
-    initial_value: '1.5'  # in fractional duty-cycle, maximum / minimum duty cycle
+    initial_value: '24.176'  # 220/9.1, output volts per measured volt
+  - id: kCurrentRatio0
+    type: float
+    initial_value: '2.2727'  # 1/(.022*20), output amps per measured volt, including accounting for resistor value
+  - id: kCurrentRatio1
+    type: float
+    initial_value: '0.22727'  # 1/(.22*20)
+  - id: kVCenter
+    type: float
+    initial_value: '1.65'  # theoretical
+  - id: kVref
+    type: float
+    initial_value: '3.3'  # theoretical, 2% tolerance
+
   - id: kCalVoltageFactor
     type: float
     initial_value: '1'
@@ -105,16 +107,14 @@ globals:
     # initial_value: '0.0252'  # add to set amps to get true amps
 
 light:
-  - platform: binary
+  - platform: status_led
     name: "${name} Dbg"
     id: debug_led
-    output: output_debug_led
+    pin:
+      number: GPIO0
+      inverted: true
 
 output:
-  - id: output_debug_led
-    platform: gpio
-    pin: GPIO0
-    inverted: true
   - id: output_rgb_r
     platform: gpio
     pin:
@@ -133,24 +133,28 @@ output:
       pca9554: pca9554a_device
       number: 5
       inverted: true
-  - platform: ledc
-    pin: GPIO42
-    id: buck_pwm
-    frequency: 250 kHz
-  - platform: ledc
-    pin: GPIO39  # IMPORTANT! this controls the HIGH SIDE switch, so the duty is 1-D
-    id: boost_pwm
-    frequency: 250 kHz
-  # - platform: mcpwm_sync
-  #   id: buck_pwm
+  # - platform: ledc
   #   pin: GPIO42
-  #   frequency: 200kHz
-  # - platform: mcpwm_sync
+  #   id: buck_pwm
+  #   frequency: 250 kHz
+  # - platform: ledc
+  #   pin: GPIO39  # IMPORTANT! this controls the HIGH SIDE switch, so the duty is 1-D
   #   id: boost_pwm
-  #   pin: GPIO39  # low-side
-  #   pin_comp: NC
-  #   frequency: 200kHz
-  #   max_duty: 0.37  # up to 1.5x boost ratio + accounting for deadzone
+  #   frequency: 250 kHz
+  - platform: mcpwm_sync
+    id: buck_pwm
+    pin: GPIO42
+    frequency: 250kHz
+    deadtime_rising: 0s  # deadtime generated internally by gate driver
+    deadtime_falling: 0s
+  - platform: mcpwm_sync
+    id: boost_pwm
+    pin: GPIO39  # this controls the HIGH SIDE switch, so the duty is 1-D
+    frequency: 250kHz
+    deadtime_rising: 0s  # deadtime generated internally by gate driver
+    deadtime_falling: 0s
+    max_duty: 0.37  # up to 1.5x boost ratio, accounting for 0.95 buck ratio
+    inverted: true
 
   - platform: mcp4728
     id: dac_voltage
@@ -177,8 +181,14 @@ switch:
       - output.turn_on: output_rgb_b
     on_turn_off:
     - then:
-      - switch.turn_off: control_enable
-      - output.turn_off: output_rgb_b
+      - delay: 0.1s
+      - if:
+          condition:
+            - switch.is_off: range0
+            - switch.is_off: range1
+          then:
+            - switch.turn_off: control_enable
+            - output.turn_off: output_rgb_b
   - platform: gpio
     id: range1
     name: "${name} Range1"
@@ -190,16 +200,22 @@ switch:
       - output.turn_on: output_rgb_b
     on_turn_off:
     - then:
-      - switch.turn_off: control_enable
-      - output.turn_off: output_rgb_b
+      - delay: 0.1s
+      - if:
+          condition:
+            - switch.is_off: range0
+            - switch.is_off: range1
+          then:
+            - switch.turn_off: control_enable
+            - output.turn_off: output_rgb_b
   - platform: gpio
     id: control_enable
-    # internal: true
+    internal: true
     name: "${name} Control Enable"
     pin: GPIO38
-    inverted: true
   - platform: gpio
-    id: conv_en
+    id: conv_enable
+    internal: true
     name: "${name} Conv Enable"
     pin: GPIO40
     inverted: true  # active-low enable
@@ -230,7 +246,7 @@ fusb302:
 mcp3561:
   cs_pin: GPIO7
   id: adc_meas
-  osr: 16384
+  osr: 40960
 
 mcp4728:
   id: dac_control
@@ -281,7 +297,7 @@ number:
         - lambda: |-
             float correctedX = (x - id(kCalSetVoltageOffset)) / id(kCalSetVoltageFactor);
             float targetVolts = id(kVCenter) - (correctedX / id(kVoltageRatio));
-            id(dac_voltage)->write_state(targetVolts / id(kDacVRef));
+            id(dac_voltage)->write_state(targetVolts / id(kVref));
             id(set_voltage).publish_state(x);
 
             // set buck-boost to minimum needed + 1v for headroom
@@ -300,8 +316,8 @@ number:
       - then:
         - lambda: |-
             float correctedX = (x - id(kCalSetCurrentOffset)) / id(kCalSetCurrentFactor);
-            float targetVolts = id(kVCenter) - (correctedX / id(kCurrentRatio));
-            id(dac_isink)->write_state(targetVolts / id(kDacVRef));
+            float targetVolts = id(kVCenter) - (correctedX / id(kCurrentRatio0));
+            id(dac_isink)->write_state(targetVolts / id(kVref));
             id(limit_current_min).publish_state(x);
   - platform: template
     name: "${name} Set Current Max"
@@ -316,8 +332,8 @@ number:
       - then:
         - lambda: |-
             float correctedX = (x - id(kCalSetCurrentOffset)) / id(kCalSetCurrentFactor);
-            float targetVolts = id(kVCenter) - (correctedX / id(kCurrentRatio));
-            id(dac_isrc)->write_state(targetVolts / id(kDacVRef));
+            float targetVolts = id(kVCenter) - (correctedX / id(kCurrentRatio0));
+            id(dac_isrc)->write_state(targetVolts / id(kVref));
             id(limit_current_max).publish_state(x);
   - platform: template
     name: "${name} Buck-boost ratio"
@@ -329,10 +345,8 @@ number:
     set_action:
       - then:
         - lambda: |-
+            // initialize DC at ratio = 1
             float buckDc = 1 - id(kBuckBoostPwmDeadzone), boostDc = id(kBuckBoostPwmDeadzone);
-            if (x > id(kMaxBoostRatio)) {  // clamp if needed
-              x = id(kMaxBoostRatio);
-            }
             if (x <= 1) {  // adjust buck dc
               float boostRatio = 1 / (1 - boostDc);
               buckDc = x / boostRatio;  // offset the minimal boost PWM
@@ -341,7 +355,7 @@ number:
               boostDc = 1 - (1 / boostRatio);
             }
             id(buck_pwm)->write_state(buckDc);
-            id(boost_pwm)->write_state(1 - boostDc);
+            id(boost_pwm)->write_state(boostDc);
             ESP_LOGI("BuckBoostCtl", "Target %.02f, buck %.02f, boost %.02f", x, buckDc, boostDc);
             id(buckboost_ratio).publish_state(x);
 
@@ -469,7 +483,7 @@ sensor:
     filters:
       - lambda: |-
           id(adc_voltage).publish_state(id(meas_voltage).rawValue);
-          return x * id(kAdcVref) * id(kVoltageRatio) * id(kCalVoltageFactor) + id(kCalVoltageOffset);
+          return x * id(kVref) * id(kVoltageRatio) * id(kCalVoltageFactor) + id(kCalVoltageOffset);
 
   - platform: mcp3561
     id: meas_current
@@ -481,16 +495,18 @@ sensor:
     filters:
       - lambda: |-
           id(adc_current).publish_state(id(meas_current).rawValue);
-          return x * id(kAdcVref) * id(kCurrentRatio) * id(kCalCurrentFactor) + id(kCalCurrentOffset) + id(kCalCurrentVoltageFactor) * id(meas_voltage).get_state();
+          return x * id(kVref) * id(kCurrentRatio0) * id(kCalCurrentFactor) + id(kCalCurrentOffset) + id(kCalCurrentVoltageFactor) * id(meas_voltage).get_state();
     unit_of_measurement: A
   - platform: template
     name: "${name} Meas ADC Voltage"
     id: adc_voltage
     accuracy_decimals: 0
+    internal: true
   - platform: template
     name: "${name} Meas ADC Current"
     id: adc_current
     accuracy_decimals: 0
+    internal: true
   # - platform: mcp3561  # TESTING OUTPUT for absolute ADC output
   #   name: "${name} Int VCenter"
   #   update_interval: 1s
@@ -499,7 +515,7 @@ sensor:
   #   channel_neg: AGND
   #   filters:
   #     - lambda: |-
-  #         return x * id(kAdcVref);
+  #         return x * id(kVref);
 
   - platform: adc
     id: adc_vconv

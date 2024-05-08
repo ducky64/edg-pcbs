@@ -7,13 +7,22 @@ using namespace esphome;
 
 static const char* TAG = "McpwmSyncComponent";
 
-McpwmSyncComponent::McpwmSyncComponent(InternalGPIOPin *pin, InternalGPIOPin *pin_comp,
-  float frequency, float deadtime_rising, float deadtime_falling, float max_duty,
+McpwmSyncComponent::McpwmSyncComponent(InternalGPIOPin *pin,
+  float frequency, float deadtime_rising, float deadtime_falling, bool inverted, float max_duty,
   adc::ADCSensor *sample_adc, float blank_frequency, float blank_time) :
-  pin_(pin), pin_comp_(pin_comp), frequency_(frequency),
-  deadtime_rising_(deadtime_rising), deadtime_falling_(deadtime_falling), max_duty_(max_duty),
+  pin_(pin), frequency_(frequency), deadtime_rising_(deadtime_rising), deadtime_falling_(deadtime_falling), 
+  inverted_(inverted), max_duty_(max_duty),
   sample_adc_(sample_adc), blank_period_ms_(1 / blank_frequency / 1e-3), blank_time_ms_(blank_time / 1e-3) {
 }
+
+void McpwmSyncComponent::set_pin_comp(InternalGPIOPin *pin) { 
+  if (initialized_) {
+      ESP_LOGE(TAG, "setting comp pin post-init");
+      status_set_error();
+    }
+    this->pin_comp_ = pin; 
+}
+
 
 float McpwmSyncComponent::get_setup_priority() const {
   return setup_priority::HARDWARE; 
@@ -21,6 +30,14 @@ float McpwmSyncComponent::get_setup_priority() const {
 
 void McpwmSyncComponent::setup() {
   const uint8_t kResolutionFactor = 16;
+
+  initialized_ = true;
+
+  if (max_duty_ > 1 || max_duty_ < 0) {
+    ESP_LOGE(TAG, "invalid max duty: %f", max_duty_);
+    status_set_error();
+    return;    
+  }
 
   if (McpwmSyncComponent::nextMcpwmUnit_ == 0) {
     ESP_LOGI(TAG, "allocate MCPWM 0");
@@ -37,14 +54,6 @@ void McpwmSyncComponent::setup() {
   }
 
   // based on example from https://github.com/espressif/esp-idf/issues/7321
-  ESP_LOGI(TAG, "MCPWM setup 0A=%i, 0B=%i", pin_->get_pin(), pin_comp_->get_pin());
-  if (mcpwm_gpio_init(mcpwmUnit_, MCPWM0A, pin_->get_pin()) != ESP_OK ||
-      mcpwm_gpio_init(mcpwmUnit_, MCPWM0B, pin_comp_->get_pin()) != ESP_OK) {
-    ESP_LOGE(TAG, "failed to init GPIO");
-    status_set_error();
-    return;
-  }
-
   mcpwm_config_t pwm_config;
   pwm_config.frequency = frequency_;
   pwm_config.cmpr_a = 0;
@@ -76,8 +85,31 @@ void McpwmSyncComponent::setup() {
     return;
   }
 
-  mcpwm_set_duty(mcpwmUnit_, MCPWM_TIMER_0, MCPWM_GEN_A, 0);
-  mcpwm_set_duty(mcpwmUnit_, MCPWM_TIMER_0, MCPWM_GEN_B, 100);
+  // init the GPIO last after everything has been validated
+  if (mcpwm_gpio_init(mcpwmUnit_, MCPWM0A, pin_->get_pin()) != ESP_OK) {
+    ESP_LOGE(TAG, "failed to init true GPIO");
+    status_set_error();
+    return;
+  } else {
+    ESP_LOGI(TAG, "init true GPIO 0A=%i", pin_->get_pin());
+  }
+  if (pin_comp_ == nullptr) {
+    ESP_LOGI(TAG, "skip comp GPIO");
+  } else if (mcpwm_gpio_init(mcpwmUnit_, MCPWM0B, pin_comp_->get_pin()) != ESP_OK) {
+    ESP_LOGE(TAG, "failed to init comp GPIO");
+    status_set_error();
+    return;
+  } else {
+    ESP_LOGI(TAG, "init comp GPIO 0B=%i", pin_comp_->get_pin());
+  }
+
+  if (!inverted_) {
+    mcpwm_set_duty(mcpwmUnit_, MCPWM_TIMER_0, MCPWM_GEN_A, 0);
+    mcpwm_set_duty(mcpwmUnit_, MCPWM_TIMER_0, MCPWM_GEN_B, 100);
+  } else {
+    mcpwm_set_duty(mcpwmUnit_, MCPWM_TIMER_0, MCPWM_GEN_A, 100);
+    mcpwm_set_duty(mcpwmUnit_, MCPWM_TIMER_0, MCPWM_GEN_B, 0);
+  }
   mcpwm_start(mcpwmUnit_, MCPWM_TIMER_0);
 
   ESP_LOGI(TAG, "MCPWM setup complete");
@@ -100,6 +132,10 @@ void McpwmSyncComponent::write_state(float state) {
     ESP_LOGE(TAG, "duty clamped to max: %f", duty_);
     duty_ = max_duty_;
   }
+  if (inverted_) {
+    duty_ = 1.0f - duty_;
+  }
+
   duty_ = duty_ * 100;  // format conversion for ESP API
   if (duty_ > 0) {  // compensate for rising deadtime which is rolled into the high duty cycle
     duty_ += deadtime_duty_comp_;
