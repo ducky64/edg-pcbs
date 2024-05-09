@@ -17,6 +17,8 @@ protected:
   size_t window_size_;
   size_t send_every_;
 
+  size_t send_at_ = 0;
+
   std::deque<float> queue_;
 };
 
