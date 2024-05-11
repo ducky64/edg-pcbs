@@ -12,7 +12,7 @@ class SmuInterface:
   kNameSetCurrentMin = 'UsbSMU Set Current Min'
   kNameSetCurrentMax = 'UsbSMU Set Current Max'
   kNameSetVoltage = 'UsbSMU Set Voltage'
-  kNameEnable = 'UsbSMU Driver Enable'
+  kNameEnable = 'UsbSMU Range0'
 
   @staticmethod
   def _webapi_name(name: str) -> str:

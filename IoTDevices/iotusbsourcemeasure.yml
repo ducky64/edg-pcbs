@@ -241,7 +241,7 @@ pca9554:
 
 fusb302:
   id: usbpd
-  target: 9v
+  target: 12v
 
 mcp3561:
   cs_pin: GPIO7

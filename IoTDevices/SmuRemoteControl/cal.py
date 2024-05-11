@@ -21,41 +21,42 @@ def drange(x, y, jump):
 
 
 # Calibration with external reference
-# ask_user_reference = True
-# calibration_points = [  # as voltage, current min, current max
-#   # unloaded
-#   (0.0, -1, 1),
-#   (1.0, -1, 1),
-#   (2.0, -1, 1),
-#   (4.0, -1, 1),
-#   (7.0, -1, 1),
-#   (10.0, -1, 1),
-#   # 50 ohm
-#   (0.0, -1, 1),
-#   (1.0, -1, 1),
-#   (2.0, -1, 1),
-#   (4.0, -1, 1),
-#   (7.0, -1, 1),
-#   (10.0, -1, 1),
-#   # 10 ohm
-#   (0.0, -1, 1),
-#   (1.0, -1, 1),
-#   (2.0, -1, 1),
-#   (4.0, -1, 1),
-#   (8.0, -1, 1),
-# ]
+ask_user_reference = True
+calibration_points = [  # as voltage, current min, current max
+  # unloaded
+  (0.0, -1, 1),
+  (1.0, -1, 1),
+  (2.0, -1, 1),
+  (4.0, -1, 1),
+  (8.0, -1, 1),
+  (12.0, -1, 1),
+  (16.0, -1, 1),
+  # 50 ohm
+  # (0.0, -1, 1),
+  # (1.0, -1, 1),
+  # (2.0, -1, 1),
+  # (4.0, -1, 1),
+  # (7.0, -1, 1),
+  # (10.0, -1, 1),
+  # 10 ohm
+  # (0.0, -1, 1),
+  # (1.0, -1, 1),
+  # (2.0, -1, 1),
+  # (4.0, -1, 1),
+  # (8.0, -1, 1),
+]
 
 
 # Quick voltage self-cal after measurements calibrated
-ask_user_reference = False
-voltage_points = itertools.chain(*[
-  drange(0, 3.6, 0.1),
-  # drange(7, 0, -0.1),
-])
-calibration_points = [
-  (float(voltage), -0.01, 0.4)
-  for voltage in voltage_points
-]
+# ask_user_reference = False
+# voltage_points = itertools.chain(*[
+#   drange(0, 3.6, 0.1),
+#   # drange(7, 0, -0.1),
+# ])
+# calibration_points = [
+#   (float(voltage), -0.01, 0.4)
+#   for voltage in voltage_points
+# ]
 
 
 # Quick current self-cal after measurements calibrated
