@@ -13,37 +13,37 @@ kOutputFile = 'calibration.csv'
 kSetReadDelay = 0.2  # seconds
 
 kVoltageCalPoints = [  # as voltage, current min, current max
-  "Open load",
-  (0.0, -0.1, 0.1),
-  (1.0, -0.1, 0.1),
-  (2.0, -0.1, 0.1),
-  (4.0, -0.1, 0.1),
-  (8.0, -0.1, 0.1),
-  (12.0, -0.1, 0.1),
-  (16.0, -0.1, 0.1),
-  (8.0, -0.1, 0.1),
-  (1.0, -0.1, 0.1),
-  (0.0, -0.1, 0.1),
-  # "Connect 50ohm",
-  # (0.0, -0.1, 0.1),
+  # "Open load",
+  # # (0.0, -0.1, 0.1),  # don't calibrate zero, might be off-scale on output mode
   # (1.0, -0.1, 0.1),
   # (2.0, -0.1, 0.1),
+  # (4.0, -0.1, 0.1),
+  # (6.0, -0.1, 0.1),
+  # (8.0, -0.1, 0.1),
+  # (10.0, -0.1, 0.1),
+  # (14.0, -0.1, 0.1),
+  # (1.0, -0.1, 0.1),
+
+  # "Connect 50ohm",
+  # (1.0, -0.1, 0.1),
+  # (2.0, -0.1, 0.1),
+  # (4.0, -0.1, 0.1),
   # (8.0, -0.1, 0.3),
-  # (16.0, -0.1, 0.5),
-  # (0.0, -0.1, 0.1),
+  # (12.0, -0.1, 0.5),
+  # (1.0, -0.1, 0.1),
+
   # "Connect 10ohm",
-  # (0.0, -0.1, 0.1),
-  # (1.0, -0.1, 0.2),
-  # (2.0, -0.1, 0.4),
-  # (4.0, -0.1, 0.6),
-  # (8.0, -0.1, 1.0),
-  # (0.0, -0.1, 0.1),
+  (1.0, -0.1, 0.2),
+  (2.0, -0.1, 0.4),
+  (4.0, -0.1, 0.6),
+  (6.0, -0.1, 1.0),
+  (8.0, -0.1, 1.0),
+  (1.0, -0.1, 0.2),
 ]
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(prog='SmuCal')
   parser.add_argument('addr', type=str)
-  parser.add_argument('--plot', action='store_true')
   args = parser.parse_args()
 
   smu = SmuInterface(args.addr)
@@ -64,7 +64,7 @@ if __name__ == "__main__":
     enabled = False
     for calibration_point in kVoltageCalPoints:
       if isinstance(calibration_point, str):
-        print(calibration_point)
+        print(calibration_point, end='')
         input()
       else:
         (set_voltage, set_current_min, set_current_max) = calibration_point
@@ -100,7 +100,7 @@ if __name__ == "__main__":
     print(f"Voltage meas calibration: y = {slope}x + {intercept}, sse={sse}")
     for pt in meas_voltage_cal_data:
       predict = slope * float(pt[0]) + intercept
-      print(f"  {pt[1]} => {predict} ({predict - float(pt[1])})")
+      print(f"  {pt[1]} => {predict:.4f} ({predict - float(pt[1]):.4f})")
 
     (slope, intercept), (sse, ), *_ = np.polyfit(
       [float(pt[0]) for pt in set_voltage_cal_data],
@@ -109,4 +109,4 @@ if __name__ == "__main__":
     print(f"Voltage set calibration: y = {slope}x + {intercept}, sse={sse}")
     for pt in set_voltage_cal_data:
       predict = slope * float(pt[0]) + intercept
-      print(f"  {pt[1]} => {predict} ({predict - float(pt[1])})")
+      print(f"  {pt[1]} => {predict:.4f} ({predict - float(pt[1]):.4f})")
