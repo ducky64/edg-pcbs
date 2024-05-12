@@ -13,16 +13,16 @@ kOutputFile = 'calibration.csv'
 kSetReadDelay = 0.2  # seconds
 
 kVoltageCalPoints = [  # as voltage, current min, current max
-  # "Open load",
-  # # (0.0, -0.1, 0.1),  # don't calibrate zero, might be off-scale on output mode
-  # (1.0, -0.1, 0.1),
-  # (2.0, -0.1, 0.1),
-  # (4.0, -0.1, 0.1),
-  # (6.0, -0.1, 0.1),
-  # (8.0, -0.1, 0.1),
-  # (10.0, -0.1, 0.1),
-  # (14.0, -0.1, 0.1),
-  # (1.0, -0.1, 0.1),
+  "Open load",
+  # (0.0, -0.1, 0.1),  # don't calibrate zero, might be off-scale on output mode
+  (1.0, -0.1, 0.1),
+  (2.0, -0.1, 0.1),
+  (4.0, -0.1, 0.1),
+  (6.0, -0.1, 0.1),
+  (8.0, -0.1, 0.1),
+  (10.0, -0.1, 0.1),
+  (14.0, -0.1, 0.1),
+  (1.0, -0.1, 0.1),
 
   # "Connect 50ohm",
   # (1.0, -0.1, 0.1),
@@ -33,12 +33,12 @@ kVoltageCalPoints = [  # as voltage, current min, current max
   # (1.0, -0.1, 0.1),
 
   # "Connect 10ohm",
-  (1.0, -0.1, 0.2),
-  (2.0, -0.1, 0.4),
-  (4.0, -0.1, 0.6),
-  (6.0, -0.1, 1.0),
-  (8.0, -0.1, 1.0),
-  (1.0, -0.1, 0.2),
+  # (1.0, -0.1, 0.2),
+  # (2.0, -0.1, 0.4),
+  # (4.0, -0.1, 0.6),
+  # (6.0, -0.1, 1.0),
+  # (8.0, -0.1, 1.0),
+  # (1.0, -0.1, 0.2),
 ]
 
 if __name__ == "__main__":

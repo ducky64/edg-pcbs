@@ -26,7 +26,7 @@ void MCP3561::setup() {
     ESP_LOGW(TAG, "MCP356x unexpected Reserved (device ID) value %04x", reservedVal);
   }
 
-  writeReg8(Register::CONFIG0, 0xE2);  // internal VREF, internal clock w/ no CLK out, ADC standby
+  writeReg8(Register::CONFIG0, 0xA2);  // external VREF, internal clock w/ no CLK out, ADC standby
   writeReg8(Register::CONFIG1, (this->osr_ & 0xf) << 2);
   writeReg8(Register::CONFIG3, 0x80);  // one-shot conversion into standby, 24b encoding
   writeReg8(Register::IRQ, 0x07);  // enable fast command and start-conversion IRQ, IRQ logic high)
