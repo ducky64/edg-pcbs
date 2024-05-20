@@ -20,14 +20,15 @@ void MCP3561::setup() {
     ESP_LOGI(TAG, "Detected MCP3561");
   } else if (reservedVal == 0x000d) {
     ESP_LOGI(TAG, "Detected MCP3562");
-  } else if (reservedVal == 0x000e) {
+  } else if (reservedVal == 0x000f) {
     ESP_LOGI(TAG, "Detected MCP3564");
   } else {
     ESP_LOGW(TAG, "MCP356x unexpected Reserved (device ID) value %04x", reservedVal);
   }
 
-  writeReg8(Register::CONFIG0, 0xA2);  // external VREF, internal clock w/ no CLK out, ADC standby
+  writeReg8(Register::CONFIG0, 0x22);  // external VREF, internal clock w/ no CLK out, ADC standby
   writeReg8(Register::CONFIG1, (this->osr_ & 0xf) << 2);
+
   writeReg8(Register::CONFIG3, 0x80);  // one-shot conversion into standby, 24b encoding
   writeReg8(Register::IRQ, 0x07);  // enable fast command and start-conversion IRQ, IRQ logic high)
 }
@@ -146,7 +147,7 @@ void MCP3561::loop() {
     queue_[queueRead_]->conversion_result(result);
     queueRead_ = (queueRead_ + 1) % kQueueDepth;
   } else {
-    if ((esphome::millis() - conversionStartMillis_) >= 100) {
+    if ((esphome::millis() - conversionStartMillis_) >= 1000) {
       ESP_LOGE(TAG, "conversion timed out");
       queueRead_ = (queueRead_ + 1) % kQueueDepth;
     }
