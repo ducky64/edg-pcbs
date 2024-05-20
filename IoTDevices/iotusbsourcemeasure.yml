@@ -246,7 +246,7 @@ fusb302:
 mcp3561:
   cs_pin: GPIO7
   id: adc_meas
-  osr: 49152  # up to 98304
+  osr: 98304  # up to 98304
 
 
 mcp4728:
@@ -309,8 +309,8 @@ number:
     id: limit_current_min
     icon: mdi:pan-up
     mode: box
-    min_value: -1
-    max_value: 1
+    min_value: -3
+    max_value: 3
     step: 0.01
     unit_of_measurement: A
     set_action:
@@ -325,8 +325,8 @@ number:
     id: limit_current_max
     icon: mdi:pan-down
     mode: box
-    min_value: -1
-    max_value: 1
+    min_value: -3
+    max_value: 3
     step: 0.01
     unit_of_measurement: A
     set_action:
