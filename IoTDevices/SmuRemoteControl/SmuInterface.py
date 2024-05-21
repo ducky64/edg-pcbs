@@ -12,7 +12,8 @@ class SmuInterface:
   kNameSetCurrentMin = 'UsbSMU Set Current Min'
   kNameSetCurrentMax = 'UsbSMU Set Current Max'
   kNameSetVoltage = 'UsbSMU Set Voltage'
-  kNameEnable = 'UsbSMU Range0'
+  kNameEnableRange0 = 'UsbSMU Range0'
+  kNameEnableRange1 = 'UsbSMU Range1'
 
   @staticmethod
   def _webapi_name(name: str) -> str:
@@ -51,11 +52,18 @@ class SmuInterface:
     return (int(self._get('sensor', self.kNameAdcVoltage)),
             int(self._get('sensor', self.kNameAdcCurrent)))
 
-  def enable(self, on: bool=True) -> None:
+  def enable(self, on: bool=True, high=True) -> None:
     if on:
       action = 'turn_on'
+      if high:
+        names = [self.kNameEnableRange0]
+      else:
+        names = [self.kNameEnableRange1]
     else:
       action = 'turn_off'
-    resp = requests.post(f'http://{self.addr}/switch/{self._webapi_name(self.kNameEnable)}/{action}')
-    if resp.status_code != 200:
-      raise Exception(f'Request failed: {resp.status_code}')
+      names = [self.kNameEnableRange0, self.kNameEnableRange1]
+
+    for name in names:
+      resp = requests.post(f'http://{self.addr}/switch/{self._webapi_name(name)}/{action}')
+      if resp.status_code != 200:
+        raise Exception(f'Request failed: {resp.status_code}')
