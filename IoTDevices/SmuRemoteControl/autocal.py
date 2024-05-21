@@ -7,6 +7,7 @@ from typing import Tuple, List
 import numpy as np
 
 from SmuInterface import SmuInterface
+from calutil import regress
 
 
 kOutputFile = 'calibration.csv'
@@ -96,21 +97,11 @@ if __name__ == "__main__":
         meas_voltage_cal_data.append((meas_voltage, Decimal(user_data)))
         set_voltage_cal_data.append((Decimal(set_voltage), Decimal(user_data)))
 
-    # voltage linear regression
-    (slope, intercept), (sse, ), *_ = np.polyfit(
-      [float(pt[0]) for pt in meas_voltage_cal_data],
-      [float(pt[1]) for pt in meas_voltage_cal_data],
-      deg=1, full=True)
-    print(f"Voltage meas calibration: y = {slope}x + {intercept}, sse={sse}")
-    for pt in meas_voltage_cal_data:
-      predict = slope * float(pt[0]) + intercept
-      print(f"  {pt[1]} => {predict:.4f} ({predict - float(pt[1]):.4f}, {(predict - float(pt[1])) / predict * 100:.2f}%)")
+    smu.enable(False)
 
-    (slope, intercept), (sse, ), *_ = np.polyfit(
-      [float(pt[0]) for pt in set_voltage_cal_data],
-      [float(pt[1]) for pt in set_voltage_cal_data],
-      deg=1, full=True)
-    print(f"Voltage set calibration: y = {slope}x + {intercept}, sse={sse}")
-    for pt in set_voltage_cal_data:
-      predict = slope * float(pt[0]) + intercept
-      print(f"  {pt[1]} => {predict:.4f} ({predict - float(pt[1]):.4f}, {(predict - float(pt[1])) / predict * 100:.2f}%)")
+    # voltage linear regression
+    print("Voltage meas calibration")
+    regress([float(pt[0]) for pt in meas_voltage_cal_data], [float(pt[1]) for pt in meas_voltage_cal_data])
+
+    print("Voltage set calibration")
+    regress([float(pt[0]) for pt in set_voltage_cal_data], [float(pt[1]) for pt in set_voltage_cal_data])
