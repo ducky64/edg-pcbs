@@ -10,27 +10,31 @@ from SmuInterface import SmuInterface
 
 
 kOutputFile = 'calibration.csv'
-kSetReadDelay = 0.2  # seconds
+kSetReadDelay = 0.5  # seconds
 
 kVoltageCalPoints = [  # as voltage, current min, current max
-  "Open load",
-  # (0.0, -0.1, 0.1),  # don't calibrate zero, might be off-scale on output mode
-  (1.0, -0.1, 0.1),
-  (2.0, -0.1, 0.1),
-  (4.0, -0.1, 0.1),
-  (6.0, -0.1, 0.1),
-  (8.0, -0.1, 0.1),
-  (10.0, -0.1, 0.1),
-  (14.0, -0.1, 0.1),
-  (1.0, -0.1, 0.1),
+  # don't calibrate zero, might be off-scale on output mode
 
-  # "Connect 50ohm",
+  # "Open load",
   # (1.0, -0.1, 0.1),
   # (2.0, -0.1, 0.1),
   # (4.0, -0.1, 0.1),
-  # (8.0, -0.1, 0.3),
-  # (12.0, -0.1, 0.5),
+  # (6.0, -0.1, 0.1),
+  # (8.0, -0.1, 0.1),
+  # (10.0, -0.1, 0.1),
+  # (14.0, -0.1, 0.1),
+  # (18.0, -0.1, 0.1),
   # (1.0, -0.1, 0.1),
+
+  "Connect 50ohm",
+  (1.0, -0.1, 0.1),
+  (2.0, -0.1, 0.1),
+  (4.0, -0.1, 0.1),
+  (8.0, -0.1, 0.3),
+  (12.0, -0.1, 0.5),
+  (16.0, -0.1, 0.5),
+  (20.0, -0.1, 0.5),
+  (1.0, -0.1, 0.1),
 
   # "Connect 10ohm",
   # (1.0, -0.1, 0.2),
@@ -100,7 +104,7 @@ if __name__ == "__main__":
     print(f"Voltage meas calibration: y = {slope}x + {intercept}, sse={sse}")
     for pt in meas_voltage_cal_data:
       predict = slope * float(pt[0]) + intercept
-      print(f"  {pt[1]} => {predict:.4f} ({predict - float(pt[1]):.4f})")
+      print(f"  {pt[1]} => {predict:.4f} ({predict - float(pt[1]):.4f}, {(predict - float(pt[1])) / predict * 100:.2f}%)")
 
     (slope, intercept), (sse, ), *_ = np.polyfit(
       [float(pt[0]) for pt in set_voltage_cal_data],
@@ -109,4 +113,4 @@ if __name__ == "__main__":
     print(f"Voltage set calibration: y = {slope}x + {intercept}, sse={sse}")
     for pt in set_voltage_cal_data:
       predict = slope * float(pt[0]) + intercept
-      print(f"  {pt[1]} => {predict:.4f} ({predict - float(pt[1]):.4f})")
+      print(f"  {pt[1]} => {predict:.4f} ({predict - float(pt[1]):.4f}, {(predict - float(pt[1])) / predict * 100:.2f}%)")

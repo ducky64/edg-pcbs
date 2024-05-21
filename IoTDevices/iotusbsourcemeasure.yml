@@ -51,10 +51,13 @@ globals:
   - id: kBuckBoostPwmDeadzone
     type: float
     initial_value: '0.05'  # in fractional duty-cycle, maximum / minimum duty cycle
-    
+  - id: kBuckBoostHeadroom
+    type: float
+    initial_value: '1'  # volts
+
   - id: kVoltageRatio
     type: float
-    initial_value: '24.176'  # 220/9.1, output volts per measured volt
+    initial_value: '23'  # 22/1, output volts per measured volt
   - id: kCurrentRatio0
     type: float
     initial_value: '2.2727'  # 1/(.022*20), output amps per measured volt, including accounting for resistor value
@@ -71,11 +74,11 @@ globals:
   - id: kCalVoltageFactor
     type: float
     # initial_value: '1'
-    initial_value: '0.9866'  # multiply measured volts by this to get true volts
+    initial_value: '0.9371'  # multiply measured volts by this to get true volts
   - id: kCalVoltageOffset
     type: float
     # initial_value: '0'
-    initial_value: '0.0820'  # add to measured volts (post-scaling) to get true volts
+    initial_value: '0.0208'  # add to measured volts (post-scaling) to get true volts
   - id: kCalCurrentFactor
     type: float
     initial_value: '1'
@@ -92,11 +95,11 @@ globals:
   - id: kCalSetVoltageFactor
     type: float
     # initial_value: '1'
-    initial_value: '1.0231'  # multiply by set volts to get true volts
+    initial_value: '0.9457'  # multiply by set volts to get true volts
   - id: kCalSetVoltageOffset
     type: float
     # initial_value: '0'
-    initial_value: '-0.1359'  # add to set volts to get true volts
+    initial_value: '-0.1642'  # add to set volts to get true volts
   - id: kCalSetCurrentFactor
     type: float
     initial_value: '1'
@@ -301,8 +304,8 @@ number:
             id(dac_voltage)->write_state(targetVolts / id(kVref));
             id(set_voltage).publish_state(x);
 
-            // set buck-boost to minimum needed + 1v for headroom
-            float convTarget = x + 1.0;
+            // set buck-boost to minimum needed + headroom
+            float convTarget = x + id(kBuckBoostHeadroom);
             id(buckboost_ratio).make_call().set_value(convTarget / (id(fusb_vbus).state - 0.4)).perform();
   - platform: template
     name: "${name} Set Current Min"
