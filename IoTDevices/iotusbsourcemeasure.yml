@@ -494,6 +494,9 @@ sensor:
           id(adc_voltage).publish_state(id(meas_voltage).rawValue);
           auto value = x * id(kVref) * id(kVoltageRatio) * id(kCalVoltageFactor) + id(kCalVoltageOffset);
           id(meas_voltage_noise).publish_state(value);
+          if (!isnan(id(meas_current).state)) {
+            id(deriv_power).publish_state(value * id(meas_current).state);
+          }
           return value;
   - platform: mcp3561
     id: meas_current
@@ -514,20 +517,20 @@ sensor:
           }
           id(adc_current).publish_state(id(meas_current).rawValue);
 
-          if (lastRange != thisRange) {  // invalidate the measurement on a range change
+          if (lastRange != thisRange || thisRange < 0) {  // invalidate the measurement on a range change
             lastRange = thisRange;
-            return {};
+            id(deriv_power).publish_state(NAN);
+            return NAN;
           }
 
           auto value = x * id(kVref);
-          if (thisRange < 0) {  // no range connected
-            return {};
-          } else if (thisRange == 0) {
+          if (thisRange == 0) {
             value = value * id(kCurrentRatio0) * id(kCalCurrent0Factor) + id(kCalCurrent0Offset);
           } else if (thisRange == 1) {
             value = value * id(kCurrentRatio1) * id(kCalCurrent1Factor) + id(kCalCurrent1Offset);
           }
           id(meas_current_noise).publish_state(value);
+          id(deriv_power).publish_state(id(meas_voltage).state * value);
           return value;
     unit_of_measurement: A
   - platform: template
@@ -546,6 +549,24 @@ sensor:
       - range:
           window_size: 25
           send_every: 5
+
+  - platform: template
+    name: "${name} Deriv Power"
+    id: deriv_power
+    accuracy_decimals: 6
+    unit_of_measurement: W
+  - platform: integration
+    name: "${name} Deriv Energy"
+    sensor: deriv_power
+    time_unit: s
+    accuracy_decimals: 6
+    unit_of_measurement: J
+  - platform: integration
+    name: "${name} Deriv Cumulative Current"
+    sensor: meas_current
+    time_unit: h
+    accuracy_decimals: 6
+    unit_of_measurement: Ah
 
   - platform: template
     name: "${name} Meas ADC Voltage"
