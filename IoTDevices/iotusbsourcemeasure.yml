@@ -79,19 +79,6 @@ globals:
     type: float
     # initial_value: '0'
     initial_value: '0.0208'  # add to measured volts (post-scaling) to get true volts
-  - id: kCalCurrentFactor
-    type: float
-    initial_value: '1'
-    # initial_value: '0.98227'  # multiply measured amps by this to get true amps
-  - id: kCalCurrentOffset
-    type: float
-    initial_value: '0'
-    # initial_value: '0.01144'  # add to measured amps (post-scaling) to get true amps
-  - id: kCalCurrentVoltageFactor
-    type: float
-    initial_value: '0'
-    # initial_value: '-0.00355'  # multiply by measured volts (post-calibration, then add to measured amps (post-scaling) to get true amps
-    # obtained using https://stats.blue/Stats_Suite/multiple_linear_regression_calculator.html
   - id: kCalSetVoltageFactor
     type: float
     # initial_value: '1'
@@ -100,6 +87,23 @@ globals:
     type: float
     # initial_value: '0'
     initial_value: '-0.1642'  # add to set volts to get true volts
+
+  - id: kCalCurrent0Factor
+    type: float
+    initial_value: '1'
+    # initial_value: '0.98227'  # multiply measured amps by this to get true amps
+  - id: kCalCurrent0Offset
+    type: float
+    initial_value: '0'
+    # initial_value: '0.01144'  # add to measured amps (post-scaling) to get true amps
+  - id: kCalCurrent1Factor
+    type: float
+    initial_value: '1'
+    # initial_value: '0.98227'  # multiply measured amps by this to get true amps
+  - id: kCalCurrent1Offset
+    type: float
+    initial_value: '0'
+    # initial_value: '0.01144'  # add to measured amps (post-scaling) to get true amps
   - id: kCalSetCurrentFactor
     type: float
     initial_value: '1'
@@ -501,8 +505,28 @@ sensor:
     channel_neg: CH0  # pin 0 is vcenter
     filters:
       - lambda: |-
+          static int8_t lastRange = -1;  // -1=off, 0=range0, 1=...
+          int8_t thisRange = -1;
+          if (id(range0)->state) {
+            thisRange = 0;
+          } else if (id(range1)->state) {
+            thisRange = 1;
+          }
           id(adc_current).publish_state(id(meas_current).rawValue);
-          auto value = x * id(kVref) * id(kCurrentRatio0) * id(kCalCurrentFactor) + id(kCalCurrentOffset) + id(kCalCurrentVoltageFactor) * id(meas_voltage).get_state();
+
+          if (lastRange != thisRange) {  // invalidate the measurement on a range change
+            lastRange = thisRange;
+            return {};
+          }
+
+          auto value = x * id(kVref);
+          if (thisRange < 0) {  // no range connected
+            return {};
+          } else if (thisRange == 0) {
+            value = value * id(kCurrentRatio0) * id(kCalCurrent0Factor) + id(kCalCurrent0Offset);
+          } else if (thisRange == 0) {
+            value = value * id(kCurrentRatio1) * id(kCalCurrent1Factor) + id(kCalCurrent1Offset);
+          }
           id(meas_current_noise).publish_state(value);
           return value;
     unit_of_measurement: A
