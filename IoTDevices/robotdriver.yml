@@ -1,0 +1,105 @@
+substitutions:
+  name: "RobotDriver"
+
+esphome:
+  name: ducky-robotdriver
+  name_add_mac_suffix: true
+  platform: esp32
+  board: esp32dev
+  on_boot:
+    - number.set:
+        id: motor_cmd
+        value: 0.0
+
+wifi:
+  <<: !include ../wifi_config.yaml
+  ap:
+    ap_timeout: 15s
+
+  reboot_timeout: 0s
+
+# HASS API
+api:
+  reboot_timeout: 0s
+
+# Allow API
+ota:
+
+# Print Updates
+logger:
+  level: INFO
+
+# WebServer component, displays some information
+web_server:
+    port: 80
+    local: true
+
+
+sensor:
+  - platform: rotary_encoder
+    id: encoder
+    name: "${name} Encoder"
+    resolution: 2  # so each detent generates one action
+    pin_a:
+      number: GPIO3  # U0RXD
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    pin_b:
+      number: GPIO23
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+
+output:
+  - platform: ledc
+    id: motor_1b1_gpio
+    pin: GPIO22
+    max_power: 0.75
+  - platform: ledc
+    id: motor_1b2_gpio
+    pin: GPIO21
+    max_power: 0.75
+
+number:
+  - platform: template
+    name: "${name} Motor Command"
+    id: motor_cmd
+    icon: mdi:pan-down
+    min_value: -1
+    max_value: 1
+    step: 0.05
+    set_action:
+      - then:
+        - lambda: |-
+            if (x >= 0) {
+              id(motor_1b1_gpio)->write_state(x);
+              id(motor_1b2_gpio)->write_state(0);
+            } else {
+              id(motor_1b1_gpio)->write_state(0);
+              id(motor_1b2_gpio)->write_state(-x);
+            }
+            id(motor_cmd).publish_state(x);
+
+climate:
+  - platform: pid
+    name: "${name} Motor PID"
+    sensor: encoder
+    default_target_temperature: 0
+    heat_output: motor_1b2_gpio
+    cool_output: motor_1b1_gpio
+    control_parameters:
+      kp: 0.005
+      # ki: 0.00487
+      # kd: .0001
+      # output_averaging_samples: 5      # smooth the output over 5 samples
+      # derivative_averaging_samples: 5  # smooth the derivative value over 10 samples
+    visual:
+      min_temperature: -30000
+      max_temperature: 30000
+      temperature_step: 250
+    # deadband_parameters:
+    #   threshold_high: 0.5°C       # deadband within +/-0.5°C of target_temperature
+    #   threshold_low: -0.5°C
