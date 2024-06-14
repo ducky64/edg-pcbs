@@ -14,39 +14,40 @@ kOutputFile = 'calibration.csv'
 kSetReadDelay = 0.5  # seconds
 
 kVoltageCalPoints = [  # as voltage, current min, current max
-  # "Connect 50ohm, low range meter",
-  (3, -0.1, 0.025),
-  (3, -0.1, 0.05),
-  (3, -0.1, 0.075),
-  (3, -0.1, 0.1),
-  (3, -0.1, 0.125),
-  (3, -0.1, 0.15),
-  (3, -0.1, 0.175),
-  (3, -0.1, 0.2),
-  (3, -0.1, 0.225),
-  (3, -0.1, 0.25),
-  (3, -0.1, 0.275),
-  (3, -0.1, 0.3),
-  (3, -0.1, 0.325),
-  (3, -0.1, 0.35),
+  # "Connect 50ohm",  # with setpoint cal
+  # (3, -0.1, 0.01),
+  # (3, -0.1, 0.02),
+  # (3, -0.1, 0.03),
+  # (3, -0.1, 0.05),
+  # (6, -0.1, 0.1),
+  # (8.5, -0.1, 0.15),
+  # (11, -0.1, 0.20),
+  # (13.5, -0.1, 0.25),
+  # (16, -0.1, 0.30),
 
-  # "Connect 50ohm",
-  # (3, -0.1, 0.1),
-  # (3, -0.1, 0.2),
-  # (3, -0.1, 0.3),
-  # (3, -0.1, 0.5),
-  # (6, -0.1, 1.0),
-  # (8.5, -0.1, 1.5),
-  # (11, -0.1, 2.0),
-  # (13.5, -0.1, 2.5),
-  # (16, -0.1, 3.0),
+  # "Connect 50ohm",  # measurement cal only
+  # (1.0, -0.1, 0.5),
+  # (2.0, -0.1, 0.5),
+  # (4.0, -0.1, 0.5),
+  # (8.0, -0.1, 0.5),
+  # (12.0, -0.1, 0.5),
+  # (16.0, -0.1, 0.75),
+  # (20.0, -0.1, 0.75),
+  # (1.0, -0.1, 0.5),
 
-  # "Connect 10ohm",
-  # (3, -0.1, 0.2),
-  # (6, -0.1, 0.5),
-  # (9, -0.1, 0.8),
-  # (11, -0.1, 1),
-  # (16, -0.1, 1.5),
+  "Connect 10ohm",
+  (6, -0.1, 0.5),
+  (9, -0.1, 0.8),
+  (11, -0.1, 1),
+  (16, -0.1, 1.5),
+
+  # "Connect 10ohm",  # measurement cal only
+  # (3, -0.1, 0.8),
+  # (6, -0.1, 1.1),
+  # (9, -0.1, 1.4),
+  # (11, -0.1, 1.6),
+  # (16, -0.1, 2.1),
+  # (3, -0.1, 0.8),
 ]
 
 if __name__ == "__main__":
@@ -79,7 +80,8 @@ if __name__ == "__main__":
         smu.set_current_limits(set_current_min, set_current_max)
         smu.set_voltage(set_voltage)
         if not enabled:
-          smu.enable(True, False)
+          smu.enable(True)
+          # smu.enable(True, False)  # low range
           enabled = True
 
         time.sleep(kSetReadDelay)
@@ -102,7 +104,7 @@ if __name__ == "__main__":
 
     smu.enable(False)
 
-    # voltage linear regression
+    # linear regression
     print("Current meas calibration")
     regress([float(pt[0]) for pt in meas_current_cal_data], [float(pt[1]) for pt in meas_current_cal_data])
 

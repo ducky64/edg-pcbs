@@ -33,13 +33,16 @@ if __name__ == "__main__":
     set_voltage_cal_data: List[Tuple[Decimal, Decimal]] = []  # setpoint, external-measured (reference)
 
     enabled = False
-    for voltage in range(0, 20*50):
-      setpoint = (set_voltage, set_current_min, set_current_max) = (voltage/50, -0.1, 0.1)
+    for voltage in range(1, 20*20):
+      setpoint = (set_voltage, set_current_min, set_current_max) = (voltage/20, -0.5, 0.5)
       smu.set_current_limits(set_current_min, set_current_max)
       smu.set_voltage(set_voltage)
       if not enabled:
-        smu.enable(True, False)
+        smu.enable(True)
+        # smu.enable(True, False)  # low range
         enabled = True
+
+        smu.set_current_limits(set_current_min, set_current_max)
 
       time.sleep(kSetReadDelay)
 

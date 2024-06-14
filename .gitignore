@@ -16,6 +16,7 @@ _autosave-*
 *-save.pro
 *-save.kicad_pcb
 fp-info-cache
+*.pyc
 
 # Netlist files (exported from Eeschema)
 *.net
@@ -23,6 +24,9 @@ fp-info-cache
 # Autorouter files (exported from Pcbnew)
 *.dsn
 *.ses
+
+# IDE stuff
+.vscode
 
 # Secrets
 wifi_config.yaml
