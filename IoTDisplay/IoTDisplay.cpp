@@ -57,7 +57,12 @@ GxEPD2_3C<GxEPD2_750c_Z08, GxEPD2_750c_Z08::HEIGHT> display(GxEPD2_750c_Z08(kEpd
 #include "esp_wifi.h"  // support wifi stop
 #include <WiFi.h>
 #include <HTTPClient.h>
-#include "WifiConfig.h"  // must define 'const char* ssid' and 'const char* password' and 'const char* kHttpGetUrl'
+#include "WifiConfig.h"  // must define 'const char* ssid' and 'const char* password' and 'const char* kHttpServer'
+// ssid and password are self-explanatory, http server is the IP address to the base , eg "http://10.0.0.2"
+const char* kRenderPostfix = "/render";
+const char* kMetadataPostfix = "/meta";  // URL postfix to get metadata JSON, incl time to next update
+const char* kImagePostfix = "/image";  // URL postfix to get image to render
+const char* kOtaPostfix = "/ota";  // URL postfix to get OTA firmware binary
 
 #include <PNGdec.h>
 PNG png;
@@ -70,7 +75,7 @@ StaticJsonDocument<32768> doc;
 size_t maxWidth = 480;
 
 
-const char* kFwVerStr = "v1";
+const char* kFwVerStr = "2";
 
 RTC_DATA_ATTR int bootCount = 0;
 RTC_DATA_ATTR int failureCount = 0;
@@ -143,7 +148,7 @@ void setup() {
   uint8_t mac[6];
   WiFi.macAddress(mac);
   char macStr[13];
-  sprintf(macStr, "%02x%02x%02x%02x%02x%02x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+  sprintf(macStr, "%02x%02x%02x", mac[3], mac[4], mac[5]);
 
   log_i("Total heap: %d, PSRAM: %d", ESP.getHeapSize(), ESP.getPsramSize());
   digitalWrite(kLedR, 0);
@@ -177,8 +182,9 @@ void setup() {
     HTTPClient http;
     http.useHTTP10(true);  // disabe chunked encoding, since the stream doesn't remove metadata
     http.setTimeout(15*1000);
-    String httpUrl = kHttpGetUrl;
-    httpUrl = httpUrl + "?mac=" + macStr + "&vbat=" + vbatMv + "&fwVer=" + kFwVerStr + "&boot=" + bootCount + "&rst=" + resetReason;
+    String httpUrl = (String) kHttpServer + kRenderPostfix +
+        "?mac=" + macStr + "&vbat=" + vbatMv + "&fwVer=" + kFwVerStr +
+        "&boot=" + bootCount + "&rst=" + resetReason;
     if (failureCount > 0) {
       httpUrl = httpUrl + "&fail=" + failureCount;
     }
