@@ -173,7 +173,8 @@ void setup() {
       break;
     }
   }
-  log_i("Connected WiFi: %s, RSSI=%i", WiFi.localIP().toString(), WiFi.RSSI());
+  long int timeConnectWifi = millis();
+  log_i("Connected WiFi: %.1fs, %s, RSSI=%i", (float)(timeConnectWifi - timeStartWifi) / 1000, WiFi.localIP().toString(), WiFi.RSSI());
   digitalWrite(kLedR, 1);
 
   // fetch metadata
@@ -272,7 +273,7 @@ void setup() {
     log_e("Failed disable WiFi");
   }
   long int timeStopWifi = millis();
-  log_i("Network active time: %.1f", (float)(timeStopWifi - timeStartWifi) / 1000);
+  log_i("Network active time: %.1fs", (float)(timeStopWifi - timeStartWifi) / 1000);
   digitalWrite(kLedR, 0);
   digitalWrite(kLedB, 1);
 
