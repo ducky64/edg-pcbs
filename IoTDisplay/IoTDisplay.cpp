@@ -69,8 +69,7 @@ PNG png;
 
 
 uint8_t streamData[32768] = {0};  // allocate in static memory, overwritten with image data
-uint8_t* streamDataPtr = streamData;
-StaticJsonDocument<32768> doc;
+StaticJsonDocument<1024> doc;
 
 size_t maxWidth = 480;
 
@@ -177,12 +176,14 @@ void setup() {
   log_i("Connected WiFi: %s, RSSI=%i", WiFi.localIP().toString(), WiFi.RSSI());
   digitalWrite(kLedR, 1);
 
+  // fetch metadata
+  unsigned long sleepTimeSec = 0;
   if (errorStatus == NULL) {
     long int timeStartGet = millis();
     HTTPClient http;
     http.useHTTP10(true);  // disabe chunked encoding, since the stream doesn't remove metadata
     http.setTimeout(15*1000);
-    String httpUrl = (String) kHttpServer + kRenderPostfix +
+    String httpUrl = (String) kHttpServer + kMetadataPostfix +
         "?mac=" + macStr + "&vbat=" + vbatMv + "&fwVer=" + kFwVerStr +
         "&boot=" + bootCount + "&rst=" + resetReason;
     if (failureCount > 0) {
@@ -192,9 +193,10 @@ void setup() {
     int httpResponseCode = http.GET();
     int httpResponseLen = http.getSize();
 
-    log_i("GET: %i (%i KiB) <= %s", httpResponseCode, httpResponseLen / 1024, httpUrl.c_str());
+    log_i("Meta: GET: %i (%i KiB) <= %s", httpResponseCode, httpResponseLen / 1024, httpUrl.c_str());
     if (httpResponseCode == 200) {
       WiFiClient* stream = http.getStreamPtr();
+      uint8_t* streamDataPtr = streamData;
       while(http.connected()) {
         size_t streamSize = stream->available();
         size_t bufferLeft = sizeof(streamData) - (streamDataPtr - streamData);
@@ -211,9 +213,56 @@ void setup() {
         }
       }
       http.end();
-      log_i("Got %i", streamDataPtr - streamData);
+      log_i("Meta: got %i", streamDataPtr - streamData);
+
+      log_i("Meta: Deserialize");
+      DeserializationError error = deserializeJson(doc, streamData);
+      if (!error) {
+        sleepTimeSec = doc["nextUpdateSec"].as<unsigned long>();
+        log_i("Meta: Deserialized: sleep %d", sleepTimeSec);
+      } else {
+        errorStatus = "bad meta deserialize";
+        log_e("Meta: JSON error: %s", error.c_str());
+      }
     } else {
-      errorStatus = "response error";
+      errorStatus = "meta response error";
+    }
+  }
+
+  // fetch image data
+  if (errorStatus == NULL) {
+    long int timeStartGet = millis();
+    HTTPClient http;
+    http.useHTTP10(true);  // disabe chunked encoding, since the stream doesn't remove metadata
+    http.setTimeout(15*1000);
+    String httpUrl = (String) kHttpServer + kImagePostfix + "?mac=" + macStr;
+    http.begin(httpUrl);
+    int httpResponseCode = http.GET();
+    int httpResponseLen = http.getSize();
+
+    log_i("Image: GET: %i (%i KiB) <= %s", httpResponseCode, httpResponseLen / 1024, httpUrl.c_str());
+    if (httpResponseCode == 200) {
+      WiFiClient* stream = http.getStreamPtr();
+      uint8_t* streamDataPtr = streamData;
+      while(http.connected()) {
+        size_t streamSize = stream->available();
+        size_t bufferLeft = sizeof(streamData) - (streamDataPtr - streamData);
+        log_i("  Stream: %i / %i free", streamSize, bufferLeft);
+
+        int c = stream->readBytes(streamDataPtr, ((streamSize > bufferLeft) ? bufferLeft : streamSize));
+        streamDataPtr += c;
+
+        if (bufferLeft <= 0) {
+          break;
+        }
+        if (streamSize == 0) {  // wait for more data transfer
+          delay(1);
+        }
+      }
+      http.end();
+      log_i("Image: Got %i", streamDataPtr - streamData);
+    } else {
+      errorStatus = "image response error";
     }
   }
 
@@ -226,22 +275,6 @@ void setup() {
   log_i("Network active time: %.1f", (float)(timeStopWifi - timeStartWifi) / 1000);
   digitalWrite(kLedR, 0);
   digitalWrite(kLedB, 1);
-
-  unsigned long sleepTimeSec = 0;
-  if (errorStatus == NULL) {
-    log_i("Deserialize");
-    DeserializationError error = deserializeJson(doc, streamData);
-    if (!error) {
-      const char* base64Data = doc["image_b64"].as<const char*>();
-      log_i("De-base64 %d", strlen(base64Data));
-      unsigned int decodedLength = decode_base64((const unsigned char*)base64Data, streamData);
-      sleepTimeSec = doc["nextUpdateSec"].as<unsigned long>();
-      log_i("Decoded %d, sleep %d", decodedLength, sleepTimeSec);
-    } else {
-      errorStatus = "bad decode";
-      log_e("JSON error: %s", error.c_str());
-    }
-  }
 
   if (errorStatus != NULL) {
     failureCount++;
