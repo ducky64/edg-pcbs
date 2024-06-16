@@ -2,6 +2,7 @@
 #include <ArduinoJson.h>
 #include "base64.hpp"
 #include <SPI.h>
+
 #include "esp_sleep.h"
 
 // ESP32-S3 variant, new version
@@ -56,7 +57,9 @@ GxEPD2_3C<GxEPD2_750c_Z08, GxEPD2_750c_Z08::HEIGHT> display(GxEPD2_750c_Z08(kEpd
 
 #include "esp_wifi.h"  // support wifi stop
 #include <WiFi.h>
-#include <HTTPClient.h>
+#include <../../HTTPClient/src/HTTPClient.h>  // otherwise the Arduino HttpClient from OTA conflicts
+#include <Arduino_ESP32_OTA.h>
+#include "root_ca.h"
 #include "WifiConfig.h"  // must define 'const char* ssid' and 'const char* password' and 'const char* kHttpServer'
 // ssid and password are self-explanatory, http server is the IP address to the base , eg "http://10.0.0.2"
 const char* kRenderPostfix = "/render";
@@ -74,7 +77,7 @@ StaticJsonDocument<1024> doc;
 size_t maxWidth = 480;
 
 
-const char* kFwVerStr = "2";
+const char* kFwVerStr = "3";
 
 RTC_DATA_ATTR int bootCount = 0;
 RTC_DATA_ATTR int failureCount = 0;
@@ -179,6 +182,7 @@ void setup() {
 
   // fetch metadata
   unsigned long sleepTimeSec = 0;
+  bool runOta = false;
   if (errorStatus == NULL) {
     long int timeStartGet = millis();
     HTTPClient http;
@@ -220,13 +224,40 @@ void setup() {
       DeserializationError error = deserializeJson(doc, streamData);
       if (!error) {
         sleepTimeSec = doc["nextUpdateSec"].as<unsigned long>();
-        log_i("Meta: Deserialized: sleep %d", sleepTimeSec);
+        runOta = doc["ota"].as<bool>();
+        log_i("Meta: Deserialized: sleep %d, runOta %i", sleepTimeSec, runOta);
       } else {
         errorStatus = "bad meta deserialize";
         log_e("Meta: JSON error: %s", error.c_str());
       }
     } else {
       errorStatus = "meta response error";
+    }
+  }
+
+  if (errorStatus == NULL && runOta) {
+    log_i("OTA: start");
+    Arduino_ESP32_OTA ota;
+    Arduino_ESP32_OTA::Error ota_err = Arduino_ESP32_OTA::Error::None;
+    String httpUrl = (String) kHttpServer + kOtaPostfix + "?mac=" + macStr;
+
+    ota.setCACert(root_ca);
+    if ((ota_err = ota.begin()) != Arduino_ESP32_OTA::Error::None) {
+      log_e("OTA: begin failed: %i", (int)ota_err);
+    } else {
+      int const ota_download = ota.download(httpUrl.c_str());
+      if (ota_download > 0) {
+        log_i("OTA: downloaded %i KiB", ota_download / 1024);
+        if ((ota_err = ota.update()) != Arduino_ESP32_OTA::Error::None) {
+          log_e("OTA: update failed: %i", (int)ota_err);
+        } else {
+          log_i("OTA: updated, resetting");
+          delay(100);
+          ota.reset();
+        }
+      } else {
+        log_i("OTA: download error: %i", (int)ota_err);
+      }
     }
   }
 
