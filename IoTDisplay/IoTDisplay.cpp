@@ -78,7 +78,7 @@ StaticJsonDocument<256> doc;
 size_t maxWidth = 480;
 
 
-const char* kFwVerStr = "5";
+const char* kFwVerStr = "4";
 
 RTC_DATA_ATTR int bootCount = 0;
 RTC_DATA_ATTR int failureCount = 0;
@@ -207,7 +207,7 @@ void setup() {
         int c = stream->readBytes(streamDataPtr, min(streamAvailable, min(bufferLeft, kMaxChunk)));
         streamDataPtr += c;
 
-        log_i("  Stream: %i KiB", (size_t)(streamDataPtr - streamData) / 1024);
+        log_d("  %i KiB", (size_t)(streamDataPtr - streamData) / 1024);
         if (bufferLeft <= 0) {
           break;
         }
@@ -215,7 +215,6 @@ void setup() {
       http.end();
       log_i("Meta: got %i", streamDataPtr - streamData);
 
-      log_i("Meta: Deserialize");
       DeserializationError error = deserializeJson(doc, streamData);
       if (!error) {
         sleepTimeSec = doc["nextUpdateSec"].as<unsigned long>();
@@ -261,7 +260,7 @@ void setup() {
             log_e("Ota: bytes unwritten, %i / %i", chunkOtaWritten, otaBytes);
             break;
           }
-          log_i("  Stream: %i KiB", otaBytes / 1024);
+          log_d("  %i KiB", otaBytes / 1024);
           digitalWrite(kLedG, millis() % 200 >= 100);
         }
         http.end();
@@ -270,13 +269,7 @@ void setup() {
         if (otaWritten == otaBytes) {
           if (Update.end(true)) {  // evenIfRemaining set b/c the size is not known ahead of time
             log_i("Ota: success, rebooting");
-            WiFi.disconnect();
-            if (esp_wifi_stop() != ESP_OK) {
-              log_e("Failed disable WiFi");
-            }
-            long int timeStopWifi = millis();
-            log_i("Network active time: %.1fs", (float)(timeStopWifi - timeStartWifi) / 1000);
-            delay(1000);
+            delay(10);
             ESP.restart();
           } else {
             log_i("Ota: failed: %s", Update.errorString());
@@ -310,7 +303,7 @@ void setup() {
         int c = stream->readBytes(streamDataPtr, min(streamAvailable, min(bufferLeft, kMaxChunk)));
         streamDataPtr += c;
 
-        log_i("  Stream: %i KiB", (size_t)(streamDataPtr - streamData) / 1024);
+        log_d("  %i KiB", (size_t)(streamDataPtr - streamData) / 1024);
         if (bufferLeft <= 0) {
           break;
         }
@@ -328,7 +321,7 @@ void setup() {
     log_e("Failed disable WiFi");
   }
   long int timeStopWifi = millis();
-  log_i("Network active time: %.1fs", (float)(timeStopWifi - timeStartWifi) / 1000);
+  log_i("Network active: %.1fs", (float)(timeStopWifi - timeStartWifi) / 1000);
   digitalWrite(kLedR, 0);
   digitalWrite(kLedB, 1);
 
