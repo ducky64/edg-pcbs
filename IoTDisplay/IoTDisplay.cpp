@@ -57,27 +57,28 @@ GxEPD2_3C<GxEPD2_750c_Z08, GxEPD2_750c_Z08::HEIGHT> display(GxEPD2_750c_Z08(kEpd
 
 #include "esp_wifi.h"  // support wifi stop
 #include <WiFi.h>
-#include <Arduino_ESP32_OTA.h>
-#include <../../HTTPClient/src/HTTPClient.h>  // otherwise the Arduino HttpClient from OTA conflicts
-#include "root_ca.h"
+#include <HTTPClient.h>
+#include <Update.h>
+#include "esp_ota_ops.h"  // get current partition
 #include "WifiConfig.h"  // must define 'const char* ssid' and 'const char* password' and 'const char* kHttpServer'
 // ssid and password are self-explanatory, http server is the IP address to the base , eg "http://10.0.0.2"
 const char* kRenderPostfix = "/render";
 const char* kMetadataPostfix = "/meta";  // URL postfix to get metadata JSON, incl time to next update
 const char* kImagePostfix = "/image";  // URL postfix to get image to render
 const char* kOtaPostfix = "/ota";  // URL postfix to get OTA firmware binary
+const size_t kMaxChunk = 2048;  // process data in smaller chunks, so the loop polls regularly for eg LEDs
 
 #include <PNGdec.h>
 PNG png;
 
 
-uint8_t streamData[8192] = {0};  // allocate in static memory, contains PNG image data
+uint8_t streamData[32768] = {0};  // allocate in static memory, contains PNG image data
 StaticJsonDocument<256> doc;
 
 size_t maxWidth = 480;
 
 
-const char* kFwVerStr = "3";
+const char* kFwVerStr = "5";
 
 RTC_DATA_ATTR int bootCount = 0;
 RTC_DATA_ATTR int failureCount = 0;
@@ -123,13 +124,15 @@ void setup() {
       break;
   }
 
+  const esp_partition_t* bootPartition = esp_ota_get_boot_partition();
+
   Serial.begin(115200);
   esp_log_level_set("*", ESP_LOG_INFO);
   const char* errorStatus = NULL;  // set when an error occurs, to a short descriptive string
 
   setCpuFrequencyMhz(80);  // downclock to reduce power draw
 
-  log_i("Boot %d, %s", bootCount, resetReason);
+  log_i("Boot %d, %s, part=%s", bootCount, resetReason, bootPartition->label);
 
   pinMode(kLedR, OUTPUT);
   pinMode(kLedG, OUTPUT);
@@ -166,11 +169,7 @@ void setup() {
   long int timeStartWifi = millis();
   WiFi.begin(ssid, password);
   while(WiFi.status() != WL_CONNECTED) {
-    if (millis() % 200 >= 100) {
-      digitalWrite(kLedR, 1);
-    } else {
-      digitalWrite(kLedR, 0);
-    }
+    digitalWrite(kLedR, millis() % 200 >= 100);
     if ((millis() - timeStartWifi) > kMaxWifiConnectSec * 1000) {
       errorStatus = "no wifi";
       break;
@@ -190,7 +189,7 @@ void setup() {
     http.setTimeout(15*1000);
     String httpUrl = (String) kHttpServer + kMetadataPostfix +
         "?mac=" + macStr + "&vbat=" + vbatMv + "&fwVer=" + kFwVerStr +
-        "&boot=" + bootCount + "&rst=" + resetReason;
+        "&boot=" + bootCount + "&rst=" + resetReason + "&part=" + bootPartition->label;
     if (failureCount > 0) {
       httpUrl = httpUrl + "&fail=" + failureCount;
     }
@@ -203,18 +202,14 @@ void setup() {
       WiFiClient* stream = http.getStreamPtr();
       uint8_t* streamDataPtr = streamData;
       while(http.connected()) {
-        size_t streamSize = stream->available();
+        size_t streamAvailable = stream->available();
         size_t bufferLeft = sizeof(streamData) - (streamDataPtr - streamData);
-        log_i("  Stream: %i / %i free", streamSize, bufferLeft);
-
-        int c = stream->readBytes(streamDataPtr, ((streamSize > bufferLeft) ? bufferLeft : streamSize));
+        int c = stream->readBytes(streamDataPtr, min(streamAvailable, min(bufferLeft, kMaxChunk)));
         streamDataPtr += c;
 
+        log_i("  Stream: %i KiB", (size_t)(streamDataPtr - streamData) / 1024);
         if (bufferLeft <= 0) {
           break;
-        }
-        if (streamSize == 0) {  // wait for more data transfer
-          delay(1);
         }
       }
       http.end();
@@ -236,29 +231,62 @@ void setup() {
   }
 
   if (errorStatus == NULL && runOta) {
-    log_i("OTA: start");
-    Arduino_ESP32_OTA ota;
-    Arduino_ESP32_OTA::Error ota_err = Arduino_ESP32_OTA::Error::None;
-    String httpUrl = (String) kHttpServer + kOtaPostfix + "?mac=" + macStr;
+    log_i("Ota: start");
 
-    ota.setCACert(root_ca);
-    if ((ota_err = ota.begin()) != Arduino_ESP32_OTA::Error::None) {
-      log_e("OTA: begin failed: %i", (int)ota_err);
+    String httpUrl = (String) kHttpServer + kOtaPostfix + "?mac=" + macStr;
+    if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
+      log_e("Ota: Update.begin == false");
     } else {
-      int const ota_download = ota.download(httpUrl.c_str());
-      if (ota_download > 0) {
-        log_i("OTA: downloaded %i KiB", ota_download / 1024);
-        if ((ota_err = ota.update()) != Arduino_ESP32_OTA::Error::None) {
-          log_e("OTA: update failed: %i", (int)ota_err);
-        } else {
-          log_i("OTA: updated, resetting");
-          delay(100);
-          ota.reset();
+      long int timeStartGet = millis();
+      HTTPClient http;
+      http.useHTTP10(true);  // disabe chunked encoding, since the stream doesn't remove metadata
+      http.setTimeout(15*1000);
+      String httpUrl = (String) kHttpServer + kOtaPostfix + "?mac=" + macStr;
+      http.begin(httpUrl);
+      int httpResponseCode = http.GET();
+      int httpResponseLen = http.getSize();
+
+      log_i("Ota: GET: %i (%i KiB) <= %s", httpResponseCode, httpResponseLen / 1024, httpUrl.c_str());
+      size_t otaBytes = 0, otaWritten = 0;
+      if (httpResponseCode == 200) {
+        WiFiClient* stream = http.getStreamPtr();
+        while(http.connected()) {
+          size_t streamAvailable = stream->available();
+          int c = stream->readBytes(streamData, min(streamAvailable, min(sizeof(streamData), kMaxChunk)));
+          otaBytes += c;
+
+          size_t chunkOtaWritten = Update.write(streamData, c);
+          otaWritten += chunkOtaWritten;
+          if (chunkOtaWritten != c) {
+            log_e("Ota: bytes unwritten, %i / %i", chunkOtaWritten, otaBytes);
+            break;
+          }
+          log_i("  Stream: %i KiB", otaBytes / 1024);
+          digitalWrite(kLedG, millis() % 200 >= 100);
+        }
+        http.end();
+        log_i("Ota: got %i, wrote %i", otaBytes, otaWritten);
+        
+        if (otaWritten == otaBytes) {
+          if (Update.end(true)) {  // evenIfRemaining set b/c the size is not known ahead of time
+            log_i("Ota: success, rebooting");
+            WiFi.disconnect();
+            if (esp_wifi_stop() != ESP_OK) {
+              log_e("Failed disable WiFi");
+            }
+            long int timeStopWifi = millis();
+            log_i("Network active time: %.1fs", (float)(timeStopWifi - timeStartWifi) / 1000);
+            delay(1000);
+            ESP.restart();
+          } else {
+            log_i("Ota: failed: %s", Update.errorString());
+          }
         }
       } else {
-        log_i("OTA: download error: %i", (int)ota_err);
+        log_e("Ota: response error %i", httpResponseCode);
       }
     }
+    digitalWrite(kLedG, 0);
   }
 
   // fetch image data
@@ -277,18 +305,14 @@ void setup() {
       WiFiClient* stream = http.getStreamPtr();
       uint8_t* streamDataPtr = streamData;
       while(http.connected()) {
-        size_t streamSize = stream->available();
+        size_t streamAvailable = stream->available();
         size_t bufferLeft = sizeof(streamData) - (streamDataPtr - streamData);
-        log_i("  Stream: %i / %i free", streamSize, bufferLeft);
-
-        int c = stream->readBytes(streamDataPtr, ((streamSize > bufferLeft) ? bufferLeft : streamSize));
+        int c = stream->readBytes(streamDataPtr, min(streamAvailable, min(bufferLeft, kMaxChunk)));
         streamDataPtr += c;
 
+        log_i("  Stream: %i KiB", (size_t)(streamDataPtr - streamData) / 1024);
         if (bufferLeft <= 0) {
           break;
-        }
-        if (streamSize == 0) {  // wait for more data transfer
-          delay(1);
         }
       }
       http.end();
