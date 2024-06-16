@@ -58,8 +58,6 @@ GxEPD2_3C<GxEPD2_750c_Z08, GxEPD2_750c_Z08::HEIGHT> display(GxEPD2_750c_Z08(kEpd
 #include "esp_wifi.h"  // support wifi stop
 #include <WiFi.h>
 #include <HTTPClient.h>
-#include <Update.h>
-#include "esp_ota_ops.h"  // get current partition
 #include "WifiConfig.h"  // must define 'const char* ssid' and 'const char* password' and 'const char* kHttpServer'
 // ssid and password are self-explanatory, http server is the IP address to the base , eg "http://10.0.0.2"
 const char* kRenderPostfix = "/render";
@@ -67,6 +65,12 @@ const char* kMetadataPostfix = "/meta";  // URL postfix to get metadata JSON, in
 const char* kImagePostfix = "/image";  // URL postfix to get image to render
 const char* kOtaPostfix = "/ota";  // URL postfix to get OTA firmware binary
 const size_t kMaxChunk = 2048;  // process data in smaller chunks, so the loop polls regularly for eg LEDs
+
+
+#include <Update.h>
+#include "esp_ota_ops.h"  // get current partition
+extern "C" bool verifyRollbackLater(){ return true; }  // rollback is manually verified
+
 
 #include <PNGdec.h>
 PNG png;
@@ -78,7 +82,7 @@ StaticJsonDocument<256> doc;
 size_t maxWidth = 480;
 
 
-const char* kFwVerStr = "4";
+const char* kFwVerStr = "3";
 
 RTC_DATA_ATTR int bootCount = 0;
 RTC_DATA_ATTR int failureCount = 0;
@@ -132,7 +136,8 @@ void setup() {
 
   setCpuFrequencyMhz(80);  // downclock to reduce power draw
 
-  log_i("Boot %d, %s, part=%s", bootCount, resetReason, bootPartition->label);
+  log_i("Boot %d, %s, part=%s %s", bootCount, resetReason, 
+      bootPartition->label, esp_ota_check_rollback_is_possible() ? "R" : "");
 
   pinMode(kLedR, OUTPUT);
   pinMode(kLedG, OUTPUT);
@@ -370,6 +375,18 @@ void setup() {
   }
   display.hibernate();
   log_i("Display done");
+
+  if (errorStatus == NULL && esp_ota_check_rollback_is_possible()) {
+    log_i("Ota: validate");
+    esp_ota_mark_app_valid_cancel_rollback();
+    esp_ota_erase_last_boot_app_partition();
+  } else if (errorStatus != NULL && esp_ota_check_rollback_is_possible()) {
+    log_i("Ota: rollback");
+    esp_err_t rollbackStatus = esp_ota_mark_app_invalid_rollback_and_reboot();
+    if (rollbackStatus != ESP_OK) {
+      log_e("Ota: rollback failed: %i", rollbackStatus);
+    }
+  }
 
   digitalWrite(kLedB, 0);
 
