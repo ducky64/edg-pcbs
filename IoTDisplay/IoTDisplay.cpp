@@ -57,8 +57,8 @@ GxEPD2_3C<GxEPD2_750c_Z08, GxEPD2_750c_Z08::HEIGHT> display(GxEPD2_750c_Z08(kEpd
 
 #include "esp_wifi.h"  // support wifi stop
 #include <WiFi.h>
-#include <../../HTTPClient/src/HTTPClient.h>  // otherwise the Arduino HttpClient from OTA conflicts
 #include <Arduino_ESP32_OTA.h>
+#include <../../HTTPClient/src/HTTPClient.h>  // otherwise the Arduino HttpClient from OTA conflicts
 #include "root_ca.h"
 #include "WifiConfig.h"  // must define 'const char* ssid' and 'const char* password' and 'const char* kHttpServer'
 // ssid and password are self-explanatory, http server is the IP address to the base , eg "http://10.0.0.2"
@@ -71,8 +71,8 @@ const char* kOtaPostfix = "/ota";  // URL postfix to get OTA firmware binary
 PNG png;
 
 
-uint8_t streamData[32768] = {0};  // allocate in static memory, overwritten with image data
-StaticJsonDocument<1024> doc;
+uint8_t streamData[8192] = {0};  // allocate in static memory, contains PNG image data
+StaticJsonDocument<256> doc;
 
 size_t maxWidth = 480;
 
