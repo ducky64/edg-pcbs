@@ -30,6 +30,8 @@ wifi:
 
   reboot_timeout: 0s
 
+captive_portal:
+
 # HASS API
 api:
   reboot_timeout: 0s
@@ -73,45 +75,55 @@ globals:
 
   - id: kCalVoltageFactor
     type: float
-    # initial_value: '1'
-    initial_value: '0.9371'  # multiply measured volts by this to get true volts
+    restore_value: yes
+    initial_value: '1'
+    # initial_value: '0.9371'  # multiply measured volts by this to get true volts
   - id: kCalVoltageOffset
     type: float
-    # initial_value: '0'
-    initial_value: '0.0208'  # add to measured volts (post-scaling) to get true volts
+    restore_value: yes
+    initial_value: '0'
+    # initial_value: '0.0208'  # add to measured volts (post-scaling) to get true volts
   - id: kCalSetVoltageFactor
     type: float
-    # initial_value: '1'
-    initial_value: '0.9457'  # multiply by set volts to get true volts
+    restore_value: yes
+    initial_value: '1'
+    # initial_value: '0.9457'  # multiply by set volts to get true volts
   - id: kCalSetVoltageOffset
     type: float
-    # initial_value: '0'
-    initial_value: '-0.1642'  # add to set volts to get true volts
+    restore_value: yes
+    initial_value: '0'
+    # initial_value: '-0.1642'  # add to set volts to get true volts
 
   - id: kCalCurrent0Factor
     type: float
-    # initial_value: '1'
-    initial_value: '0.99201'  # multiply measured amps by this to get true amps
+    restore_value: yes
+    initial_value: '1'
+    # initial_value: '0.99201'  # multiply measured amps by this to get true amps
   - id: kCalCurrent0Offset
     type: float
-    # initial_value: '0'
-    initial_value: '0.00294'  # add to measured amps (post-scaling) to get true amps
+    restore_value: yes
+    initial_value: '0'
+    # initial_value: '0.00294'  # add to measured amps (post-scaling) to get true amps
   - id: kCalCurrent1Factor
     type: float
+    restore_value: yes
     initial_value: '1'
     # initial_value: '0.98227'  # multiply measured amps by this to get true amps
   - id: kCalCurrent1Offset
     type: float
+    restore_value: yes
     initial_value: '0'
     # initial_value: '0.01144'  # add to measured amps (post-scaling) to get true amps
   - id: kCalSetCurrentFactor
     type: float
-    # initial_value: '1'
-    initial_value: '1.01047'  # multiply by set amps to get true amps - note varies with voltage!
+    restore_value: yes
+    initial_value: '1'
+    # initial_value: '1.01047'  # multiply by set amps to get true amps - note varies with voltage!
   - id: kCalSetCurrentOffset
     type: float
-    # initial_value: '0'
-    initial_value: '0.00530'  # add to set amps to get true amps
+    restore_value: yes
+    initial_value: '0'
+    # initial_value: '0.00530'  # add to set amps to get true amps
 
 light:
   - platform: status_led
