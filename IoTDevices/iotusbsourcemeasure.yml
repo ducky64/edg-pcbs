@@ -148,6 +148,7 @@ light:
   - platform: status_led
     name: "${name} Dbg"
     id: debug_led
+    internal: true
     pin:
       number: GPIO0
       inverted: true
@@ -570,6 +571,7 @@ binary_sensor:
   - platform: gpio
     id: conv_en_sense
     name: "${name} Conv En Sen"
+    internal: true
     pin: 
       number: GPIO21
       mode:
@@ -577,6 +579,7 @@ binary_sensor:
   - platform: gpio
     id: encoder_sw
     name: "${name} Encoder Sw"
+    internal: true
     pin: 
       number: GPIO4
       inverted: true
@@ -588,6 +591,7 @@ binary_sensor:
   - platform: gpio
     id: dir_sw
     name: "${name} Dir Sw"
+    internal: true
     pin: 
       pca9554: pca9554a_device
       number: 0
