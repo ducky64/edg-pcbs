@@ -43,6 +43,9 @@ const int kLedB = 4;
 const int kVsenseGate = 6;
 const int kVsense = 7;
 
+const int kEpdGate = 17;
+const int kMemGate = 21;
+
 SPIClass spi(HSPI);  // for ESP32S3
 
 
@@ -143,10 +146,14 @@ void setup() {
   pinMode(kLedG, OUTPUT);
   pinMode(kLedB, OUTPUT);
   pinMode(kVsenseGate, OUTPUT);
+  pinMode(kEpdGate, OUTPUT);
+  pinMode(kMemGate, OUTPUT);
 
   digitalWrite(kLedR, 0);
   digitalWrite(kLedG, 0);
   digitalWrite(kLedB, 0);
+  digitalWrite(kEpdGate, 1);  // start off
+  digitalWrite(kMemGate, 1);
 
 
   digitalWrite(kVsenseGate, 1);
@@ -165,6 +172,8 @@ void setup() {
   digitalWrite(kLedG, 0);
   digitalWrite(kLedB, 0);
 
+  digitalWrite(kEpdGate, 0);  // turn on display - TODO this should be done later
+  delay(10);
   spi.begin(kEpdSckPin, -1, kEpdMosiPin, -1);
   display.epd2.selectSPI(spi, SPISettings(4000000, MSBFIRST, SPI_MODE0));
   display.init(0);
@@ -348,6 +357,7 @@ void setup() {
   display.getTextBounds(selfData, 0, 0, &tbx, &tby, &tbw, &tbh);
 
   if (errorStatus == NULL) {  
+    log_i("Display: show image");
     display.firstPage();
     do {
       int rc = png.openRAM((uint8_t *)streamData, sizeof(streamData), PNGDraw);
@@ -361,6 +371,7 @@ void setup() {
       display.print(selfData);
     } while (display.nextPage());
   } else if (failureCount >= kMaxErrorCount) {
+    log_i("Display: show error");
     display.firstPage();
     do {
       display.setTextColor(GxEPD_BLACK);
@@ -391,6 +402,11 @@ void setup() {
   digitalWrite(kLedB, 0);
 
   // put device to sleep
+  digitalWrite(kEpdGate, 1);
+  digitalWrite(kMemGate, 1);
+  gpio_hold_en((gpio_num_t)kEpdGate);
+  gpio_hold_en((gpio_num_t)kMemGate);
+
   if (failureCount >= kMaxErrorCount) {
     sleepTimeSec = kErrSleepSec;
   } else if (errorStatus != NULL) {
