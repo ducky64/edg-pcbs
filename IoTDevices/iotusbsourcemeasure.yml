@@ -354,9 +354,14 @@ number:
     set_action:
       - then:
         - lambda: |-
-            // TODO: ranging Current0/1 calibration factors
-            float correctedX = (x - id(kCalSetCurrent0Offset)) / id(kCalSetCurrent0Factor);
-            float targetVolts = id(kVCenter) - (correctedX / id(kCurrentRatio0));
+            float targetVolts = 0;
+            if (!id(range1)->state) {  // by default use range0, TODO automatically switch
+              float correctedX = (x - id(kCalSetCurrent0Offset)) / id(kCalSetCurrent0Factor);
+              targetVolts = id(kVCenter) - (correctedX / id(kCurrentRatio0));
+            } else {
+              float correctedX = (x - id(kCalSetCurrent1Offset)) / id(kCalSetCurrent1Factor);
+              targetVolts = id(kVCenter) - (correctedX / id(kCurrentRatio1));
+            }
             id(dac_isink)->write_state(targetVolts / id(kVref));
             id(limit_current_min).publish_state(x);
   - platform: template
@@ -371,9 +376,14 @@ number:
     set_action:
       - then:
         - lambda: |-
-            // TODO: ranging Current0/1 calibration factors
-            float correctedX = (x - id(kCalSetCurrent0Offset)) / id(kCalSetCurrent0Factor);
-            float targetVolts = id(kVCenter) - (correctedX / id(kCurrentRatio0));
+            float targetVolts = 0;
+            if (!id(range1)->state) {  // by default use range0, TODO automatically switch
+              float correctedX = (x - id(kCalSetCurrent0Offset)) / id(kCalSetCurrent0Factor);
+              targetVolts = id(kVCenter) - (correctedX / id(kCurrentRatio0));
+            } else {
+              float correctedX = (x - id(kCalSetCurrent1Offset)) / id(kCalSetCurrent1Factor);
+              targetVolts = id(kVCenter) - (correctedX / id(kCurrentRatio1));
+            }
             id(dac_isrc)->write_state(targetVolts / id(kVref));
             id(limit_current_max).publish_state(x);
   - platform: template

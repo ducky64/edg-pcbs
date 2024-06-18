@@ -30,7 +30,7 @@ void MCP4728::writeChannel(uint8_t channel, uint16_t data, bool upload, Referenc
   }
   if (data > 4095) {
     ESP_LOGE(TAG, "data out of range, clamping: %u", data);
-   data = 4095;
+    data = 4095;
   }
   this->write_byte_16((kMultiWriteDac << 3) | (channel << 1) | !upload,
     (ref << 15) | (power << 13) | (gain << 12) | data);

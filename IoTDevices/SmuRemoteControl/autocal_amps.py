@@ -24,7 +24,8 @@ kCalPoints = [  # by irange; as voltage, current min, current max
   ],
   [  # range 1 (300mA)
     "Connect 50-ohm load",
-    (3.5, -0.1, 0.05),
+    (3, -0.1, 0.02),
+    (3, -0.1, 0.04),
     (6, -0.1, 0.1),
     (8.5, -0.1, 0.15),
     (11, -0.1, 0.2),
@@ -78,11 +79,14 @@ if __name__ == "__main__":
         input()
       else:
         (set_voltage, set_current_min, set_current_max) = calibration_point
-        smu.set_current_limits(set_current_min, set_current_max)
-        smu.set_voltage(set_voltage)
         if not enabled:
+          smu.set_current_limits(set_current_min, set_current_max)
+          smu.set_voltage(set_voltage)
           smu.enable(irange=args.irange)
           enabled = True
+
+        smu.set_current_limits(set_current_min, set_current_max)  # TODO this sets it again with the right range factor
+        smu.set_voltage(set_voltage)
 
         time.sleep(kSetReadDelay)
 
