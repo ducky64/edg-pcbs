@@ -9,3 +9,4 @@ def regress(xs: List[float], ys: List[float]) -> (float, float):
   for (x, y) in zip(xs, ys):
     predict = slope * float(x) + intercept
     print(f"  {y} => {predict:.4f} ({predict - y:.4f}, {(predict - y) / predict * 100:.2f}%)")
+  return slope, intercept

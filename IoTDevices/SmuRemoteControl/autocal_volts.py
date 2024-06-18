@@ -1,10 +1,9 @@
 import argparse
+import sys
 import time
 import csv
 from decimal import Decimal
 from typing import Tuple, List
-
-import numpy as np
 
 from SmuInterface import SmuInterface
 from calutil import regress
@@ -52,6 +51,23 @@ if __name__ == "__main__":
   args = parser.parse_args()
 
   smu = SmuInterface(args.addr)
+
+  prev_factor, prev_offset = smu.cal_get_voltage_meas()
+  print(f'Current voltage meas cal: {prev_factor} x + {prev_offset}')
+  prev_factor, prev_offset = smu.cal_get_voltage_set()
+  print(f'Current voltage set cal: {prev_factor} x + {prev_offset}')
+
+  while True:
+    print('Clear and re-run calibration? [y/n]: ', end='')
+    user_data = input()
+    if user_data.lower() == 'y':
+      break
+    elif user_data.lower() == 'n':
+      sys.exit()
+
+  smu.cal_set_voltage_meas(1, 0)
+  smu.cal_set_voltage_set(1, 0)
+  time.sleep(kSetReadDelay)
 
   with open(kOutputFile, 'w', newline='') as csvfile:
     csvwriter = csv.writer(csvfile, delimiter=',', quoting=csv.QUOTE_MINIMAL)
@@ -101,7 +117,21 @@ if __name__ == "__main__":
 
     # voltage linear regression
     print("Voltage meas calibration")
-    regress([float(pt[0]) for pt in meas_voltage_cal_data], [float(pt[1]) for pt in meas_voltage_cal_data])
+    meas_cal_factor, meas_cal_offset = regress(
+      [float(pt[0]) for pt in meas_voltage_cal_data], [float(pt[1]) for pt in meas_voltage_cal_data])
 
     print("Voltage set calibration")
-    regress([float(pt[0]) for pt in set_voltage_cal_data], [float(pt[1]) for pt in set_voltage_cal_data])
+    set_cal_factor, set_cal_offset = regress(
+      [float(pt[0]) for pt in set_voltage_cal_data], [float(pt[1]) for pt in set_voltage_cal_data])
+
+  while True:
+    print('Commit to device? [y/n]: ', end='')
+    user_data = input()
+    if user_data.lower() == 'y':
+      break
+    elif user_data.lower() == 'n':
+      sys.exit()
+
+  smu.cal_set_voltage_meas(meas_cal_factor, meas_cal_offset)
+  smu.cal_set_voltage_set(set_cal_factor, set_cal_offset)
+  print("Wrote device calibration. Allow 5 seconds to commit to flash before power cycling.")
