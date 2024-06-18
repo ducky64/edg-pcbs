@@ -23,6 +23,27 @@ esphome:
     - delay: 0.1s
     - switch.turn_off: conv_enable
 
+    # initialize the calibration factors UI elements with the actual data
+    - delay: 0.1s  # need to restore it after boot
+    - lambda:
+        id(cal_voltage_meas_factor).publish_state(id(kCalVoltageFactor));
+        id(cal_voltage_meas_offset).publish_state(id(kCalVoltageOffset));
+        id(cal_voltage_set_factor).publish_state(id(kCalSetVoltageFactor));
+        id(cal_voltage_set_offset).publish_state(id(kCalSetVoltageOffset));
+
+        id(cal_current0_meas_factor).publish_state(id(kCalCurrent0Factor));
+        id(cal_current0_meas_offset).publish_state(id(kCalCurrent0Offset));
+        id(cal_current0_set_factor).publish_state(id(kCalSetCurrent0Factor));
+        id(cal_current0_set_offset).publish_state(id(kCalSetCurrent0Offset));
+
+        id(cal_current1_meas_factor).publish_state(id(kCalCurrent1Factor));
+        id(cal_current1_meas_offset).publish_state(id(kCalCurrent1Offset));
+        id(cal_current1_set_factor).publish_state(id(kCalSetCurrent1Factor));
+        id(cal_current1_set_offset).publish_state(id(kCalSetCurrent1Offset));
+
+preferences:
+  flash_write_interval: 5s  # so calibration updates save near-immediately
+
 wifi:
   <<: !include ../wifi_config.yaml
   ap:
@@ -73,57 +94,55 @@ globals:
     type: float
     initial_value: '3.3'  # theoretical, 2% tolerance
 
-  - id: kCalVoltageFactor
+  - id: kCalVoltageFactor  # multiply measured volts by this to get true volts
     type: float
     restore_value: yes
     initial_value: '1'
-    # initial_value: '0.9371'  # multiply measured volts by this to get true volts
-  - id: kCalVoltageOffset
+  - id: kCalVoltageOffset  # add to measured volts (post-scaling) to get true volts
     type: float
     restore_value: yes
     initial_value: '0'
-    # initial_value: '0.0208'  # add to measured volts (post-scaling) to get true volts
-  - id: kCalSetVoltageFactor
+  - id: kCalSetVoltageFactor  # multiply by set volts to get true volts
     type: float
     restore_value: yes
     initial_value: '1'
-    # initial_value: '0.9457'  # multiply by set volts to get true volts
-  - id: kCalSetVoltageOffset
+  - id: kCalSetVoltageOffset  # add to set volts to get true volts
     type: float
     restore_value: yes
     initial_value: '0'
-    # initial_value: '-0.1642'  # add to set volts to get true volts
 
-  - id: kCalCurrent0Factor
+  - id: kCalCurrent0Factor  # multiply measured amps by this to get true amps
     type: float
     restore_value: yes
     initial_value: '1'
-    # initial_value: '0.99201'  # multiply measured amps by this to get true amps
-  - id: kCalCurrent0Offset
+  - id: kCalCurrent0Offset  # add to measured amps (post-scaling) to get true amps
     type: float
     restore_value: yes
     initial_value: '0'
-    # initial_value: '0.00294'  # add to measured amps (post-scaling) to get true amps
   - id: kCalCurrent1Factor
     type: float
     restore_value: yes
     initial_value: '1'
-    # initial_value: '0.98227'  # multiply measured amps by this to get true amps
   - id: kCalCurrent1Offset
     type: float
     restore_value: yes
     initial_value: '0'
-    # initial_value: '0.01144'  # add to measured amps (post-scaling) to get true amps
-  - id: kCalSetCurrentFactor
+  - id: kCalSetCurrent0Factor  # multiply by set amps to get true amps - note varies with voltage!
     type: float
     restore_value: yes
     initial_value: '1'
-    # initial_value: '1.01047'  # multiply by set amps to get true amps - note varies with voltage!
-  - id: kCalSetCurrentOffset
+  - id: kCalSetCurrent0Offset  # add to set amps to get true amps
     type: float
     restore_value: yes
     initial_value: '0'
-    # initial_value: '0.00530'  # add to set amps to get true amps
+  - id: kCalSetCurrent1Factor
+    type: float
+    restore_value: yes
+    initial_value: '1'
+  - id: kCalSetCurrent1Offset
+    type: float
+    restore_value: yes
+    initial_value: '0'
 
 light:
   - platform: status_led
@@ -335,7 +354,8 @@ number:
     set_action:
       - then:
         - lambda: |-
-            float correctedX = (x - id(kCalSetCurrentOffset)) / id(kCalSetCurrentFactor);
+            // TODO: ranging Current0/1 calibration factors
+            float correctedX = (x - id(kCalSetCurrent0Offset)) / id(kCalSetCurrent0Factor);
             float targetVolts = id(kVCenter) - (correctedX / id(kCurrentRatio0));
             id(dac_isink)->write_state(targetVolts / id(kVref));
             id(limit_current_min).publish_state(x);
@@ -351,12 +371,14 @@ number:
     set_action:
       - then:
         - lambda: |-
-            float correctedX = (x - id(kCalSetCurrentOffset)) / id(kCalSetCurrentFactor);
+            // TODO: ranging Current0/1 calibration factors
+            float correctedX = (x - id(kCalSetCurrent0Offset)) / id(kCalSetCurrent0Factor);
             float targetVolts = id(kVCenter) - (correctedX / id(kCurrentRatio0));
             id(dac_isrc)->write_state(targetVolts / id(kVref));
             id(limit_current_max).publish_state(x);
   - platform: template
     name: "${name} Buck-boost ratio"
+    internal: true
     id: buckboost_ratio
     icon: mdi:pan-down
     min_value: 0
@@ -378,6 +400,153 @@ number:
             id(boost_pwm)->write_state(boostDc);
             ESP_LOGI("BuckBoostCtl", "Target %.02f, buck %.02f, boost %.02f", x, buckDc, boostDc);
             id(buckboost_ratio).publish_state(x);
+  # These provide an interface for setting internal calibration values
+  - platform: template
+    name: "${name} Cal Voltage Meas Factor"
+    internal: true
+    id: cal_voltage_meas_factor
+    min_value: 0
+    max_value: 2
+    step: 0.000001
+    set_action:
+      - then:
+        - lambda: |-
+            id(kCalVoltageFactor) = x;
+            id(cal_voltage_meas_factor).publish_state(x);
+  - platform: template
+    name: "${name} Cal Voltage Meas Offset"
+    internal: true
+    id: cal_voltage_meas_offset
+    min_value: -1
+    max_value: 1
+    step: 0.000001
+    set_action:
+      - then:
+        - lambda: |-
+            id(kCalVoltageOffset) = x;
+            id(cal_voltage_meas_offset).publish_state(x);
+  - platform: template
+    name: "${name} Cal Voltage Set Factor"
+    internal: true
+    id: cal_voltage_set_factor
+    min_value: 0
+    max_value: 2
+    step: 0.000001
+    set_action:
+      - then:
+        - lambda: |-
+            id(kCalSetVoltageFactor) = x;
+            id(cal_voltage_set_factor).publish_state(x);
+  - platform: template
+    name: "${name} Cal Voltage Set Offset"
+    internal: true
+    id: cal_voltage_set_offset
+    min_value: -1
+    max_value: 1
+    step: 0.000001
+    set_action:
+      - then:
+        - lambda: |-
+            id(kCalSetVoltageOffset) = x;
+            id(cal_voltage_set_offset).publish_state(x);
+
+  - platform: template
+    name: "${name} Cal Current0 Meas Factor"
+    internal: true
+    id: cal_current0_meas_factor
+    min_value: 0
+    max_value: 2
+    step: 0.000001
+    set_action:
+      - then:
+        - lambda: |-
+            id(kCalCurrent0Factor) = x;
+            id(cal_current0_meas_factor).publish_state(x);
+  - platform: template
+    name: "${name} Cal Current0 Meas Offset"
+    internal: true
+    id: cal_current0_meas_offset
+    min_value: -1
+    max_value: 1
+    step: 0.000001
+    set_action:
+      - then:
+        - lambda: |-
+            id(kCalCurrent0Offset) = x;
+            id(cal_current0_meas_offset).publish_state(x);
+  - platform: template
+    name: "${name} Cal Current0 Set Factor"
+    internal: true
+    id: cal_current0_set_factor
+    min_value: 0
+    max_value: 2
+    step: 0.000001
+    set_action:
+      - then:
+        - lambda: |-
+            id(kCalSetCurrent0Factor) = x;
+            id(cal_current0_set_factor).publish_state(x);
+  - platform: template
+    name: "${name} Cal Current0 Set Offset"
+    internal: true
+    id: cal_current0_set_offset
+    min_value: -1
+    max_value: 1
+    step: 0.000001
+    set_action:
+      - then:
+        - lambda: |-
+            id(kCalSetCurrent0Offset) = x;
+            id(cal_current0_set_offset).publish_state(x);
+
+  - platform: template
+    name: "${name} Cal Current1 Meas Factor"
+    internal: true
+    id: cal_current1_meas_factor
+    min_value: 0
+    max_value: 2
+    step: 0.000001
+    set_action:
+      - then:
+        - lambda: |-
+            id(kCalCurrent1Factor) = x;
+            id(cal_current1_meas_factor).publish_state(x);
+  - platform: template
+    name: "${name} Cal Current1 Meas Offset"
+    internal: true
+    id: cal_current1_meas_offset
+    min_value: -1
+    max_value: 1
+    step: 0.000001
+    set_action:
+      - then:
+        - lambda: |-
+            id(kCalCurrent1Offset) = x;
+            id(cal_current1_meas_offset).publish_state(x);
+  - platform: template
+    name: "${name} Cal Current1 Set Factor"
+    internal: true
+    id: cal_current1_set_factor
+    min_value: 0
+    max_value: 2
+    step: 0.000001
+    set_action:
+      - then:
+        - lambda: |-
+            id(kCalSetCurrent1Factor) = x;
+            id(cal_current1_set_factor).publish_state(x);
+  - platform: template
+    name: "${name} Cal Current1 Set Offset"
+    internal: true
+    id: cal_current1_set_offset
+    min_value: -1
+    max_value: 1
+    step: 0.000001
+    set_action:
+      - then:
+        - lambda: |-
+            id(kCalSetCurrent1Offset) = x;
+            id(cal_current1_set_offset).publish_state(x);
 
 binary_sensor:
   - platform: gpio

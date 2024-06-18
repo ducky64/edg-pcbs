@@ -19,6 +19,11 @@ class SmuInterface:
   kNameEnableRange0 = ' Range0'
   kNameEnableRange1 = ' Range1'
 
+  kNameCalVoltageMeasFactor = ' Cal Voltage Meas Factor'
+  kNameCalVoltageMeasOffset = ' Cal Voltage Meas Offset'
+  kNameCalVoltageSetFactor = ' Cal Voltage Set Factor'
+  kNameCalVoltageSetOffset = ' Cal Voltage Set Offset'
+
   def _webapi_name(self, name: str) -> str:
     # TODO should actually replace all non-alphanumeric but this is close enough
     return (self.device_prefix + name).replace(' ', '_').lower()
@@ -78,3 +83,23 @@ class SmuInterface:
       resp = requests.post(f'http://{self.addr}/switch/{self._webapi_name(name)}/{action}')
       if resp.status_code != 200:
         raise Exception(f'Request failed: {resp.status_code}')
+
+  def cal_get_voltage_meas(self) -> Tuple[decimal.Decimal, decimal.Decimal]:
+    """Returns the voltage measurement calibration, factor and offset terms"""
+    return (self._get('number', self.kNameCalVoltageMeasFactor),
+            self._get('number', self.kNameCalVoltageMeasOffset))
+
+  def cal_set_voltage_meas(self, factor: float, offset: float) -> None:
+    """Sets the voltage measurement calibration, factor and offset terms"""
+    self._set('number', self.kNameCalVoltageMeasFactor, factor)
+    self._set('number', self.kNameCalVoltageMeasOffset, offset)
+
+  def cal_get_voltage_set(self) -> Tuple[decimal.Decimal, decimal.Decimal]:
+    """Returns the voltage set calibration, factor and offset terms"""
+    return (self._get('number', self.kNameCalVoltageSetFactor),
+            self._get('number', self.kNameCalVoltageSetOffset))
+
+  def cal_set_voltage_set(self, factor: float, offset: float) -> None:
+    """Sets the voltage set calibration, factor and offset terms"""
+    self._set('number', self.kNameCalVoltageSetFactor, factor)
+    self._set('number', self.kNameCalVoltageSetOffset, offset)
