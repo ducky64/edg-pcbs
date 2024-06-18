@@ -16,6 +16,8 @@ esphome:
 wifi:
   <<: !include ../wifi_config.yaml
 
+captive_portal:
+
 # HASS API
 api:
   services:

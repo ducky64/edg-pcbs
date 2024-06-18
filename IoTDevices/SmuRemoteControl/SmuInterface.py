@@ -4,21 +4,24 @@ import requests
 import decimal
 
 class SmuInterface:
-  kNameMeasCurrent = 'UsbSMU Meas Current'
-  kNameMeasVoltage = 'UsbSMU Meas Voltage'
-  kNameAdcCurrent = 'UsbSMU Meas ADC Current'
-  kNameAdcVoltage = 'UsbSMU Meas ADC Voltage'
+  device_prefix = 'UsbSMU'
 
-  kNameSetCurrentMin = 'UsbSMU Set Current Min'
-  kNameSetCurrentMax = 'UsbSMU Set Current Max'
-  kNameSetVoltage = 'UsbSMU Set Voltage'
-  kNameEnableRange0 = 'UsbSMU Range0'
-  kNameEnableRange1 = 'UsbSMU Range1'
+  kNameMeasCurrent = ' Meas Current'
+  kNameMeasVoltage = ' Meas Voltage'
+  kNameAdcCurrent = ' Meas ADC Current'
+  kNameAdcVoltage = ' Meas ADC Voltage'
+  kNameDerivPower = ' Deriv Power'
+  kNameDerivEnergy = ' Deriv Eenergy'
 
-  @staticmethod
-  def _webapi_name(name: str) -> str:
+  kNameSetCurrentMin = ' Set Current Min'
+  kNameSetCurrentMax = ' Set Current Max'
+  kNameSetVoltage = ' Set Voltage'
+  kNameEnableRange0 = ' Range0'
+  kNameEnableRange1 = ' Range1'
+
+  def _webapi_name(self, name: str) -> str:
     # TODO should actually replace all non-alphanumeric but this is close enough
-    return name.replace(' ', '_').lower()
+    return (self.device_prefix + name).replace(' ', '_').lower()
 
   def _set(self, service: str, name: str, value: float) -> None:
     resp = requests.post(f'http://{self.addr}/{service}/{self._webapi_name(name)}/set?value={value}')
@@ -51,6 +54,14 @@ class SmuInterface:
     """Returns the voltage and current ADC counts"""
     return (int(self._get('sensor', self.kNameAdcVoltage)),
             int(self._get('sensor', self.kNameAdcCurrent)))
+
+  def get_deriv_power(self) -> decimal.Decimal:
+    """Returns the derived power in watts"""
+    return self._get('sensor', self.kNameDerivPower)
+
+  def get_deriv_energy(self) -> decimal.Decimal:
+    """Returns the derived cumulative energy in joules"""
+    return self._get('sensor', self.kNameDerivEnergy)
 
   def enable(self, on: bool=True, high=True) -> None:
     if on:

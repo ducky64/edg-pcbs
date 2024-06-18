@@ -3,6 +3,10 @@ esphome:
   name_add_mac_suffix: true
   platform: esp32
   board: esp32-s3-devkitc-1  # 8MB flash without PSRAM
+  on_boot:
+    - light.turn_on:
+        id: led
+        effect: Rainbow
 
 wifi:
   <<: !include ../wifi_config.yaml
@@ -63,9 +67,9 @@ i2c:
   scan: True
 
 font:
-  - file: "../IoTDisplay_EspHome/resources/4x6.bdf"  # characters actually 3x5 plus 1px descender
+  - file: "resources/4x6.bdf"  # characters actually 3x5 plus 1px descender
     id: bdf4x6
-  - file: "../IoTDisplay_EspHome/resources/6x10.bdf"  # characters actually 5x7 plus 2px descender
+  - file: "resources/6x10.bdf"  # characters actually 5x7 plus 2px descender
     id: bdf6x10
     
 display:  
