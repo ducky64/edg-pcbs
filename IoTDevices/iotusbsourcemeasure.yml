@@ -558,6 +558,14 @@ number:
             id(kCalSetCurrent1Offset) = x;
             id(cal_current1_set_offset).publish_state(x);
 
+button:
+  - platform: template
+    name: Reset integrators
+    on_press:
+      then:
+        - sensor.integration.reset: deriv_energy
+        - sensor.integration.reset: deriv_accum_current
+
 binary_sensor:
   - platform: gpio
     id: conv_en_sense
@@ -591,10 +599,11 @@ binary_sensor:
     on_click:
     - then:
         - lambda: |-
-            if (!id(range0)->state) {
+            if (!id(range0)->state && !id(range1)->state) {
               id(range0)->turn_on();
             } else {
               id(range0)->turn_off();
+              id(range1)->turn_off();
             }
   - platform: gpio
     id: dir_a  # up
@@ -727,6 +736,7 @@ sensor:
   - platform: template
     name: "${name} Meas Voltage Noise"
     id: meas_voltage_noise
+    internal: true
     accuracy_decimals: 6
     filters:
       - range:
@@ -735,6 +745,7 @@ sensor:
   - platform: template
     name: "${name} Meas Current Noise"
     id: meas_current_noise
+    internal: true
     accuracy_decimals: 7
     filters:
       - range:
@@ -748,12 +759,14 @@ sensor:
     unit_of_measurement: W
   - platform: integration
     name: "${name} Deriv Energy"
+    id: deriv_energy
     sensor: deriv_power
     time_unit: s
     accuracy_decimals: 6
     unit_of_measurement: J
   - platform: integration
     name: "${name} Deriv Cumulative Current"
+    id: deriv_accum_current
     sensor: meas_current
     time_unit: h
     accuracy_decimals: 6
