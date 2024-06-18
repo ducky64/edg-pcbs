@@ -165,7 +165,7 @@ void setup() {
   uint8_t mac[6];
   WiFi.macAddress(mac);
   char macStr[13];
-  sprintf(macStr, "%02x%02x%02x", mac[3], mac[4], mac[5]);
+  sprintf(macStr, "%02x%02x%02x%02x%02x%02x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 
   log_i("Total heap: %d, PSRAM: %d", ESP.getHeapSize(), ESP.getPsramSize());
   digitalWrite(kLedR, 0);
@@ -352,7 +352,9 @@ void setup() {
   display.setFont(&FreeMonoBold9pt7b);
 
   // last character gets cut off for some reason
-  String selfData = String(kFwVerStr) + " " + macStr + " " + vbatMv / 1000 + "." + (vbatMv % 1000 / 10) + "V  ";
+  char shortMacStr[13];
+  sprintf(shortMacStr, "%02x%02x%02x", mac[3], mac[4], mac[5]);
+  String selfData = String(kFwVerStr) + " " + shortMacStr + " " + vbatMv / 1000 + "." + (vbatMv % 1000 / 10) + "V  ";
   int16_t tbx, tby; uint16_t tbw, tbh;
   display.getTextBounds(selfData, 0, 0, &tbx, &tby, &tbw, &tbh);
 
