@@ -840,3 +840,12 @@ sensor:
     on_anticlockwise:
     - then:
         - lambda: ;
+
+text_sensor:
+  - platform: version
+    name: "${name} Version"
+    internal: true
+  - platform: wifi_info
+    mac_address:
+      name: "${name} Mac Wifi"
+      internal: true
