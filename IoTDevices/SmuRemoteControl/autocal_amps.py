@@ -1,10 +1,10 @@
 import argparse
+import sys
 import time
 import csv
 from decimal import Decimal
 from typing import Tuple, List
 
-import numpy as np
 
 from SmuInterface import SmuInterface
 from calutil import regress
@@ -13,50 +13,51 @@ from calutil import regress
 kOutputFile = 'calibration.csv'
 kSetReadDelay = 0.5  # seconds
 
-kVoltageCalPoints = [  # as voltage, current min, current max
-  # "Connect 50ohm",  # with setpoint cal
-  # (3, -0.1, 0.01),
-  # (3, -0.1, 0.02),
-  # (3, -0.1, 0.03),
-  # (3, -0.1, 0.05),
-  # (6, -0.1, 0.1),
-  # (8.5, -0.1, 0.15),
-  # (11, -0.1, 0.20),
-  # (13.5, -0.1, 0.25),
-  # (16, -0.1, 0.30),
-
-  # "Connect 50ohm",  # measurement cal only
-  # (1.0, -0.1, 0.5),
-  # (2.0, -0.1, 0.5),
-  # (4.0, -0.1, 0.5),
-  # (8.0, -0.1, 0.5),
-  # (12.0, -0.1, 0.5),
-  # (16.0, -0.1, 0.75),
-  # (20.0, -0.1, 0.75),
-  # (1.0, -0.1, 0.5),
-
-  "Connect 10ohm",
-  (6, -0.1, 0.5),
-  (9, -0.1, 0.8),
-  (11, -0.1, 1),
-  (16, -0.1, 1.5),
-
-  # "Connect 10ohm",  # measurement cal only
-  # (3, -0.1, 0.8),
-  # (6, -0.1, 1.1),
-  # (9, -0.1, 1.4),
-  # (11, -0.1, 1.6),
-  # (16, -0.1, 2.1),
-  # (3, -0.1, 0.8),
+kCalPoints = [  # by irange; as voltage, current min, current max
+  [  # range 0 (3A)
+    "Connect 4-ohm load",
+    (1, -0.1, 0.1),
+    (3, -0.1, 0.5),
+    (5, -0.1, 1),
+    (7, -0.1, 1.5),
+    (9, -0.1, 2),
+  ],
+  [  # range 1 (300mA)
+    "Connect 50-ohm load",
+    (3.5, -0.1, 0.05),
+    (6, -0.1, 0.1),
+    (8.5, -0.1, 0.15),
+    (11, -0.1, 0.2),
+    (13.5, -0.1, 0.25),
+  ],
 ]
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(prog='SmuCal')
   parser.add_argument('addr', type=str)
+  parser.add_argument('irange', type=int, nargs='?', default=0)
   args = parser.parse_args()
 
   smu = SmuInterface(args.addr)
 
+  prev_factor, prev_offset = smu.cal_get_current_meas(args.irange)
+  print(f'Current voltage meas cal: {prev_factor} x + {prev_offset}')
+  prev_factor, prev_offset = smu.cal_get_current_set(args.irange)
+  print(f'Current voltage set cal: {prev_factor} x + {prev_offset}')
+
+  while True:
+    print('Clear and re-run calibration? [y/n]: ', end='')
+    user_data = input()
+    if user_data.lower() == 'y':
+      break
+    elif user_data.lower() == 'n':
+      sys.exit()
+
+  smu.cal_set_current_meas(args.irange, 1, 0)
+  smu.cal_set_current_set(args.irange, 1, 0)
+  time.sleep(kSetReadDelay)
+
+  cal_table = kCalPoints[args.irange]
   with open(kOutputFile, 'w', newline='') as csvfile:
     csvwriter = csv.writer(csvfile, delimiter=',', quoting=csv.QUOTE_MINIMAL)
     csvwriter.writerow([
@@ -71,7 +72,7 @@ if __name__ == "__main__":
     set_current_cal_data: List[Tuple[Decimal, Decimal]] = []  # setpoint, external-measured (reference)
 
     enabled = False
-    for calibration_point in kVoltageCalPoints:
+    for calibration_point in cal_table:
       if isinstance(calibration_point, str):
         print(calibration_point, end='')
         input()
@@ -80,8 +81,7 @@ if __name__ == "__main__":
         smu.set_current_limits(set_current_min, set_current_max)
         smu.set_voltage(set_voltage)
         if not enabled:
-          smu.enable(True)
-          # smu.enable(True, False)  # low range
+          smu.enable(irange=args.irange)
           enabled = True
 
         time.sleep(kSetReadDelay)
@@ -106,7 +106,21 @@ if __name__ == "__main__":
 
     # linear regression
     print("Current meas calibration")
-    regress([float(pt[0]) for pt in meas_current_cal_data], [float(pt[1]) for pt in meas_current_cal_data])
+    meas_cal_factor, meas_cal_offset = regress(
+      [float(pt[0]) for pt in meas_current_cal_data], [float(pt[1]) for pt in meas_current_cal_data])
 
     print("Current set calibration")
-    regress([float(pt[0]) for pt in set_current_cal_data], [float(pt[1]) for pt in set_current_cal_data])
+    set_cal_factor, set_cal_offset = regress(
+      [float(pt[0]) for pt in set_current_cal_data], [float(pt[1]) for pt in set_current_cal_data])
+
+  while True:
+    print('Commit to device? [y/n]: ', end='')
+    user_data = input()
+    if user_data.lower() == 'y':
+      break
+    elif user_data.lower() == 'n':
+      sys.exit()
+
+  smu.cal_set_current_meas(args.irange, meas_cal_factor, meas_cal_offset)
+  smu.cal_set_current_set(args.irange, set_cal_factor, set_cal_offset)
+  print("Wrote device calibration. Allow 5 seconds to commit to flash before power cycling.")

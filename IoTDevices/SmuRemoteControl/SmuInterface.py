@@ -16,13 +16,17 @@ class SmuInterface:
   kNameSetCurrentMin = ' Set Current Min'
   kNameSetCurrentMax = ' Set Current Max'
   kNameSetVoltage = ' Set Voltage'
-  kNameEnableRange0 = ' Range0'
-  kNameEnableRange1 = ' Range1'
+  kNameEnableRange = [' Range0', ' Range1']
 
   kNameCalVoltageMeasFactor = ' Cal Voltage Meas Factor'
   kNameCalVoltageMeasOffset = ' Cal Voltage Meas Offset'
   kNameCalVoltageSetFactor = ' Cal Voltage Set Factor'
   kNameCalVoltageSetOffset = ' Cal Voltage Set Offset'
+
+  kNameCalCurrentMeasFactor = [' Cal Current0 Meas Factor', ' Cal Current1 Meas Factor']
+  kNameCalCurrentMeasOffset = [' Cal Current0 Meas Offset', ' Cal Current1 Meas Offset']
+  kNameCalCurrentSetFactor = [' Cal Current0 Set Factor', ' Cal Current1 Set Factor']
+  kNameCalCurrentSetOffset = [' Cal Current0 Set Offset', ' Cal Current1 Set Offset']
 
   def _webapi_name(self, name: str) -> str:
     # TODO should actually replace all non-alphanumeric but this is close enough
@@ -71,16 +75,13 @@ class SmuInterface:
     """Returns the derived cumulative energy in joules"""
     return self._get('sensor', self.kNameDerivEnergy)
 
-  def enable(self, on: bool=True, high=True) -> None:
+  def enable(self, on: bool = True, irange: int = 0) -> None:
     if on:
       action = 'turn_on'
-      if high:
-        names = [self.kNameEnableRange0]
-      else:
-        names = [self.kNameEnableRange1]
+      names = [self.kNameEnableRange[irange]]
     else:
       action = 'turn_off'
-      names = [self.kNameEnableRange0, self.kNameEnableRange1]
+      names = self.kNameEnableRange
 
     for name in names:
       resp = requests.post(f'http://{self.addr}/switch/{self._webapi_name(name)}/{action}')
@@ -106,3 +107,19 @@ class SmuInterface:
     """Sets the voltage set calibration, factor and offset terms"""
     self._set('number', self.kNameCalVoltageSetFactor, factor)
     self._set('number', self.kNameCalVoltageSetOffset, offset)
+
+  def cal_get_current_meas(self, irange: int) -> Tuple[decimal.Decimal, decimal.Decimal]:
+    return (self._get('number', self.kNameCalCurrentMeasFactor[irange], read_value=True),
+            self._get('number', self.kNameCalCurrentMeasOffset[irange], read_value=True))
+
+  def cal_set_current_meas(self, irange: int, factor: float, offset: float) -> None:
+    self._set('number', self.kNameCalCurrentMeasFactor[irange], factor)
+    self._set('number', self.kNameCalCurrentMeasOffset[irange], offset)
+
+  def cal_get_current_set(self, irange: int) -> Tuple[decimal.Decimal, decimal.Decimal]:
+    return (self._get('number', self.kNameCalCurrentSetFactor[irange], read_value=True),
+            self._get('number', self.kNameCalCurrentSetOffset[irange], read_value=True))
+
+  def cal_set_current_set(self, irange: int, factor: float, offset: float) -> None:
+    self._set('number', self.kNameCalCurrentSetFactor[irange], factor)
+    self._set('number', self.kNameCalCurrentSetOffset[irange], offset)
