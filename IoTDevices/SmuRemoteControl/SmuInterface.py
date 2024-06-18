@@ -33,11 +33,14 @@ class SmuInterface:
     if resp.status_code != 200:
       raise Exception(f'Request failed: {resp.status_code}')
 
-  def _get(self, service: str, name: str) -> decimal.Decimal:
+  def _get(self, service: str, name: str, read_value=False) -> decimal.Decimal:
     resp = requests.get(f'http://{self.addr}/{service}/{self._webapi_name(name)}')
     if resp.status_code != 200:
       raise Exception(f'Request failed: {resp.status_code}')
-    return decimal.Decimal(resp.json()['state'].split(' ')[0])
+    if read_value:
+      return decimal.Decimal(resp.json()['value'])
+    else:
+      return decimal.Decimal(resp.json()['state'].split(' ')[0])
 
   def __init__(self, addr: str):
     self.addr = addr
@@ -86,8 +89,8 @@ class SmuInterface:
 
   def cal_get_voltage_meas(self) -> Tuple[decimal.Decimal, decimal.Decimal]:
     """Returns the voltage measurement calibration, factor and offset terms"""
-    return (self._get('number', self.kNameCalVoltageMeasFactor),
-            self._get('number', self.kNameCalVoltageMeasOffset))
+    return (self._get('number', self.kNameCalVoltageMeasFactor, read_value=True),
+            self._get('number', self.kNameCalVoltageMeasOffset, read_value=True))
 
   def cal_set_voltage_meas(self, factor: float, offset: float) -> None:
     """Sets the voltage measurement calibration, factor and offset terms"""
@@ -96,8 +99,8 @@ class SmuInterface:
 
   def cal_get_voltage_set(self) -> Tuple[decimal.Decimal, decimal.Decimal]:
     """Returns the voltage set calibration, factor and offset terms"""
-    return (self._get('number', self.kNameCalVoltageSetFactor),
-            self._get('number', self.kNameCalVoltageSetOffset))
+    return (self._get('number', self.kNameCalVoltageSetFactor, read_value=True),
+            self._get('number', self.kNameCalVoltageSetOffset, read_value=True))
 
   def cal_set_voltage_set(self, factor: float, offset: float) -> None:
     """Sets the voltage set calibration, factor and offset terms"""
