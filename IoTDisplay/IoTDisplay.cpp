@@ -275,7 +275,7 @@ void setup() {
             break;
           }
           log_d("  %i KiB", otaBytes / 1024);
-          digitalWrite(kLedG, millis() % 200 >= 100);
+          digitalWrite(kLedB, millis() % 200 >= 100);
         }
         http.end();
         log_i("Ota: got %i, wrote %i", otaBytes, otaWritten);
@@ -293,7 +293,7 @@ void setup() {
         log_e("Ota: response error %i", httpResponseCode);
       }
     }
-    digitalWrite(kLedG, 0);
+    digitalWrite(kLedB, 0);
   }
 
   // fetch image data
@@ -337,7 +337,7 @@ void setup() {
   long int timeStopWifi = millis();
   log_i("Network active: %.1fs", (float)(timeStopWifi - timeStartWifi) / 1000);
   digitalWrite(kLedR, 0);
-  digitalWrite(kLedB, 1);
+  digitalWrite(kLedG, 1);
 
   if (errorStatus != NULL) {
     failureCount++;
@@ -401,7 +401,7 @@ void setup() {
     }
   }
 
-  digitalWrite(kLedB, 0);
+  digitalWrite(kLedG, 0);
 
   // put device to sleep
   digitalWrite(kEpdGate, 1);
@@ -426,8 +426,8 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-  digitalWrite(kLedB, 0);
+  digitalWrite(kLedG, 0);
   delay(100);
-  digitalWrite(kLedB, 1);
+  digitalWrite(kLedG, 1);
   delay(100);
 }
