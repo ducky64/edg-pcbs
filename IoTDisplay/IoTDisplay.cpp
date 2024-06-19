@@ -63,7 +63,7 @@ GxEPD2_3C<GxEPD2_750c_Z08, GxEPD2_750c_Z08::HEIGHT> display(GxEPD2_750c_Z08(kEpd
 #include <HTTPClient.h>
 #include "WifiConfig.h"  // must define 'const char* ssid' and 'const char* password' and 'const char* kHttpServer'
 // ssid and password are self-explanatory, http server is the IP address to the base , eg "http://10.0.0.2"
-const char* kRenderPostfix = "/render";
+
 const char* kMetadataPostfix = "/meta";  // URL postfix to get metadata JSON, incl time to next update
 const char* kImagePostfix = "/image";  // URL postfix to get image to render
 const char* kOtaPostfix = "/ota";  // URL postfix to get OTA firmware binary
