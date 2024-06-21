@@ -172,6 +172,7 @@ void setup() {
   digitalWrite(kLedG, 0);
   digitalWrite(kLedB, 0);
 
+  gpio_hold_dis((gpio_num_t)kEpdGate);
   digitalWrite(kEpdGate, 0);  // turn on display - TODO this should be done later
   delay(10);
   spi.begin(kEpdSckPin, -1, kEpdMosiPin, -1);
@@ -419,6 +420,7 @@ void setup() {
     sleepTimeSec = 60 * 60;  // default one hour
   }
 
+  log_i("Sleep %i s", sleepTimeSec);
   esp_sleep_enable_timer_wakeup(sleepTimeSec * 1000000ull);
   esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_OFF);
   esp_deep_sleep_start();
