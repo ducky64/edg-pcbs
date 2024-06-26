@@ -304,11 +304,22 @@ display:
     reset_pin: GPIO12
     update_interval : 200ms
     lambda: |-
-      it.printf(0, 0, id(bdf6x10), "Ducky SMU");
+      it.printf(0, 0, id(bdf6x10), "MES %5.2f V  %6.3f A", id(meas_voltage).get_state(), id(meas_current).get_state());
 
-      it.printf(0, 12, id(bdf6x10), "SET  %4.1f V  %5.2f A", id(set_voltage).state, id(limit_current_min).state);
-      it.printf(0, 20, id(bdf6x10), "     %s     %5.2f A", id(range0).state ? "ON " : "OFF", id(limit_current_max).state);
-      it.printf(0, 32, id(bdf6x10), "MES  %4.1f V  %5.2f A", id(meas_voltage).get_state(), id(meas_current).get_state());
+      it.printf(0, 16, id(bdf6x10), "%s %4.1f  V  %5.2f  A", 
+          id(range0).state ? "ON " : id(range1).state ? "ONv" : "OFF",
+          id(set_voltage).state, id(limit_current_min).state);
+      it.printf(0, 24, id(bdf6x10), "             %5.2f  A", id(limit_current_max).state);
+      
+
+      bool uncal = false;
+      if (id(kCalVoltageFactor) == 1 || id(kCalVoltageOffset) == 0 || id(kCalSetVoltageFactor) == 1 || id(kCalSetVoltageOffset) == 0 ||
+          id(kCalCurrent0Factor) == 1 || id(kCalCurrent0Offset) == 0 || id(kCalSetCurrent0Factor) == 1 || id(kCalSetCurrent0Offset) == 0 ||
+          id(kCalCurrent1Factor) == 1 || id(kCalCurrent1Offset) == 0 || id(kCalSetCurrent1Factor) == 1 || id(kCalSetCurrent1Offset) == 0) {
+        uncal = true;
+      }
+
+      it.printf(0, 64-12, id(bdf4x6), "Ducky SMU  %s", uncal ? "*UNCAL*" : "");
 
       const char* pdState;
       switch (id(usbpd).get_state()) {
@@ -588,6 +599,15 @@ binary_sensor:
         pullup: true
     filters:
       - delayed_on: 10ms
+    on_click:
+    - then:
+        - lambda: |-
+            if (!id(range0)->state && !id(range1)->state) {
+              id(range0)->turn_on();
+            } else {
+              id(range0)->turn_off();
+              id(range1)->turn_off();
+            }
   - platform: gpio
     id: dir_sw
     name: "${name} Dir Sw"
@@ -600,15 +620,6 @@ binary_sensor:
         input: true
     filters:
       - delayed_on: 10ms
-    on_click:
-    - then:
-        - lambda: |-
-            if (!id(range0)->state && !id(range1)->state) {
-              id(range0)->turn_on();
-            } else {
-              id(range0)->turn_off();
-              id(range1)->turn_off();
-            }
   - platform: gpio
     id: dir_a  # up
     pin: 
@@ -836,10 +847,10 @@ sensor:
         pullup: true
     on_clockwise:
     - then:
-        - lambda: ;
+        - lambda: id(set_voltage)->make_call().set_value(id(set_voltage)->state + 0.1).perform();
     on_anticlockwise:
     - then:
-        - lambda: ;
+        - lambda: id(set_voltage)->make_call().set_value(id(set_voltage)->state - 0.1).perform();
 
 text_sensor:
   - platform: version
