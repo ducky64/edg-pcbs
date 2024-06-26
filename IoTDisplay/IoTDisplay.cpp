@@ -63,7 +63,7 @@ GxEPD2_3C<GxEPD2_750c_Z08, GxEPD2_750c_Z08::HEIGHT> display(GxEPD2_750c_Z08(kEpd
 #include <HTTPClient.h>
 #include "WifiConfig.h"  // must define 'const char* ssid' and 'const char* password' and 'const char* kHttpServer'
 // ssid and password are self-explanatory, http server is the IP address to the base , eg "http://10.0.0.2"
-const char* kRenderPostfix = "/render";
+
 const char* kMetadataPostfix = "/meta";  // URL postfix to get metadata JSON, incl time to next update
 const char* kImagePostfix = "/image";  // URL postfix to get image to render
 const char* kOtaPostfix = "/ota";  // URL postfix to get OTA firmware binary
@@ -172,6 +172,7 @@ void setup() {
   digitalWrite(kLedG, 0);
   digitalWrite(kLedB, 0);
 
+  gpio_hold_dis((gpio_num_t)kEpdGate);
   digitalWrite(kEpdGate, 0);  // turn on display - TODO this should be done later
   delay(10);
   spi.begin(kEpdSckPin, -1, kEpdMosiPin, -1);
@@ -275,7 +276,7 @@ void setup() {
             break;
           }
           log_d("  %i KiB", otaBytes / 1024);
-          digitalWrite(kLedG, millis() % 200 >= 100);
+          digitalWrite(kLedB, millis() % 200 >= 100);
         }
         http.end();
         log_i("Ota: got %i, wrote %i", otaBytes, otaWritten);
@@ -293,7 +294,7 @@ void setup() {
         log_e("Ota: response error %i", httpResponseCode);
       }
     }
-    digitalWrite(kLedG, 0);
+    digitalWrite(kLedB, 0);
   }
 
   // fetch image data
@@ -337,7 +338,7 @@ void setup() {
   long int timeStopWifi = millis();
   log_i("Network active: %.1fs", (float)(timeStopWifi - timeStartWifi) / 1000);
   digitalWrite(kLedR, 0);
-  digitalWrite(kLedB, 1);
+  digitalWrite(kLedG, 1);
 
   if (errorStatus != NULL) {
     failureCount++;
@@ -401,7 +402,7 @@ void setup() {
     }
   }
 
-  digitalWrite(kLedB, 0);
+  digitalWrite(kLedG, 0);
 
   // put device to sleep
   digitalWrite(kEpdGate, 1);
@@ -419,6 +420,7 @@ void setup() {
     sleepTimeSec = 60 * 60;  // default one hour
   }
 
+  log_i("Sleep %i s", sleepTimeSec);
   esp_sleep_enable_timer_wakeup(sleepTimeSec * 1000000ull);
   esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_OFF);
   esp_deep_sleep_start();
@@ -426,8 +428,8 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-  digitalWrite(kLedB, 0);
+  digitalWrite(kLedG, 0);
   delay(100);
-  digitalWrite(kLedB, 1);
+  digitalWrite(kLedG, 1);
   delay(100);
 }
