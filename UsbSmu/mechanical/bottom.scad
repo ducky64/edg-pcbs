@@ -32,7 +32,7 @@ PLATE_X = PCB_X + PLATE_EXTEND * 2;
 PLATE_Y = PCB_Y + PLATE_EXTEND * 2;
 PLATE_RADIUS = PCB_CORNER_RADIUS + PLATE_EXTEND;
 SCREW_CLEAR = 2.9;
-SCREW_HEAD_THICK = 2;
+SCREW_HEAD_THICK = 1.5;
 
 module screw(center) {    
     translate(center) translate([0, 0, -e]) {

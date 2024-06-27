@@ -45,7 +45,7 @@ LED1_X = 62;
 LED2_X = 66;
 LED_Y = 45;
 LED_H = PLATE_OFFSET - 1;
-LED_D = 2;
+LED_D = 3.2;
 LED_PIPE_D = 6;
 
 
@@ -57,7 +57,7 @@ PLATE_RADIUS = PCB_CORNER_RADIUS + PLATE_EXTEND;
 SCREW_CLEAR = 2.9;
 SCREW_TAP_D = 2.3;
 SCREW_TAP_H = 3;
-SCREW_HEAD_THICK = 2;
+SCREW_HEAD_THICK = 1.5;
 
 module screw(center) {    
     translate(center) translate([0, 0, PLATE_THICK + e]) {

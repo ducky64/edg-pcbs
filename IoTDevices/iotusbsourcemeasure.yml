@@ -28,18 +28,42 @@ esphome:
     - lambda:
         id(cal_voltage_meas_factor).publish_state(id(kCalVoltageFactor));
         id(cal_voltage_meas_offset).publish_state(id(kCalVoltageOffset));
+        ESP_LOGI("cal", "Loaded voltage calibration %f x + %f", id(kCalVoltageFactor), id(kCalVoltageOffset));
+        if (id(kCalVoltageFactor) == 1 || id(kCalVoltageOffset) == 0) {
+          ESP_LOGW("cal", "Missing voltage calibration");
+        }
         id(cal_voltage_set_factor).publish_state(id(kCalSetVoltageFactor));
         id(cal_voltage_set_offset).publish_state(id(kCalSetVoltageOffset));
+        ESP_LOGI("cal", "Loaded voltage set calibration %f x + %f", id(kCalSetVoltageFactor), id(kCalSetVoltageOffset));
+        if (id(kCalSetVoltageFactor) == 1 || id(kCalSetVoltageOffset) == 0) {
+          ESP_LOGW("cal", "Missing voltage set calibration");
+        }
 
         id(cal_current0_meas_factor).publish_state(id(kCalCurrent0Factor));
         id(cal_current0_meas_offset).publish_state(id(kCalCurrent0Offset));
+        ESP_LOGI("cal", "Loaded current 0 calibration %f x + %f", id(kCalCurrent0Factor), id(kCalCurrent0Offset));
+        if (id(kCalCurrent0Factor) == 1 || id(kCalCurrent0Offset) == 0) {
+          ESP_LOGW("cal", "Missing current0 calibration");
+        }
         id(cal_current0_set_factor).publish_state(id(kCalSetCurrent0Factor));
         id(cal_current0_set_offset).publish_state(id(kCalSetCurrent0Offset));
+        ESP_LOGI("cal", "Loaded current 0 set calibration %f x + %f", id(kCalSetCurrent0Factor), id(kCalSetCurrent0Offset));
+        if (id(kCalSetCurrent0Factor) == 1 || id(kCalSetCurrent0Offset) == 0) {
+          ESP_LOGW("cal", "Missing set current0 calibration");
+        }
 
         id(cal_current1_meas_factor).publish_state(id(kCalCurrent1Factor));
         id(cal_current1_meas_offset).publish_state(id(kCalCurrent1Offset));
+        ESP_LOGI("cal", "Loaded current 1 calibration %f x + %f", id(kCalCurrent1Factor), id(kCalCurrent1Offset));
+        if (id(kCalCurrent1Factor) == 1 || id(kCalCurrent1Offset) == 0) {
+          ESP_LOGW("cal", "Missing current1 calibration");
+        }
         id(cal_current1_set_factor).publish_state(id(kCalSetCurrent1Factor));
         id(cal_current1_set_offset).publish_state(id(kCalSetCurrent1Offset));
+        ESP_LOGI("cal", "Loaded current 1 set calibration %f x + %f", id(kCalSetCurrent1Factor), id(kCalSetCurrent1Offset));
+        if (id(kCalSetCurrent1Factor) == 1 || id(kCalSetCurrent1Offset) == 0) {
+          ESP_LOGW("cal", "Missing set current1 calibration");
+        }
 
 preferences:
   flash_write_interval: 5s  # so calibration updates save near-immediately
