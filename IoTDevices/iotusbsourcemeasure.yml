@@ -240,8 +240,8 @@ display:
 
       it.printf(0, 16, id(bdf6x10), "%s %4.1f  V  %5.2f  A", 
           id(range0).state ? "ON " : id(range1).state ? "ONv" : "OFF",
-          id(set_voltage).state, id(limit_current_min).state);
-      it.printf(0, 24, id(bdf6x10), "             %5.2f  A", id(limit_current_max).state);
+          id(set_voltage).state, id(limit_current_max).state);
+      it.printf(0, 24, id(bdf6x10), "             %5.2f  A", id(limit_current_min).state);
       
 
       bool uncal = false;
@@ -568,10 +568,10 @@ binary_sensor:
         - lambda: |-
             id(set_voltage)->make_call().set_value(id(set_voltage)->state + 0.2).perform();
   - platform: gpio
-    id: dir_c  # left
+    id: dir_b  # down
     pin: 
       pca9554: pca9554a_device
-      number: 4
+      number: 2
       inverted: true
       mode:
         input: true
@@ -582,10 +582,10 @@ binary_sensor:
         - lambda: |-
             id(set_voltage)->make_call().set_value(id(set_voltage)->state - 0.2).perform();
   - platform: gpio
-    id: dir_b  # down
+    id: dir_c  # left
     pin: 
       pca9554: pca9554a_device
-      number: 2
+      number: 4
       inverted: true
       mode:
         input: true

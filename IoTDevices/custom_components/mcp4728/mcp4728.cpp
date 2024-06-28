@@ -39,7 +39,7 @@ void MCP4728::writeChannel(uint8_t channel, uint16_t data, bool upload, Referenc
 MCP4728Output::MCP4728Output(uint8_t channel) : channel_(channel) {};
 
 void MCP4728Output::write_state(float state) {
-  uint16_t data = state * 4095;
+  uint16_t data = state * 4095 + 0.5;
   if (data > 4095) {
     ESP_LOGE(TAG, "data out of range, clamping: %f", state);
     data = 4095;
