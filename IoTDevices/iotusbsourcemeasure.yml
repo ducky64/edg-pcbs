@@ -41,6 +41,7 @@ api:
 
 # Allow API
 ota:
+  - platform: esphome
 
 # Print Updates
 logger:
@@ -641,7 +642,6 @@ sensor:
       - lambda: |-
           id(adc_voltage).publish_state(id(meas_voltage).rawValue);
           auto value = x * id(kVref) * id(kVoltageRatio) * id(kCalVoltageFactor).state + id(kCalVoltageOffset).state;
-          id(meas_voltage_noise).publish_state(value);
           if (!isnan(id(meas_current).state)) {
             id(deriv_power).publish_state(value * id(meas_current).state);
           }
@@ -677,24 +677,29 @@ sensor:
           } else if (thisRange == 1) {
             value = value * id(kCurrentRatio1) * id(kCalCurrent1Factor).state + id(kCalCurrent1Offset).state;
           }
-          id(meas_current_noise).publish_state(value);
           id(deriv_power).publish_state(id(meas_voltage).state * value);
           return value;
     unit_of_measurement: A
-  - platform: template
+  - platform: combination
     name: "${name} Meas Voltage Noise"
     id: meas_voltage_noise
     internal: true
     accuracy_decimals: 6
+    type: sum
+    sources:
+      - source: meas_voltage
     filters:
       - range:
           window_size: 25
           send_every: 5
-  - platform: template
+  - platform: combination
     name: "${name} Meas Current Noise"
     id: meas_current_noise
     internal: true
     accuracy_decimals: 7
+    type: sum
+    sources:
+      - source: meas_current
     filters:
       - range:
           window_size: 25
