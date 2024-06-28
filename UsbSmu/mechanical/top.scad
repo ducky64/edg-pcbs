@@ -72,8 +72,8 @@ module screw(center) {
 module output_jack(pin1) {
     translate(pin1) translate([0, 0, -10]) {
         // left edge used to be -1.3 - 0.2 as outer edge of ring + tolerance
-        // but now we use -0.8 + 0.1 as the drill edge + interference fit
-        cuboid(p1=[-0.8+0.1, -1.3-5.08-0.2, 0],
+        // but now we use -0.8 + 0.2 as the drill edge + interference fit
+        cuboid(p1=[-0.8+0.2, -1.3-5.08-0.2, 0],
             p2=[100, 1.3+0.2, PLATE_THICK + 20],
             edges=EDGES_Z_ALL, fillet=1.3+0.2);
         linear_extrude(height=PLATE_THICK + 20, center=false) {
@@ -195,15 +195,15 @@ difference() {
     translate([LED2_X, PCB_Y-LED_Y, -LED_H-e])  // debug LED
         cyl(l=PLATE_THICK + LED_H + 2*e, d=LED_D, align=V_UP);
     
-    translate([0, PCB_Y-12, PLATE_THICK - 0.4]) {
+    translate([0, PCB_Y-12, PLATE_THICK - 0.25]) {
         linear_extrude(1 + e)
             text("USB", size=5, halign="left", valign="center");
     }    
-    translate([143, PCB_Y-12.460, PLATE_THICK - 0.4]) {
+    translate([143, PCB_Y-12.460, PLATE_THICK - 0.25]) {
         linear_extrude(1 + e)
             text("GND", size=5, halign="right", valign="center");
     }
-    translate([143, PCB_Y-31.459, PLATE_THICK - 0.4]) {
+    translate([143, PCB_Y-31.459, PLATE_THICK - 0.25]) {
         linear_extrude(1 + e)
             text("OUT", size=5, halign="right", valign="center");
     }
