@@ -1,10 +1,12 @@
-from typing import Tuple
+from typing import Tuple, Dict
 
 import requests
 import decimal
 
 class SmuInterface:
   device_prefix = 'UsbSMU'
+
+  kNameMacWifi = ' Mac Wifi'
 
   kNameMeasCurrent = ' Meas Current'
   kNameMeasVoltage = ' Meas Voltage'
@@ -28,6 +30,10 @@ class SmuInterface:
   kNameCalCurrentSetFactor = [' Cal Current0 Set Factor', ' Cal Current1 Set Factor']
   kNameCalCurrentSetOffset = [' Cal Current0 Set Offset', ' Cal Current1 Set Offset']
 
+  kNameAllCal = [
+    kNameCalVoltageMeasFactor, kNameCalVoltageMeasOffset, kNameCalVoltageSetFactor, kNameCalVoltageSetOffset,
+  ] + kNameCalCurrentMeasFactor + kNameCalCurrentMeasOffset + kNameCalCurrentSetFactor + kNameCalCurrentSetOffset
+
   def _webapi_name(self, name: str) -> str:
     # TODO should actually replace all non-alphanumeric but this is close enough
     return (self.device_prefix + name).replace(' ', '_').lower()
@@ -46,8 +52,17 @@ class SmuInterface:
     else:
       return decimal.Decimal(resp.json()['state'].split(' ')[0])
 
+  def _get_text(self, service: str, name: str) -> str:
+    resp = requests.get(f'http://{self.addr}/{service}/{self._webapi_name(name)}')
+    if resp.status_code != 200:
+      raise Exception(f'Request failed: {resp.status_code}')
+    return resp.json()['value']
+
   def __init__(self, addr: str):
     self.addr = addr
+
+  def get_mac(self):
+    return self._get_text('text_sensor', self.kNameMacWifi)
 
   def set_voltage(self, voltage: float) -> None:
     self._set('number', self.kNameSetVoltage, voltage)
@@ -123,3 +138,12 @@ class SmuInterface:
   def cal_set_current_set(self, irange: int, factor: float, offset: float) -> None:
     self._set('number', self.kNameCalCurrentSetFactor[irange], factor)
     self._set('number', self.kNameCalCurrentSetOffset[irange], offset)
+
+  def cal_get_all(self) -> Dict[str, decimal.Decimal]:
+    out_dict = {}
+    for name in self.kNameAllCal:
+      value = self._get('number', name, read_value=True)
+      full_name = self.device_prefix + name
+      out_dict[full_name] = value
+    return out_dict
+
