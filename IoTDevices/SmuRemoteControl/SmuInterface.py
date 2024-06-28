@@ -1,34 +1,34 @@
-from typing import Tuple, Dict
+from typing import Tuple, Dict, Union
 
 import requests
 import decimal
 
 class SmuInterface:
-  device_prefix = 'UsbSMU'
+  device_prefix = 'UsbSMU '
 
-  kNameMacWifi = ' Mac Wifi'
+  kNameMacWifi = 'Mac Wifi'
 
-  kNameMeasCurrent = ' Meas Current'
-  kNameMeasVoltage = ' Meas Voltage'
-  kNameAdcCurrent = ' Meas ADC Current'
-  kNameAdcVoltage = ' Meas ADC Voltage'
-  kNameDerivPower = ' Deriv Power'
-  kNameDerivEnergy = ' Deriv Eenergy'
+  kNameMeasCurrent = 'Meas Current'
+  kNameMeasVoltage = 'Meas Voltage'
+  kNameAdcCurrent = 'Meas ADC Current'
+  kNameAdcVoltage = 'Meas ADC Voltage'
+  kNameDerivPower = 'Deriv Power'
+  kNameDerivEnergy = 'Deriv Eenergy'
 
-  kNameSetCurrentMin = ' Set Current Min'
-  kNameSetCurrentMax = ' Set Current Max'
-  kNameSetVoltage = ' Set Voltage'
-  kNameEnableRange = [' Range0', ' Range1']
+  kNameSetCurrentMin = 'Set Current Min'
+  kNameSetCurrentMax = 'Set Current Max'
+  kNameSetVoltage = 'Set Voltage'
+  kNameEnableRange = ['Range0', 'Range1']
 
-  kNameCalVoltageMeasFactor = ' Cal Voltage Meas Factor'
-  kNameCalVoltageMeasOffset = ' Cal Voltage Meas Offset'
-  kNameCalVoltageSetFactor = ' Cal Voltage Set Factor'
-  kNameCalVoltageSetOffset = ' Cal Voltage Set Offset'
+  kNameCalVoltageMeasFactor = 'Cal Voltage Meas Factor'
+  kNameCalVoltageMeasOffset = 'Cal Voltage Meas Offset'
+  kNameCalVoltageSetFactor = 'Cal Voltage Set Factor'
+  kNameCalVoltageSetOffset = 'Cal Voltage Set Offset'
 
-  kNameCalCurrentMeasFactor = [' Cal Current0 Meas Factor', ' Cal Current1 Meas Factor']
-  kNameCalCurrentMeasOffset = [' Cal Current0 Meas Offset', ' Cal Current1 Meas Offset']
-  kNameCalCurrentSetFactor = [' Cal Current0 Set Factor', ' Cal Current1 Set Factor']
-  kNameCalCurrentSetOffset = [' Cal Current0 Set Offset', ' Cal Current1 Set Offset']
+  kNameCalCurrentMeasFactor = ['Cal Current0 Meas Factor', 'Cal Current1 Meas Factor']
+  kNameCalCurrentMeasOffset = ['Cal Current0 Meas Offset', 'Cal Current1 Meas Offset']
+  kNameCalCurrentSetFactor = ['Cal Current0 Set Factor', 'Cal Current1 Set Factor']
+  kNameCalCurrentSetOffset = ['Cal Current0 Set Offset', 'Cal Current1 Set Offset']
 
   kNameAllCal = [
     kNameCalVoltageMeasFactor, kNameCalVoltageMeasOffset, kNameCalVoltageSetFactor, kNameCalVoltageSetOffset,
@@ -38,7 +38,7 @@ class SmuInterface:
     # TODO should actually replace all non-alphanumeric but this is close enough
     return (self.device_prefix + name).replace(' ', '_').lower()
 
-  def _set(self, service: str, name: str, value: float) -> None:
+  def _set(self, service: str, name: str, value: Union[float, decimal.Decimal]) -> None:
     resp = requests.post(f'http://{self.addr}/{service}/{self._webapi_name(name)}/set?value={value}')
     if resp.status_code != 200:
       raise Exception(f'Request failed: {resp.status_code}')
@@ -143,7 +143,11 @@ class SmuInterface:
     out_dict = {}
     for name in self.kNameAllCal:
       value = self._get('number', name, read_value=True)
-      full_name = self.device_prefix + name
-      out_dict[full_name] = value
+      out_dict[name] = value
     return out_dict
 
+  def cal_set_all(self, cal_dict: Dict[str, decimal.Decimal]) -> None:
+    for name, value in cal_dict.items():
+      assert name in self.kNameAllCal, f'invalid calibration parameter: {name}'
+    for name, value in cal_dict.items():
+      self._set('number', name, value)
