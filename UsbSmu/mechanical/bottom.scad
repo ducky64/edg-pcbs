@@ -13,7 +13,7 @@ PCB_CORNER_RADIUS = 3;
 HS_START_X = 35;
 HS_END_X = 145;
 HS_CEN_Y = 12;
-HS_Y = 22 + 2;  // 1mm tolerance each side
+HS_Y = 22 + 1;  // 0.5mm tolerance each side
 
 // Plate design parameters
 PLATE_EXTEND = 2.5;  // how far the plate extends in -X, +X, -Y, +Y
@@ -21,7 +21,7 @@ PLATE_THICK = 2;
 
 PLATE_OFFSET = 2;
 
-PLATE_RIM_H = 1;
+PLATE_RIM_H = 2;
 PLATE_RIM_D = 2;
 
 PIN_INSET = 1;
@@ -31,14 +31,14 @@ PIN_INSET = 1;
 PLATE_X = PCB_X + PLATE_EXTEND * 2;
 PLATE_Y = PCB_Y + PLATE_EXTEND * 2;
 PLATE_RADIUS = PCB_CORNER_RADIUS + PLATE_EXTEND;
-SCREW_CLEAR = 2.9;
-SCREW_HEAD_THICK = 1.5;
+SCREW_TAP_D = 2.3;
+SCREW_HEAD_H = 2;
 
 module screw(center) {    
     translate(center) translate([0, 0, -e]) {
-      cyl(l=PLATE_THICK + 20 + 2*e, d=SCREW_CLEAR, align=V_UP);
-      cyl(l=SCREW_HEAD_THICK + e, d1=SCREW_CLEAR + 2*(SCREW_HEAD_THICK + e),
-        d2=SCREW_CLEAR, align=V_UP);
+      cyl(l=PLATE_THICK + 20 + 2*e, d=SCREW_TAP_D, align=V_UP);
+      cyl(l=SCREW_HEAD_H + e, d1=SCREW_TAP_D + 2*(SCREW_HEAD_H + e),
+        d2=SCREW_TAP_D, align=V_UP);
     }
 }
 
@@ -58,7 +58,7 @@ module post(center) {
             }
             
             translate([0, 0, e]) {
-                cyl(l=PLATE_OFFSET + 2*e, d=SCREW_CLEAR, align=V_UP);
+                cyl(l=PLATE_OFFSET + 2*e, d=SCREW_TAP_D, align=V_UP);
             }
         }
     }

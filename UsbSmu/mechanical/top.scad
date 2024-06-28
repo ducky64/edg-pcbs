@@ -32,6 +32,10 @@ OLED_BOSS_INSET_H = 1;
 OLED_RIM_H = 1;
 OLED_RIM_D = 1;
 
+// UI parameters
+DIRSW_D = 5.2;
+DIRSW_TRAVEL = 1.5;  // travel in each direction
+
 // Plate design parameters
 PLATE_EXTEND = 2.5;  // how far the plate extends in -X, +X, -Y, +Y
 PLATE_THICK = 2;
@@ -44,7 +48,7 @@ PLATE_RIM_D = 2;
 LED1_X = 62;
 LED2_X = 66;
 LED_Y = 45;
-LED_H = PLATE_OFFSET - 1;
+LED_H = PLATE_OFFSET - 0.5;
 LED_D = 3.2;
 LED_PIPE_D = 6;
 
@@ -55,21 +59,21 @@ PLATE_X = PCB_X + PLATE_EXTEND * 2;
 PLATE_Y = PCB_Y + PLATE_EXTEND * 2;
 PLATE_RADIUS = PCB_CORNER_RADIUS + PLATE_EXTEND;
 SCREW_CLEAR = 2.9;
-SCREW_TAP_D = 2.3;
-SCREW_TAP_H = 3;
-SCREW_HEAD_THICK = 1.5;
+SCREW_HEAD_H = 2;
 
 module screw(center) {    
     translate(center) translate([0, 0, PLATE_THICK + e]) {
       cyl(l=PLATE_THICK + 2*e, d=SCREW_CLEAR, align=V_DOWN);
-      cyl(l=SCREW_HEAD_THICK + e, d2=SCREW_CLEAR + 2*(SCREW_HEAD_THICK + e),
+      cyl(l=SCREW_HEAD_H + e, d2=SCREW_CLEAR + 2*(SCREW_HEAD_H + e),
         d1=SCREW_CLEAR, align=V_DOWN);
     }
 }
 
 module output_jack(pin1) {
     translate(pin1) translate([0, 0, -10]) {
-        cuboid(p1=[-1.3-0.2, -1.3-5.08-0.2, 0],
+        // left edge used to be -1.3 - 0.2 as outer edge of ring + tolerance
+        // but now we use -0.8 + 0.1 as the drill edge + interference fit
+        cuboid(p1=[-0.8+0.1, -1.3-5.08-0.2, 0],
             p2=[100, 1.3+0.2, PLATE_THICK + 20],
             edges=EDGES_Z_ALL, fillet=1.3+0.2);
         linear_extrude(height=PLATE_THICK + 20, center=false) {
@@ -94,10 +98,7 @@ module post(center) {
             }
             
             translate([0, 0, e]) {
-                cyl(l=PLATE_OFFSET - SCREW_TAP_H + e, d=SCREW_CLEAR, align=V_DOWN);
-            }
-            translate([0, 0, - 7.2 + SCREW_TAP_H + e]) {
-                cyl(l=SCREW_TAP_H + 2*e, d=SCREW_TAP_D, align=V_DOWN);
+                cyl(l=PLATE_OFFSET + 2*e, d=SCREW_CLEAR, align=V_DOWN);
             }
         }
     }
@@ -181,12 +182,12 @@ difference() {
         cyl(l=PLATE_THICK + 10 + 2*e, d=7+0.4, align=V_UP);
     
     translate([53, PCB_Y-45, -e]) {  // directional switch
-        cuboid(p1=[-3.9, -1.7, -10],
-               p2=[3.9, 1.7, PLATE_THICK + 2*e],
-               edges=EDGES_Z_ALL, fillet=1.5+0.2);
-        cuboid(p1=[-1.7, -3.9, -10],
-               p2=[1.7, 3.9, PLATE_THICK + 2*e],
-               edges=EDGES_Z_ALL, fillet=1.5+0.2);
+        cuboid(p1=[-DIRSW_D/2-DIRSW_TRAVEL, -DIRSW_D/2, -10],
+               p2=[DIRSW_D/2+DIRSW_TRAVEL, DIRSW_D/2, PLATE_THICK + 2*e],
+               edges=EDGES_Z_ALL, fillet=DIRSW_D/2);
+        cuboid(p1=[-DIRSW_D/2, -DIRSW_D/2-DIRSW_TRAVEL, -10],
+               p2=[DIRSW_D/2, DIRSW_D/2+DIRSW_TRAVEL, PLATE_THICK + 2*e],
+               edges=EDGES_Z_ALL, fillet=DIRSW_D/2);
     }
 
     translate([LED1_X, PCB_Y-LED_Y, -LED_H-e])  // RGB LED
