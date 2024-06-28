@@ -260,7 +260,7 @@ display:
       }
 
       it.printf(0, 64-6, id(bdf4x6), "%s", WiFi.localIP().toString().c_str());
-      it.printf(128-(16*4), 64-6, id(bdf4x6), "%s %4.1fv %2.f,%2.fc", pdState, id(fusb_vbus).get_state(), id(temp_buckboost).state, id(temp_fets).state);
+      it.printf(128-(16*4), 64-6, id(bdf4x6), "%s   %2.0fv %2.f,%2.fc", pdState, id(fusb_vbus).get_state(), id(temp_buckboost).state, id(temp_fets).state);
       if (millis() % 2000 >= 1000) {
         it.printf(128-4, 64-6, id(bdf4x6), ".");  // liveness indicator
       }
