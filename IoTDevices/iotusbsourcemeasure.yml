@@ -641,11 +641,7 @@ sensor:
     filters:
       - lambda: |-
           id(adc_voltage).publish_state(id(meas_voltage).rawValue);
-          auto value = x * id(kVref) * id(kVoltageRatio) * id(kCalVoltageFactor).state + id(kCalVoltageOffset).state;
-          if (!isnan(id(meas_current).state)) {
-            id(deriv_power).publish_state(value * id(meas_current).state);
-          }
-          return value;
+          return x * id(kVref) * id(kVoltageRatio) * id(kCalVoltageFactor).state + id(kCalVoltageOffset).state;
   - platform: mcp3561
     id: meas_current
     name: "${name} Meas Current"
@@ -667,7 +663,6 @@ sensor:
 
           if (lastRange != thisRange || thisRange < 0) {  // invalidate the measurement on a range change
             lastRange = thisRange;
-            id(deriv_power).publish_state(NAN);
             return NAN;
           }
 
@@ -677,15 +672,14 @@ sensor:
           } else if (thisRange == 1) {
             value = value * id(kCurrentRatio1) * id(kCalCurrent1Factor).state + id(kCalCurrent1Offset).state;
           }
-          id(deriv_power).publish_state(id(meas_voltage).state * value);
           return value;
     unit_of_measurement: A
   - platform: combination
     name: "${name} Meas Voltage Noise"
     id: meas_voltage_noise
+    type: sum  # dummy
     internal: true
     accuracy_decimals: 6
-    type: sum
     sources:
       - source: meas_voltage
     filters:
@@ -695,9 +689,9 @@ sensor:
   - platform: combination
     name: "${name} Meas Current Noise"
     id: meas_current_noise
+    type: sum  # dummy
     internal: true
     accuracy_decimals: 7
-    type: sum
     sources:
       - source: meas_current
     filters:
@@ -705,11 +699,19 @@ sensor:
           window_size: 25
           send_every: 5
 
-  - platform: template
+  - platform: combination
     name: "${name} Deriv Power"
     id: deriv_power
+    type: sum  # dummy
     accuracy_decimals: 6
     unit_of_measurement: W
+    sources:
+      - source: meas_voltage
+      - source: meas_current
+    filters:
+      - lambda: |-
+          return id(meas_voltage).state * id(meas_current).state;
+
   - platform: integration
     name: "${name} Deriv Energy"
     id: deriv_energy
