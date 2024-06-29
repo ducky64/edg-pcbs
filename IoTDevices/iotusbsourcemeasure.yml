@@ -803,3 +803,6 @@ text_sensor:
     mac_address:
       name: "${name} Mac Wifi"
       internal: true
+
+sample_buffer:
+  id: smu_meas
