@@ -293,7 +293,7 @@ number:
     icon: mdi:pan-up
     mode: box
     min_value: -3
-    max_value: 3
+    max_value: -0.05
     step: 0.01
     unit_of_measurement: A
     set_action:
@@ -314,7 +314,7 @@ number:
     id: limit_current_max
     icon: mdi:pan-down
     mode: box
-    min_value: -3
+    min_value: 0.05
     max_value: 3
     step: 0.01
     unit_of_measurement: A
@@ -595,10 +595,8 @@ binary_sensor:
     on_click:
     - then:
         - lambda: |-
-            if (id(limit_current_max)->state > id(limit_current_min)->state + 0.2) {  // don't allow crossover - dangerous
-              id(limit_current_max)->make_call().set_value(id(limit_current_max)->state - 0.05).perform();
-              id(limit_current_min)->make_call().set_value(id(limit_current_min)->state + 0.05).perform();
-            }
+            id(limit_current_max)->make_call().set_value(id(limit_current_max)->state - 0.05).perform();
+            id(limit_current_min)->make_call().set_value(id(limit_current_min)->state + 0.05).perform();
   - platform: gpio
     id: dir_d  # right
     pin: 
