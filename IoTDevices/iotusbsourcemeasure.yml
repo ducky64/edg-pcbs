@@ -555,7 +555,8 @@ binary_sensor:
     filters:
       - delayed_on: 10ms
   - platform: gpio
-    id: dir_a  # up
+    name: "${name} Dir Up"
+    internal: true
     pin: 
       pca9554: pca9554a_device
       number: 1
@@ -569,10 +570,11 @@ binary_sensor:
         - lambda: |-
             id(set_voltage)->make_call().set_value(id(set_voltage)->state + 0.2).perform();
   - platform: gpio
-    id: dir_b  # down
+    name: "${name} Dir Down"
+    internal: true
     pin: 
       pca9554: pca9554a_device
-      number: 2
+      number: 3
       inverted: true
       mode:
         input: true
@@ -583,7 +585,8 @@ binary_sensor:
         - lambda: |-
             id(set_voltage)->make_call().set_value(id(set_voltage)->state - 0.2).perform();
   - platform: gpio
-    id: dir_c  # left
+    name: "${name} Dir Left"
+    internal: true
     pin: 
       pca9554: pca9554a_device
       number: 4
@@ -598,10 +601,11 @@ binary_sensor:
             id(limit_current_max)->make_call().set_value(id(limit_current_max)->state - 0.05).perform();
             id(limit_current_min)->make_call().set_value(id(limit_current_min)->state + 0.05).perform();
   - platform: gpio
-    id: dir_d  # right
+    name: "${name} Dir Right"
+    internal: true
     pin: 
       pca9554: pca9554a_device
-      number: 3
+      number: 2
       inverted: true
       mode:
         input: true
