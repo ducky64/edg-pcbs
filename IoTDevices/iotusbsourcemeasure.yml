@@ -56,10 +56,10 @@ web_server:
 globals:
   - id: kBuckBoostPwmDeadzone
     type: float
-    initial_value: '0.05'  # in fractional duty-cycle, maximum / minimum duty cycle
+    initial_value: '0.03'  # in fractional duty-cycle, maximum / minimum duty cycle
   - id: kBuckBoostHeadroom
     type: float
-    initial_value: '1'  # volts
+    initial_value: '0.5'  # volts
 
   - id: kVoltageRatio
     type: float
@@ -770,6 +770,7 @@ sensor:
   - platform: rotary_encoder
     id: encoder
     name: "${name} Encoder"
+    internal: true
     resolution: 2  # so each detent generates one action
     pin_a:
       number: GPIO5
