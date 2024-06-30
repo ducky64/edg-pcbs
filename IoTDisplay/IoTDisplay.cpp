@@ -49,6 +49,9 @@ const int kMemGate = 21;
 SPIClass spi(HSPI);  // for ESP32S3
 
 
+const int kBlinkIntervalMs = 250;
+
+
 #include <GxEPD2_BW.h>
 #include <GxEPD2_3C.h>
 #include <GxEPD2_7C.h>
@@ -112,6 +115,11 @@ void PNGDraw(PNGDRAW *pDraw) {
       display.drawPixel(i, pDraw->y, GxEPD_RED);
     }
   }
+}
+
+void busyCallback(const void*) {
+  digitalWrite(kLedG, !digitalRead(kLedG));
+  delay(kBlinkIntervalMs/2);
 }
 
 void setup() {
@@ -184,11 +192,13 @@ void setup() {
   long int timeStartWifi = millis();
   WiFi.begin(ssid, password);
   while(WiFi.status() != WL_CONNECTED) {
-    digitalWrite(kLedR, millis() % 200 >= 100);
+    digitalWrite(kLedR, millis() % kBlinkIntervalMs >= kBlinkIntervalMs/2);
     if ((millis() - timeStartWifi) > kMaxWifiConnectSec * 1000) {
       errorStatus = "no wifi";
       break;
     }
+    delay(1);
+    yield();
   }
   long int timeConnectWifi = millis();
   log_i("Connected WiFi: %.1fs, %s, RSSI=%i", (float)(timeConnectWifi - timeStartWifi) / 1000, WiFi.localIP().toString(), WiFi.RSSI());
@@ -349,6 +359,8 @@ void setup() {
 
   // DISPLAY RENDERING CODE
   //
+  display.epd2.setBusyCallback(&busyCallback);
+
   display.setRotation(3);
   display.setFont(&FreeMonoBold9pt7b);
 
