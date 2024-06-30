@@ -89,7 +89,7 @@ StaticJsonDocument<256> doc;
 size_t maxWidth = 480;
 
 
-const char* kFwVerStr = "3";
+const char* kFwVerStr = "4";
 
 RTC_DATA_ATTR int bootCount = 0;
 RTC_DATA_ATTR int failureCount = 0;
@@ -119,13 +119,8 @@ void PNGDraw(PNGDRAW *pDraw) {
 }
 
 void busyCallback(const void*) {
-  if (digitalRead(kLedG)) {
-    digitalWrite(kLedG, 0);
-    esp_sleep_enable_timer_wakeup((kBusyBlinkIntervalMs - kBlinkIntervalMs/2) * 1000ull);
-  } else {
-    digitalWrite(kLedG, 1);
-    esp_sleep_enable_timer_wakeup(kBlinkIntervalMs/2 * 1000ull);
-  }
+  digitalWrite(kLedG, millis() % kBusyBlinkIntervalMs <= kBlinkIntervalMs/2);
+  esp_sleep_enable_timer_wakeup(kBlinkIntervalMs/4 * 1000ull);
   esp_light_sleep_start();
 }
 
@@ -167,14 +162,17 @@ void setup() {
   digitalWrite(kLedR, 0);
   digitalWrite(kLedG, 0);
   digitalWrite(kLedB, 0);
+  gpio_hold_dis((gpio_num_t)kEpdGate);
+  gpio_hold_dis((gpio_num_t)kMemGate);
   digitalWrite(kEpdGate, 1);  // start off
   digitalWrite(kMemGate, 1);
 
-
+  gpio_hold_dis((gpio_num_t)kVsenseGate);
   digitalWrite(kVsenseGate, 1);
   delay(2);
-  int vbatMv = (uint32_t)analogRead(kVsense) * 3300 * (47+10) / 10 / 4096;
-  log_i("Vbat: %d", vbatMv);
+  int vbatAdc = analogRead(kVsense);
+  int vbatMv = (uint32_t)vbatAdc * 3300 * (47+10) / 10 / 4096;
+  log_i("Vbat: %d (ADC=%d)", vbatMv, vbatAdc);
   digitalWrite(kVsenseGate, 0);
 
   uint8_t mac[6];
@@ -187,19 +185,12 @@ void setup() {
   digitalWrite(kLedG, 0);
   digitalWrite(kLedB, 0);
 
-  gpio_hold_dis((gpio_num_t)kEpdGate);
-  digitalWrite(kEpdGate, 0);  // turn on display - TODO this should be done later
-  delay(10);
-  spi.begin(kEpdSckPin, -1, kEpdMosiPin, -1);
-  display.epd2.selectSPI(spi, SPISettings(4000000, MSBFIRST, SPI_MODE0));
-  display.init(0);
-
   // NETWORK CODE
   //
   long int timeStartWifi = millis();
   WiFi.begin(ssid, password);
   while(WiFi.status() != WL_CONNECTED) {
-    digitalWrite(kLedR, millis() % kBlinkIntervalMs >= kBlinkIntervalMs/2);
+    digitalWrite(kLedR, millis() % kBlinkIntervalMs <= kBlinkIntervalMs/2);
     if ((millis() - timeStartWifi) > kMaxWifiConnectSec * 1000) {
       errorStatus = "no wifi";
       break;
@@ -366,6 +357,11 @@ void setup() {
 
   // DISPLAY RENDERING CODE
   //
+  digitalWrite(kEpdGate, 0);  // turn on display - TODO this should be done later
+  spi.begin(kEpdSckPin, -1, kEpdMosiPin, -1);
+  display.epd2.selectSPI(spi, SPISettings(4000000, MSBFIRST, SPI_MODE0));
+  display.init(0);
+
   display.epd2.setBusyCallback(&busyCallback);
 
   display.setRotation(3);
@@ -428,6 +424,7 @@ void setup() {
   digitalWrite(kMemGate, 1);
   gpio_hold_en((gpio_num_t)kEpdGate);
   gpio_hold_en((gpio_num_t)kMemGate);
+  gpio_hold_en((gpio_num_t)kVsenseGate);
 
   if (failureCount >= kMaxErrorCount) {
     sleepTimeSec = kErrSleepSec;
