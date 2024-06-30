@@ -125,6 +125,8 @@ void busyCallback(const void*) {
 }
 
 void setup() {
+  setCpuFrequencyMhz(80);  // downclock to reduce power draw
+
   bootCount++;
 
   const char* resetReason = "";
@@ -146,8 +148,6 @@ void setup() {
   Serial.begin(115200);
   esp_log_level_set("*", ESP_LOG_INFO);
   const char* errorStatus = NULL;  // set when an error occurs, to a short descriptive string
-
-  setCpuFrequencyMhz(80);  // downclock to reduce power draw
 
   log_i("Boot %d, %s, part=%s %s", bootCount, resetReason, 
       bootPartition->label, esp_ota_check_rollback_is_possible() ? "R" : "");
@@ -173,11 +173,14 @@ void setup() {
   int vBatAdcMv = analogReadMilliVolts(kVsense);
   log_i("Sense: %d mV", vBatAdcMv);
   if (vBatAdcMv < 1100) {  // lower attenuation ranges have lower errors, re-sample in a lower range
-    analogSetPinAttenuation(kVsense, ADC_2_5db);  
+    analogSetPinAttenuation(kVsense, ADC_2_5db);
+    delay(2);
     vBatAdcMv = analogReadMilliVolts(kVsense);
     log_i("Re-sense, 2.5dB: %d mV", vBatAdcMv);
   } else if (vBatAdcMv < 1600) {
     analogSetPinAttenuation(kVsense, ADC_6db);
+    delay(2);
+    vBatAdcMv = analogReadMilliVolts(kVsense);
     log_i("Re-sense, 6dB: %d mV", vBatAdcMv);
   }
   int vbatMv = vBatAdcMv * (47+10) / 10;
