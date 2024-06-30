@@ -806,3 +806,8 @@ text_sensor:
 
 sample_buffer:
   id: smu_meas
+  sources:
+    - source: meas_voltage
+      name: "V"
+    - source: meas_current
+      name: "A"

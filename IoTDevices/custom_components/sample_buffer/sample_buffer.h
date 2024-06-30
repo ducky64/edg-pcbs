@@ -5,6 +5,7 @@
 
 #include "esphome/components/web_server_base/web_server_base.h"
 #include "esphome/core/component.h"
+#include "esphome/components/sensor/sensor.h"
 #include "esphome/core/controller.h"
 #include "esphome/core/entity_base.h"
 
@@ -16,21 +17,8 @@ class SampleBuffer : public AsyncWebHandler, public Component {
  public:
   SampleBuffer(web_server_base::WebServerBase *base) : base_(base) {}
 
-  /** Add the value for an entity's "id" label.
-   *
-   * @param obj The entity for which to set the "id" label
-   * @param value The value for the "id" label
-   */
-  void add_label_id(EntityBase *obj, const std::string &value) {
-   }
-
-  /** Add the value for an entity's "name" label.
-   *
-   * @param obj The entity for which to set the "name" label
-   * @param value The value for the "name" label
-   */
-  void add_label_name(EntityBase *obj, const std::string &value) { 
-  }
+  // Add a sensor source to this sample buffer
+  void add_source(sensor::Sensor *source, const std::string &name);
 
   bool canHandle(AsyncWebServerRequest *request);
 
@@ -47,6 +35,8 @@ class SampleBuffer : public AsyncWebHandler, public Component {
 
  protected:
   web_server_base::WebServerBase *base_;
+
+  void new_value(uint32_t millis, float value, const std::string &source_name);
 };
 
 }
