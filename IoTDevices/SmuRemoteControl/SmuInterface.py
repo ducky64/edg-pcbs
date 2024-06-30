@@ -1,4 +1,4 @@
-from typing import Tuple, Dict, Union
+from typing import Tuple, Dict, Union, Optional, List, NamedTuple
 
 import requests
 import decimal
@@ -151,3 +151,41 @@ class SmuInterface:
       assert name in self.kNameAllCal, f'invalid calibration parameter: {name}'
     for name, value in cal_dict.items():
       self._set('number', name, value)
+
+  def sample_buffer(self) -> 'SmuSampleBuffer':
+    return SmuSampleBuffer(self)
+
+
+class SmuSampleRecord(NamedTuple):
+  millis: int
+  source: str
+  value: decimal.Decimal
+
+
+class SmuSampleBuffer:
+  def __init__(self, smu: SmuInterface):
+    self._smu = smu
+    self._last_sample: Optional[int] = None
+
+  def get(self) -> List[SmuSampleRecord]:
+    if self._last_sample is None:
+      resp = requests.get(f'http://{self._smu.addr}/samples')
+      if resp.status_code != 200:
+        raise Exception(f'Request failed: {resp.status_code}')
+      self._last_sample = int(resp.text)
+      return []
+    else:
+      resp = requests.get(f'http://{self._smu.addr}/samples?start={self._last_sample}')
+      if resp.status_code != 200:
+        raise Exception(f'Request failed: {resp.status_code}')
+      lines = resp.text.split('\n')
+      samples = []
+      for sample_line in lines[:-1]:
+        sample_line_split = sample_line.split(',')
+        samples.append(SmuSampleRecord(
+          millis=int(sample_line_split[0]),
+          source=sample_line_split[1],
+          value=decimal.Decimal(sample_line_split[2])
+        ))
+      self._last_sample = int(lines[-1])
+      return samples
