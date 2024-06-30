@@ -50,6 +50,7 @@ SPIClass spi(HSPI);  // for ESP32S3
 
 
 const int kBlinkIntervalMs = 250;
+const int kBusyBlinkIntervalMs = 1000;
 
 
 #include <GxEPD2_BW.h>
@@ -118,8 +119,14 @@ void PNGDraw(PNGDRAW *pDraw) {
 }
 
 void busyCallback(const void*) {
-  digitalWrite(kLedG, !digitalRead(kLedG));
-  delay(kBlinkIntervalMs/2);
+  if (digitalRead(kLedG)) {
+    digitalWrite(kLedG, 0);
+    esp_sleep_enable_timer_wakeup((kBusyBlinkIntervalMs - kBlinkIntervalMs/2) * 1000ull);
+  } else {
+    digitalWrite(kLedG, 1);
+    esp_sleep_enable_timer_wakeup(kBlinkIntervalMs/2 * 1000ull);
+  }
+  esp_light_sleep_start();
 }
 
 void setup() {
