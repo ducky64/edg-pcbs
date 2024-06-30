@@ -811,3 +811,7 @@ sample_buffer:
       name: "V"
     - source: meas_current
       name: "A"
+    - source: deriv_energy
+      name: "J"
+    - source: deriv_accum_current
+      name: "Ah"

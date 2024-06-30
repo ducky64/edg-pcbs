@@ -15,23 +15,73 @@ bool SampleBuffer::canHandle(AsyncWebServerRequest *request) {
 void SampleBuffer::handleRequest(AsyncWebServerRequest *req) {
   AsyncResponseStream *stream = req->beginResponseStream("text/plain; version=0.0.4; charset=utf-8");
 
+  if (req->hasArg("start")) {  // only return samples if the start index is provided
+    int start = req->arg("start").toInt();
+    if (start < 0) {  // buffer underrun
+      req->send(stream);
+      return;
+    }
+
+    // dump samples after (in memory space) recordsEnd_ / before (by sample index) recordsOffset_, if available
+    if (recordsOffset_ > 0) {
+      int startIndex = (int64_t)start - (int64_t)(recordsOffset_ - kBufferSize);
+      if (startIndex < (int)recordsEnd_) {  // buffer underrun
+        req->send(stream);
+        return;
+      }
+      for (size_t i=startIndex; i<kBufferSize; i++) {
+        write_sample(stream, records_[i]);
+      }
+    }
+
+    // dump samples past recordsOffset_
+    int startIndex = start - recordsOffset_;
+    if (startIndex < 0) {
+      startIndex = 0;
+    }
+    for (size_t i=startIndex; i<recordsEnd_; i++) {
+      write_sample(stream, records_[i]);
+    }
+  }
+
+  // dump the next sample index
+  stream->print(recordsOffset_ + recordsEnd_);
+
   req->send(stream);
 }
 
+void SampleBuffer::write_sample(AsyncResponseStream *stream, SampleRecord& sample) {
+  stream->print(sample.millis);
+  stream->print(",");
+  stream->print(names_[sample.sourceIndex].c_str());
+  stream->print(",");
+  stream->print(sample.value, sample.accuracyDecimals);
+  stream->print("\n");
+}
+
 void SampleBuffer::add_source(sensor::Sensor *source, const std::string &name) {
-  // TODO: should name be copied to have a local copy?
+  size_t sourceIndex = names_.size();
+  names_.push_back(name);  // create a local copy
+
   source->add_on_state_callback(
-    [this, name](float value) -> void { 
+    [this, source, sourceIndex](float value) -> void { 
       uint32_t timestamp = esphome::millis();
-      this->defer("update", [this, name, timestamp, value]() { 
-        this->new_value(timestamp, value, name); 
-      }); 
+      int8_t accuracyDecimals = source->get_accuracy_decimals();
+      this->new_value(sourceIndex, timestamp, value, accuracyDecimals);
     }
   );
 }
 
-void SampleBuffer::new_value(uint32_t millis, float value, const std::string &source_name) {
-
+void SampleBuffer::new_value(size_t sourceIndex, uint32_t millis, float value, int8_t accuracyDecimals) {
+  records_[recordsEnd_].millis = millis;
+  records_[recordsEnd_].value = value;
+  records_[recordsEnd_].sourceIndex = sourceIndex;
+  records_[recordsEnd_].accuracyDecimals = accuracyDecimals;
+  recordsEnd_++;
+  if (recordsEnd_ >= kBufferSize) {
+    recordsEnd_ -= kBufferSize;
+    recordsOffset_ += kBufferSize;
+  }
 }
 
 }
