@@ -1,5 +1,6 @@
 import argparse
 import csv
+import sys
 import time
 from typing import List, Tuple, Optional
 import decimal
@@ -17,6 +18,7 @@ if __name__ == "__main__":
   parser.add_argument('addr', type=str)
   parser.add_argument('name_prefix', type=str)
   parser.add_argument('--delay_on', action='store_true', help="don't store until current is non-NaN")
+  parser.add_argument('--auto_stop', action='store_true', help="stop on first current NaN")
 
   args = parser.parse_args()
 
@@ -42,7 +44,9 @@ if __name__ == "__main__":
     start_millis: Optional[int] = None
     last_row: Optional[Tuple[int, List[str]]] = None
 
-    while True:
+    done = False
+
+    while not done:
       samples = samplebuf.get()
       for sample in samples:
         if not samples_valid:
@@ -51,6 +55,11 @@ if __name__ == "__main__":
             samples_valid = True
           else:
             continue
+        if samples_valid:
+          if sample.source == 'A' and sample.value.is_nan() and args.auto_stop:
+            print("Done")
+            done = True
+            sys.exit(0)
 
         sample_col = kCsvCols.index(sample.source)
 

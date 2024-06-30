@@ -1,5 +1,0 @@
-set_voltage,set_current_min,set_current_max,adc_voltage,adc_current,meas_voltage,meas_current,ref_voltage,ref_current
-6,-0.1,0.5,619149,571224,5.2705,0.51073,.509,
-9,-0.1,0.8,994669,915071,8.4545,0.81813,.815,
-11,-0.1,1,1241847,1142764,10.5503,1.02170,1.017,
-16,-0.1,1.5,1837451,1710950,15.6003,1.52969,1.520,
