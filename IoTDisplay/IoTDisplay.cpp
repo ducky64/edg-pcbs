@@ -171,8 +171,17 @@ void setup() {
   digitalWrite(kVsenseGate, 1);
   delay(2);
   int vBatAdcMv = analogReadMilliVolts(kVsense);
+  log_i("Sense: %d mV", vBatAdcMv);
+  if (vBatAdcMv < 1100) {  // lower attenuation ranges have lower errors, re-sample in a lower range
+    analogSetPinAttenuation(kVsense, ADC_2_5db);  
+    vBatAdcMv = analogReadMilliVolts(kVsense);
+    log_i("Re-sense, 2.5dB: %d mV", vBatAdcMv);
+  } else if (vBatAdcMv < 1600) {
+    analogSetPinAttenuation(kVsense, ADC_6db);
+    log_i("Re-sense, 6dB: %d mV", vBatAdcMv);
+  }
   int vbatMv = vBatAdcMv * (47+10) / 10;
-  log_i("Vbat: %d mV (ADC=%d mV)", vbatMv, vBatAdcMv);
+  log_i("Vbat: %d mV", vbatMv);
   digitalWrite(kVsenseGate, 0);
 
   uint8_t mac[6];
