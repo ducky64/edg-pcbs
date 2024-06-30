@@ -170,9 +170,9 @@ void setup() {
   gpio_hold_dis((gpio_num_t)kVsenseGate);
   digitalWrite(kVsenseGate, 1);
   delay(2);
-  int vbatAdc = analogRead(kVsense);
-  int vbatMv = (uint32_t)vbatAdc * 3300 * (47+10) / 10 / 4096;
-  log_i("Vbat: %d (ADC=%d)", vbatMv, vbatAdc);
+  int vBatAdcMv = analogReadMilliVolts(kVsense);
+  int vbatMv = vBatAdcMv * (47+10) / 10;
+  log_i("Vbat: %d mV (ADC=%d mV)", vbatMv, vBatAdcMv);
   digitalWrite(kVsenseGate, 0);
 
   uint8_t mac[6];
