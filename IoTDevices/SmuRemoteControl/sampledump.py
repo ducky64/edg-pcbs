@@ -2,18 +2,21 @@ import argparse
 import csv
 import time
 from typing import List, Tuple, Optional
+import decimal
 
 from SmuInterface import SmuInterface
 
 
-kRows = ['ms', 'V', 'A', 'Ah', 'J']
-kAggregateMillis = 25  # max ms to consider samples part of the same row
+kCsvCols = ['s', 'V', 'A', 'Ah', 'J']
+kAggregateMillis = 150  # max ms to consider samples part of the same row
+kNewRowCols = ['V', 'A']  # when a new sample overwrites one of these cols, starts a new row
 
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(prog='SmuCal')
   parser.add_argument('addr', type=str)
   parser.add_argument('name_prefix', type=str)
+  parser.add_argument('--delay_on', action='store_true', help="don't store until current is non-NaN")
 
   args = parser.parse_args()
 
@@ -30,23 +33,39 @@ if __name__ == "__main__":
 
   with open(filename, 'w', newline='') as csvfile:
     csvwriter = csv.writer(csvfile, delimiter=',', quoting=csv.QUOTE_MINIMAL)
-    csvwriter.writerow(kRows)
+    csvwriter.writerow(kCsvCols)
     csvfile.flush()
 
+    samples_valid: bool = False
+    if not args.delay_on:
+      samples_valid = True
+    start_millis: Optional[int] = None
     last_row: Optional[Tuple[int, List[str]]] = None
 
     while True:
       samples = samplebuf.get()
       for sample in samples:
-        if last_row is not None and last_row[0] + kAggregateMillis < sample.millis:
-          csvwriter.writerow([last_row[0]] + last_row[1][1:])
+        if not samples_valid:
+          if sample.source == 'A' and not sample.value.is_nan():
+            print("Start recording")
+            samples_valid = True
+          else:
+            continue
+
+        sample_col = kCsvCols.index(sample.source)
+
+        if start_millis is None:
+          start_millis = sample.millis
+        if last_row is not None and ((last_row[0] + kAggregateMillis < sample.millis)
+          or (last_row[1][sample_col] != '' and sample.source in kNewRowCols)):
+          csvwriter.writerow([decimal.Decimal(last_row[0] - start_millis) / 1000] + last_row[1][1:])
           last_row = None
         if last_row is None:
-          last_row = (sample.millis, [''] * len(kRows))
-        last_row[1][kRows.index(sample.source)] = sample.value
+          last_row = (sample.millis, [''] * len(kCsvCols))
+        last_row[1][sample_col] = sample.value
 
       csvfile.flush()
 
       if samples:
-        print(f"Wrote {len(samples)} samples")
+        print(f"Got {len(samples)} samples")
       time.sleep(1)

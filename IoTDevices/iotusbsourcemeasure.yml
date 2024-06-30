@@ -218,7 +218,7 @@ fusb302:
 mcp3561:
   cs_pin: GPIO7
   id: adc_meas
-  osr: 98304  # up to 98304
+  osr: 40960  # up to 98304
 
 
 mcp4728:
@@ -635,7 +635,7 @@ sensor:
   - platform: mcp3561
     id: meas_voltage
     name: "${name} Meas Voltage"
-    update_interval: 0.1s
+    update_interval: 0.01s  # as fast as possible, limited by ADC conversion time
     accuracy_decimals: 4
     mcp3561_id: adc_meas
     channel: CH2
@@ -647,7 +647,7 @@ sensor:
   - platform: mcp3561
     id: meas_current
     name: "${name} Meas Current"
-    update_interval: 0.1s
+    update_interval: 0.01s  # as fast as possible, limited by ADC conversion time
     accuracy_decimals: 5
     mcp3561_id: adc_meas
     channel: CH1
