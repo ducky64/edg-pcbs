@@ -4,6 +4,7 @@
 #include <SPI.h>
 
 #include "esp_sleep.h"
+#include "esp_adc_cal.h"
 
 // ESP32-S3 variant, new version
 // touch_duck=TOUCH13, 21,
@@ -124,6 +125,34 @@ void busyCallback(const void*) {
   esp_light_sleep_start();
 }
 
+uint16_t analogReadCalibratedMv(int pin, adc_attenuation_t atten = ADC_11db) {
+  analogSetPinAttenuation(pin, atten);
+  uint16_t rawAdc = analogReadRaw(pin);
+
+  adc_atten_t calAtten = ADC_ATTEN_DB_12;
+  switch (atten) {
+    case ADC_11db: calAtten = ADC_ATTEN_DB_12; break;
+    case ADC_6db: calAtten = ADC_ATTEN_DB_6; break;
+    case ADC_2_5db: calAtten = ADC_ATTEN_DB_2_5; break;
+    case ADC_0db: calAtten = ADC_ATTEN_DB_0; break;
+  }
+
+  esp_adc_cal_characteristics_t adc_chars;
+  esp_adc_cal_value_t val_type = esp_adc_cal_characterize(ADC_UNIT_1, calAtten, ADC_WIDTH_BIT_12, 0, &adc_chars);
+  uint16_t adcMv = esp_adc_cal_raw_to_voltage(rawAdc, &adc_chars);
+  //Check type of calibration value used to characterize ADC
+  if (val_type == ESP_ADC_CAL_VAL_EFUSE_VREF) {
+      log_i("eFuse Vref, %d => %d", rawAdc, adcMv);
+  } else if (val_type == ESP_ADC_CAL_VAL_EFUSE_TP) {
+      log_i("eFuse TP, %d => %d", rawAdc, adcMv);
+  } else if (val_type == ESP_ADC_CAL_VAL_EFUSE_TP_FIT) {
+      log_i("eFuse TP Fit, %d => %d", rawAdc, adcMv);
+  } else {
+      log_i("Default, %d => %d", rawAdc, adcMv);
+  }
+  return adcMv;
+}
+
 void setup() {
   setCpuFrequencyMhz(80);  // downclock to reduce power draw
 
@@ -170,20 +199,19 @@ void setup() {
   gpio_hold_dis((gpio_num_t)kVsenseGate);
   digitalWrite(kVsenseGate, 1);
   delay(2);
-  int vBatAdcMv = analogReadMilliVolts(kVsense);
-  log_i("Sense: %d mV", vBatAdcMv);
+  uint16_t vBatAdcMv = analogReadCalibratedMv(kVsense, ADC_11db);
+  adc_attenuation_t atten = ADC_11db;
   if (vBatAdcMv < 1100) {  // lower attenuation ranges have lower errors, re-sample in a lower range
-    analogSetPinAttenuation(kVsense, ADC_2_5db);
-    delay(2);
-    vBatAdcMv = analogReadMilliVolts(kVsense);
-    log_i("Re-sense, 2.5dB: %d mV", vBatAdcMv);
+    atten = ADC_2_5db;
   } else if (vBatAdcMv < 1600) {
-    analogSetPinAttenuation(kVsense, ADC_6db);
-    delay(2);
-    vBatAdcMv = analogReadMilliVolts(kVsense);
-    log_i("Re-sense, 6dB: %d mV", vBatAdcMv);
+    atten = ADC_6db;
   }
-  int vbatMv = vBatAdcMv * (47+10) / 10;
+  uint32_t vbatMv = 0;
+  for (size_t i=0; i<8; i++) {  // average for stability
+    delay(1);
+    vbatMv += analogReadCalibratedMv(kVsense, atten);
+  }
+  vbatMv = vbatMv / 8 * (47+10) / 10;
   log_i("Vbat: %d mV", vbatMv);
   digitalWrite(kVsenseGate, 0);
 
