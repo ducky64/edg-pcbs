@@ -63,6 +63,9 @@ const int kBusyBlinkIntervalMs = 1000;
 // GxEPD2_7C<GxEPD2_565c, GxEPD2_565c::HEIGHT/2> display(GxEPD2_565c(kEpdCsPin, kEpdDcPin, kOledRstPin, kEpdBusyPin)); // Waveshare 5.65" 7-color, flakey
 GxEPD2_3C<GxEPD2_750c_Z08, GxEPD2_750c_Z08::HEIGHT> display(GxEPD2_750c_Z08(kEpdCsPin, kEpdDcPin, kEpdRstPin, kEpdBusyPin)); // works with Waveshare 3C 7.5" B
 
+const int kMinDisplayGoodMs = 5000;  // minimum time the display should take for a full refresh to be considered good
+const int kMaxDisplayGoodMs = 40000;  // maximum time the display should take for a full refresh to be considered good
+
 #include "esp_wifi.h"  // support wifi stop
 #include <WiFi.h>
 #include <HTTPClient.h>
@@ -291,6 +294,7 @@ void setup() {
       errorStatus = "meta response error";
     }
   }
+  long int timeMetaDone = millis();
 
   if (errorStatus == NULL && runOta) {
     log_i("Ota: start");
@@ -388,13 +392,6 @@ void setup() {
   digitalWrite(kLedR, 0);
   digitalWrite(kLedG, 1);
 
-  if (errorStatus != NULL) {
-    failureCount++;
-    log_e("Failure %d, error: %s", failureCount, errorStatus);
-  } else {
-    failureCount = 0;
-  }
-
   // DISPLAY RENDERING CODE
   //
   digitalWrite(kEpdGate, 0);  // turn on display - TODO this should be done later
@@ -414,6 +411,7 @@ void setup() {
   int16_t tbx, tby; uint16_t tbw, tbh;
   display.getTextBounds(selfData, 0, 0, &tbx, &tby, &tbw, &tbh);
 
+  long int timeStartDisplay = millis();
   if (errorStatus == NULL) {  
     log_i("Display: show image");
     display.firstPage();
@@ -443,7 +441,12 @@ void setup() {
     } while (display.nextPage());
   }
   display.hibernate();
-  log_i("Display done");
+  long int timeDisplay = millis() - timeStartDisplay;
+  log_i("Display done: %.1fs", (float)timeDisplay / 1000);
+
+  if (timeDisplay < kMinDisplayGoodMs || timeDisplay > kMaxDisplayGoodMs) {
+    errorStatus = "Display refresh unexpected time";
+  }
 
   if (errorStatus == NULL && esp_ota_check_rollback_is_possible()) {
     log_i("Ota: validate");
@@ -455,6 +458,14 @@ void setup() {
     if (rollbackStatus != ESP_OK) {
       log_e("Ota: rollback failed: %i", rollbackStatus);
     }
+  }
+
+  if (errorStatus != NULL) {
+    failureCount++;
+    log_e("Failure %d, error: %s", failureCount, errorStatus);
+  } else {
+    log_i("No errors");
+    failureCount = 0;
   }
 
   digitalWrite(kLedG, 0);
@@ -474,6 +485,13 @@ void setup() {
   
   if (sleepTimeSec == 0) {
     sleepTimeSec = 60 * 60;  // default one hour
+  } else {  // correct sleep for computational time
+    int sleepCorrectSec = min((millis() - timeMetaDone) / 1000, sleepTimeSec);
+    sleepTimeSec -= sleepCorrectSec;
+  }
+
+  if (sleepTimeSec < 1) {
+    sleepTimeSec = 1;
   }
 
   log_i("Sleep %i s", sleepTimeSec);
