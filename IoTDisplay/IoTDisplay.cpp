@@ -98,7 +98,7 @@ const char* kFwVerStr = "4";
 RTC_DATA_ATTR int bootCount = 0;
 RTC_DATA_ATTR int failureCount = 0;
 
-const int kMaxWifiConnectSec = 30;  // max to wait for wifi to come up before sleeping
+const int kMaxWifiConnectSec = 20;  // max to wait for wifi to come up before sleeping
 const int kRetrySleepSec = 120;  // on error, how long to wait to retry
 const int kMaxErrorCount = 3;  // number of consecutive network failures before displaying error
 const int kErrSleepSec = 3600;  // on exceeding max errors, how long to wait until next attempt
@@ -426,7 +426,23 @@ void setup() {
       display.setCursor(display.width() - tbw, display.height() - tbh);
       display.print(selfData);
     } while (display.nextPage());
-  } else if (failureCount >= kMaxErrorCount) {
+
+    long int timeDisplay = millis() - timeStartDisplay;
+    log_i("Display done: %.1fs", (float)timeDisplay / 1000);
+    if (timeDisplay < kMinDisplayGoodMs || timeDisplay > kMaxDisplayGoodMs) {
+      errorStatus = "Display refresh unexpected time";
+    }
+  }
+  
+  if (errorStatus != NULL) {
+    failureCount++;
+    log_e("Failure %d, error: %s", failureCount, errorStatus);
+  } else {
+    log_i("No errors");
+    failureCount = 0;
+  }
+  
+  if (failureCount >= kMaxErrorCount) {
     log_i("Display: show error");
     display.firstPage();
     do {
@@ -441,12 +457,6 @@ void setup() {
     } while (display.nextPage());
   }
   display.hibernate();
-  long int timeDisplay = millis() - timeStartDisplay;
-  log_i("Display done: %.1fs", (float)timeDisplay / 1000);
-
-  if (timeDisplay < kMinDisplayGoodMs || timeDisplay > kMaxDisplayGoodMs) {
-    errorStatus = "Display refresh unexpected time";
-  }
 
   if (errorStatus == NULL && esp_ota_check_rollback_is_possible()) {
     log_i("Ota: validate");
@@ -458,14 +468,6 @@ void setup() {
     if (rollbackStatus != ESP_OK) {
       log_e("Ota: rollback failed: %i", rollbackStatus);
     }
-  }
-
-  if (errorStatus != NULL) {
-    failureCount++;
-    log_e("Failure %d, error: %s", failureCount, errorStatus);
-  } else {
-    log_i("No errors");
-    failureCount = 0;
   }
 
   digitalWrite(kLedG, 0);
