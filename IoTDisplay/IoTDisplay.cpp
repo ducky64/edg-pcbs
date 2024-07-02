@@ -93,7 +93,7 @@ StaticJsonDocument<256> doc;
 size_t maxWidth = 480;
 
 
-const char* kFwVerStr = "4";
+const char* kFwVerStr = "5";
 
 RTC_DATA_ATTR int bootCount = 0;
 RTC_DATA_ATTR int failureCount = 0;
