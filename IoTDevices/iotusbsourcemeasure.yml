@@ -76,12 +76,6 @@ globals:
   - id: kVref
     type: float
     initial_value: '3.3'  # theoretical, 2% tolerance
-  - id: kStartupTimeMs    
-    type: float
-    initial_value: '100'  # transition time for the converter to stabilize
-  - id: kTransitionTimeMs
-    type: float
-    initial_value: '50'  # transition time for switches to transition between ranges
 
 script:
   - id: update_current  # update the current, assuming the device is on, or will be turned on
@@ -141,9 +135,11 @@ script:
         float targetVolts = id(kVCenter) - (correctedX / id(kVoltageRatio));
         id(dac_voltage)->write_state(targetVolts / id(kVref));
 
-        // set buck-boost to minimum needed + headroom
-        float convTarget = setVoltage + id(kBuckBoostHeadroom);
-        id(buckboost_ratio).make_call().set_value(convTarget / (id(fusb_vbus).state - 0.4)).perform();
+        if (id(enable).state) {  // only write the buck-boost if target is enable
+          // set buck-boost to minimum needed + headroom
+          float convTarget = setVoltage + id(kBuckBoostHeadroom);
+          id(buckboost_ratio).make_call().set_value(convTarget / (id(fusb_vbus).state - 0.4)).perform();
+        }
         
 light:
   - platform: status_led
@@ -173,14 +169,6 @@ output:
       pca9554: pca9554a_device
       number: 5
       inverted: true
-  # - platform: ledc
-  #   pin: GPIO42
-  #   id: buck_pwm
-  #   frequency: 250 kHz
-  # - platform: ledc
-  #   pin: GPIO39  # IMPORTANT! this controls the HIGH SIDE switch, so the duty is 1-D
-  #   id: boost_pwm
-  #   frequency: 250 kHz
   - platform: mcpwm_sync
     id: buck_pwm
     pin: GPIO42
@@ -216,12 +204,15 @@ switch:
     turn_on_action:
       - lambda: id(enable).publish_state(true);
       - script.execute: update_voltage
-      - delay_ms: kStartupTimeMs
-      - script.execute: set_current_range
+      - delay: 100 ms
+      - script.execute: 
+          id: set_enable_range
+          overlap: false
     turn_off_action:
       - lambda: id(enable).publish_state(false);
-      - script.execute: set_current_range
-      - script.execute: update_voltage
+      - script.execute:
+          id: set_enable_range
+          overlap: false
 
   - platform: gpio
     id: range0
@@ -547,6 +538,14 @@ select:
     set_action:
       - lambda: |-
           id(current_range).publish_state(x);
+      - script.execute: update_current
+      - script.execute:
+          id: set_enable_range
+          overlap: true
+      - delay: 5 ms
+      - script.execute:
+          id: set_enable_range
+          overlap: false
 
 button:
   - platform: template
