@@ -92,9 +92,9 @@ script:
           ESP_LOGE("update_current", "Unknown range %s", id(current_range).state);
         }
 
-        float limitMinVolts = id(kVCenter) - ((id(limit_current_min) - setCurrentOffset) / setCurrentFactor / id(kCurrentRatio0));
+        float limitMinVolts = id(kVCenter) - ((id(limit_current_min).state - setCurrentOffset) / setCurrentFactor / id(kCurrentRatio0));
         id(dac_isink)->write_state(limitMinVolts / id(kVref));
-        float limitMaxVolts = id(kVCenter) - ((id(limit_current_max) - setCurrentOffset) / setCurrentFactor / id(kCurrentRatio0));
+        float limitMaxVolts = id(kVCenter) - ((id(limit_current_max).state - setCurrentOffset) / setCurrentFactor / id(kCurrentRatio0));
         id(dac_isrc)->write_state(limitMaxVolts / id(kVref));
 
   - id: set_enable_range  # sets the overall enable and current ranging IOs, based on the ranging and enable target
@@ -130,7 +130,7 @@ script:
   - id: update_voltage  # update the voltage
     then:
     - lambda: |-
-        float setVoltage = id(set_voltage);
+        float setVoltage = id(set_voltage).state;
         float correctedX = (setVoltage - id(kCalSetVoltageOffset).state) / id(kCalSetVoltageFactor).state;
         float targetVolts = id(kVCenter) - (correctedX / id(kVoltageRatio));
         id(dac_voltage)->write_state(targetVolts / id(kVref));
