@@ -76,7 +76,75 @@ globals:
   - id: kVref
     type: float
     initial_value: '3.3'  # theoretical, 2% tolerance
+  - id: kStartupTimeMs    
+    type: float
+    initial_value: '100'  # transition time for the converter to stabilize
+  - id: kTransitionTimeMs
+    type: float
+    initial_value: '50'  # transition time for switches to transition between ranges
 
+script:
+  - id: update_current  # update the current, assuming the device is on, or will be turned on
+    then:
+    - lambda: |-
+        float setCurrentFactor = 1, setCurrentOffset = 0;
+        if (id(current_range).state == "3A") {
+          setCurrentFactor = id(kCalSetCurrent0Factor).state;
+          setCurrentOffset = id(kCalSetCurrent0Offset).state;
+        } else if (id(current_range).state == "300mA") {
+          setCurrentFactor = id(kCalSetCurrent1Factor).state;
+          setCurrentOffset = id(kCalSetCurrent1Offset).state;
+        } else {
+          ESP_LOGE("update_current", "Unknown range %s", id(current_range).state);
+        }
+
+        float limitMinVolts = id(kVCenter) - ((id(limit_current_min) - setCurrentOffset) / setCurrentFactor / id(kCurrentRatio0));
+        id(dac_isink)->write_state(limitMinVolts / id(kVref));
+        float limitMaxVolts = id(kVCenter) - ((id(limit_current_max) - setCurrentOffset) / setCurrentFactor / id(kCurrentRatio0));
+        id(dac_isrc)->write_state(limitMaxVolts / id(kVref));
+
+  - id: set_enable_range  # sets the overall enable and current ranging IOs, based on the ranging and enable target
+    parameters:
+      overlap: bool  # if true does not turn off other ranges, this allows overlap (though at a much reduced current limit) during the swap
+    then:
+    - lambda: |-
+        if (id(enable).state) {  // turn on, figure out ranging
+          if (id(current_range).state == "3A") {
+            id(range0).turn_on();
+            if (!overlap) {
+              id(range1).turn_off();
+            }
+          } else if (id(current_range).state == "300mA") {
+            id(range1).turn_on();
+            if (!overlap) {
+              id(range0).turn_off();
+            }
+          } else {
+            ESP_LOGE("set_enable_range", "Unknown range %s", id(current_range).state);
+            return;
+          }
+          id(control_enable).turn_on();
+          id(output_rgb_b).turn_on();
+        } else {  // turn off
+          id(range0).turn_off();
+          id(range1).turn_off();
+          id(control_enable).turn_off();
+          id(output_rgb_b).turn_off();
+          id(buckboost_ratio).make_call().set_value(0);  // turn off the converter last
+        }
+
+  - id: update_voltage  # update the voltage
+    then:
+    - lambda: |-
+        float setVoltage = id(set_voltage);
+        float correctedX = (setVoltage - id(kCalSetVoltageOffset).state) / id(kCalSetVoltageFactor).state;
+        float targetVolts = id(kVCenter) - (correctedX / id(kVoltageRatio));
+        id(dac_voltage)->write_state(targetVolts / id(kVref));
+
+        // set buck-boost to minimum needed + headroom
+        float convTarget = setVoltage + id(kBuckBoostHeadroom);
+        id(buckboost_ratio).make_call().set_value(convTarget / (id(fusb_vbus).state - 0.4)).perform();
+        
 light:
   - platform: status_led
     name: "${name} Dbg"
@@ -142,44 +210,29 @@ output:
     channel: 2
 
 switch:
+  - platform: template
+    id: enable
+    name: "${name} Enable"  # published state is the enable target, current state is the state of the ranging GPIOs
+    turn_on_action:
+      - lambda: id(enable).publish_state(true);
+      - script.execute: update_voltage
+      - delay_ms: kStartupTimeMs
+      - script.execute: set_current_range
+    turn_off_action:
+      - lambda: id(enable).publish_state(false);
+      - script.execute: set_current_range
+      - script.execute: update_voltage
+
   - platform: gpio
     id: range0
+    internal: true
     name: "${name} Range0"
     pin: GPIO8
-    on_turn_on:
-    - then:
-      - switch.turn_on: control_enable
-      - switch.turn_off: range1
-      - output.turn_on: output_rgb_b
-    on_turn_off:
-    - then:
-      - delay: 0.1s
-      - if:
-          condition:
-            - switch.is_off: range0
-            - switch.is_off: range1
-          then:
-            - switch.turn_off: control_enable
-            - output.turn_off: output_rgb_b
   - platform: gpio
     id: range1
+    internal: true
     name: "${name} Range1"
     pin: GPIO18
-    on_turn_on:
-    - then:
-      - switch.turn_on: control_enable
-      - switch.turn_off: range0
-      - output.turn_on: output_rgb_b
-    on_turn_off:
-    - then:
-      - delay: 0.1s
-      - if:
-          condition:
-            - switch.is_off: range0
-            - switch.is_off: range1
-          then:
-            - switch.turn_off: control_enable
-            - output.turn_off: output_rgb_b
   - platform: gpio
     id: control_enable
     internal: true
@@ -278,15 +331,9 @@ number:
     unit_of_measurement: V
     set_action:
       - then:
-        - lambda: |-
-            float correctedX = (x - id(kCalSetVoltageOffset).state) / id(kCalSetVoltageFactor).state;
-            float targetVolts = id(kVCenter) - (correctedX / id(kVoltageRatio));
-            id(dac_voltage)->write_state(targetVolts / id(kVref));
-            id(set_voltage).publish_state(x);
+        - lambda: id(set_voltage).publish_state(x);
+        - script.execute: update_voltage
 
-            // set buck-boost to minimum needed + headroom
-            float convTarget = x + id(kBuckBoostHeadroom);
-            id(buckboost_ratio).make_call().set_value(convTarget / (id(fusb_vbus).state - 0.4)).perform();
   - platform: template
     name: "${name} Set Current Min"
     id: limit_current_min
@@ -298,17 +345,8 @@ number:
     unit_of_measurement: A
     set_action:
       - then:
-        - lambda: |-
-            float targetVolts = 0;
-            if (!id(range1)->state) {  // by default use range0, TODO automatically switch
-              float correctedX = (x - id(kCalSetCurrent0Offset).state) / id(kCalSetCurrent0Factor).state;
-              targetVolts = id(kVCenter) - (correctedX / id(kCurrentRatio0));
-            } else {
-              float correctedX = (x - id(kCalSetCurrent1Offset).state) / id(kCalSetCurrent1Factor).state;
-              targetVolts = id(kVCenter) - (correctedX / id(kCurrentRatio1));
-            }
-            id(dac_isink)->write_state(targetVolts / id(kVref));
-            id(limit_current_min).publish_state(x);
+        - lambda: id(limit_current_min).publish_state(x);
+        - script.execute: update_current
   - platform: template
     name: "${name} Set Current Max"
     id: limit_current_max
@@ -320,17 +358,8 @@ number:
     unit_of_measurement: A
     set_action:
       - then:
-        - lambda: |-
-            float targetVolts = 0;
-            if (!id(range1)->state) {  // by default use range0, TODO automatically switch
-              float correctedX = (x - id(kCalSetCurrent0Offset).state) / id(kCalSetCurrent0Factor).state;
-              targetVolts = id(kVCenter) - (correctedX / id(kCurrentRatio0));
-            } else {
-              float correctedX = (x - id(kCalSetCurrent1Offset).state) / id(kCalSetCurrent1Factor).state;
-              targetVolts = id(kVCenter) - (correctedX / id(kCurrentRatio1));
-            }
-            id(dac_isrc)->write_state(targetVolts / id(kVref));
-            id(limit_current_max).publish_state(x);
+        - lambda: id(limit_current_max).publish_state(x);
+        - script.execute: update_current
   - platform: template
     name: "${name} Buck-boost ratio"
     internal: true
@@ -344,7 +373,10 @@ number:
         - lambda: |-
             // initialize DC at ratio = 1
             float buckDc = 1 - id(kBuckBoostPwmDeadzone), boostDc = id(kBuckBoostPwmDeadzone);
-            if (x <= 1) {  // adjust buck dc
+            if (x == 0) {  // turn off converter
+              buckDc = 0;
+              boostDc = 0;
+            } else if (x <= 1) {  // adjust buck dc
               float boostRatio = 1 / (1 - boostDc);
               buckDc = x / boostRatio;  // offset the minimal boost PWM
             } else {  // adjust boost dc
@@ -353,7 +385,7 @@ number:
             }
             id(buck_pwm)->write_state(buckDc);
             id(boost_pwm)->write_state(boostDc);
-            ESP_LOGI("BuckBoostCtl", "Target %.02f, buck %.02f, boost %.02f", x, buckDc, boostDc);
+            ESP_LOGD("BuckBoostCtl", "Target %.02f, buck %.02f, boost %.02f", x, buckDc, boostDc);
             id(buckboost_ratio).publish_state(x);
 
   # These persistently store the calibration state, accessible via the REST API
@@ -503,6 +535,18 @@ number:
     set_action:
       - then:
         - lambda: id(kCalSetCurrent1Offset).publish_state(x);
+
+select:
+  - platform: template  # published state is the target range, current range is the state of the ranging GPIOs
+    name: "${name} Set Current Range"
+    id: current_range
+    options:
+     - "3A"
+     - "300mA"
+    initial_option: "3A"
+    set_action:
+      - lambda: |-
+          id(current_range).publish_state(x);
 
 button:
   - platform: template

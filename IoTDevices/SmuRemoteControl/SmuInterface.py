@@ -13,7 +13,7 @@ class SmuInterface:
   kNameAdcCurrent = 'Meas ADC Current'
   kNameAdcVoltage = 'Meas ADC Voltage'
   kNameDerivPower = 'Deriv Power'
-  kNameDerivEnergy = 'Deriv Eenergy'
+  kNameDerivEnergy = 'Deriv Energy'
 
   kNameSetCurrentMin = 'Set Current Min'
   kNameSetCurrentMax = 'Set Current Max'
