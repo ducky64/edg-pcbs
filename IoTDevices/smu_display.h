@@ -6,9 +6,20 @@ uint32_t intpow10(uint8_t n) {
   return lut[n];
 }
 
+void drawInverted(display::Display& it, int x, int y, font::Font* font, display::TextAlign align, const char* text) {
+  int width, baseline, dummy;
+  font->measure(text, &width, &dummy, &baseline, &dummy);
+  it.filled_rectangle(x, y, width - 1, baseline - 1);
+  it.print(x, y, font, COLOR_OFF, align, text);
+}
+
+void drawInverted(display::Display& it, int x, int y, font::Font* font, const char* text) {
+  drawInverted(it, x, y, font, display::TextAlign::TOP_LEFT, text);
+}
+
 // Utility for drawing 
 // underlineLoc is specified as 0 for the ones digit, 1 for the tens, and -1 for the 1/10s digit, and so on.
-uint16_t drawValue(display::Display& it, int x, int y, font::Font* font, 
+void drawValue(display::Display& it, int x, int y, font::Font* font, 
     uint8_t numDigits, uint8_t numDigitsDecimal, float value, int8_t underlineLoc = 127) {
   int width, baseline, dummy;
   font->measure("8", &width, &dummy, &baseline, &dummy);
@@ -53,8 +64,7 @@ uint16_t drawValue(display::Display& it, int x, int y, font::Font* font,
     }
 
     if (underlineLoc == currentDigit) {
-      it.filled_rectangle(x, y, width - 1, baseline - 1);
-      it.print(x, y, font, COLOR_OFF, thisChar);
+      drawInverted(it, x, y, font, thisChar);
     } else {
       it.print(x, y, font, thisChar);
     }
@@ -69,6 +79,4 @@ uint16_t drawValue(display::Display& it, int x, int y, font::Font* font,
       }
     }
   }
-
-  return x;
 }
