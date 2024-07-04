@@ -340,12 +340,14 @@ display:
       it.print(currentUnitsX, setY + unitsOffsY, id(bdf4x6), "A");
       it.print(currentUnitsX, setY + 10 + unitsOffsY, id(bdf4x6), "A");
 
-      if (id(cursor) == 3) {
-        drawInverted(it, voltageUnitsX - 8, setY + 10, id(bdf6x10), TextAlign::TOP_RIGHT, id(current_range).state.c_str());
-      } else {
-        it.print(voltageUnitsX - 8, setY + 10, id(bdf6x10), TextAlign::TOP_RIGHT, id(current_range).state.c_str());
+      if (id(kConfigCurrentRanges).state > 0) {  // ranging if supported
+        if (id(cursor) == 3) {
+          drawInverted(it, voltageUnitsX - 8, setY + 10, id(bdf6x10), TextAlign::TOP_RIGHT, id(current_range).state.c_str());
+        } else {
+          it.print(voltageUnitsX - 8, setY + 10, id(bdf6x10), TextAlign::TOP_RIGHT, id(current_range).state.c_str());
+        }
+        it.print(voltageUnitsX - 8, setY + 10 + unitsOffsY, id(bdf4x6), "Rng");
       }
-      it.print(voltageUnitsX - 8, setY + 10 + unitsOffsY, id(bdf4x6), "Rng");
 
       // DEVICE INFO
       bool uncal = false;
@@ -589,6 +591,18 @@ number:
     set_action:
       - then:
         - lambda: id(kCalSetCurrent1Offset).publish_state(x);
+  - platform: template
+    name: "${name} Config Current Ranges"
+    internal: true
+    id: kConfigCurrentRanges
+    min_value: 0
+    max_value: 1
+    step: 1
+    initial_value: 0
+    restore_value: true
+    set_action:
+      - then:
+        - lambda: id(kConfigCurrentRanges).publish_state(x);
 
 select:
   - platform: template  # published state is the target range, current range is the state of the ranging GPIOs
@@ -600,7 +614,11 @@ select:
     initial_option: "3A"
     set_action:
       - lambda: |-
-          id(current_range).publish_state(x);
+          if (id(kConfigCurrentRanges).state > 0) {
+            id(current_range).publish_state(x);
+          } else {
+            id(current_range).publish_state("3A");  // ranging disabled
+          }
       - script.execute: update_current
       - script.execute:
           id: set_enable_range
@@ -675,7 +693,10 @@ binary_sensor:
     on_click:
     - then:
         - lambda: |-
-            id(cursor) = (id(cursor) - 1) % (sizeof(id(cursorDigit)) / sizeof(id(cursorDigit)[0]));
+            const size_t choices = sizeof(id(cursorDigit)) / sizeof(id(cursorDigit)[0]);
+            do {
+              id(cursor) = (id(cursor) - 1 + choices) % choices;  // signed modulo is undefined
+            } while (id(kConfigCurrentRanges).state == 0 && id(cursor) == 3);  // skip range if not available
   - platform: gpio
     name: "${name} Dir Down"
     internal: true
@@ -690,7 +711,9 @@ binary_sensor:
     on_click:
     - then:
         - lambda: |-
-            id(cursor) = (id(cursor) + 1) % (sizeof(id(cursorDigit)) / sizeof(id(cursorDigit)[0]));
+            do {
+              id(cursor) = (id(cursor) + 1) % (sizeof(id(cursorDigit)) / sizeof(id(cursorDigit)[0]));
+            } while (id(kConfigCurrentRanges).state == 0 && id(cursor) == 3);  // skip range if not available
   - platform: gpio
     name: "${name} Dir Left"
     internal: true
