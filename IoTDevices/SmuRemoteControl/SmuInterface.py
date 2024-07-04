@@ -8,6 +8,8 @@ class SmuInterface:
 
   kNameMacWifi = 'Mac Wifi'
 
+  kNameConfigCurrentRanges = 'Config Current Ranges'
+
   kNameMeasCurrent = 'Meas Current'
   kNameMeasVoltage = 'Meas Voltage'
   kNameAdcCurrent = 'Meas ADC Current'
@@ -31,6 +33,7 @@ class SmuInterface:
   kNameCalCurrentSetOffset = ['Cal Current0 Set Offset', 'Cal Current1 Set Offset']
 
   kNameAllCal = [
+    # kNameConfigCurrentRanges,
     kNameCalVoltageMeasFactor, kNameCalVoltageMeasOffset, kNameCalVoltageSetFactor, kNameCalVoltageSetOffset,
   ] + kNameCalCurrentMeasFactor + kNameCalCurrentMeasOffset + kNameCalCurrentSetFactor + kNameCalCurrentSetOffset
 
@@ -102,6 +105,9 @@ class SmuInterface:
       resp = requests.post(f'http://{self.addr}/switch/{self._webapi_name(name)}/{action}')
       if resp.status_code != 200:
         raise Exception(f'Request failed: {resp.status_code}')
+
+  def config_set_current_ranges(self, nranges: int) -> None:
+    self._set('number', self.kNameConfigCurrentRanges, nranges)
 
   def cal_get_voltage_meas(self) -> Tuple[decimal.Decimal, decimal.Decimal]:
     """Returns the voltage measurement calibration, factor and offset terms"""
