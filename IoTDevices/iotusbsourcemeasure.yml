@@ -22,6 +22,8 @@ esphome:
     - switch.turn_on: conv_enable
     - delay: 0.1s
     - switch.turn_off: conv_enable
+  includes:
+    - smu_display.h
 
 preferences:
   flash_write_interval: 5s  # so calibration updates save near-immediately
@@ -281,13 +283,40 @@ display:
     reset_pin: GPIO12
     update_interval : 200ms
     lambda: |-
-      it.printf(0, 0, id(bdf6x10), "MES %5.2f V  %6.3f A", id(meas_voltage).get_state(), id(meas_current).get_state());
+      int baseline, unitsBaseline, dummy;
+      id(bdf6x10)->measure("X", &dummy, &dummy, &baseline, &dummy);
+      id(bdf4x6)->measure("X", &dummy, &dummy, &unitsBaseline, &dummy);
+      int unitsOffsY = baseline - unitsBaseline;
 
-      it.printf(0, 16, id(bdf6x10), "%s %4.1f  V  %5.2f  A", 
-          id(range0).state ? "ON " : id(range1).state ? "ONv" : "OFF",
-          id(set_voltage).state, id(limit_current_max).state);
-      it.printf(0, 24, id(bdf6x10), "             %5.2f  A", id(limit_current_min).state);
+      it.printf(0, 0, id(bdf6x10), "MES");
+
+      int voltageX = 4*6, currentX = 76;
+      int voltageUnitsX = voltageX + 6*6 + 4, currentUnitsX = currentX + 7*6 + 4 + 2;
+      drawValue(it, voltageX, 0, id(bdf6x10), 2, 3, id(meas_voltage).get_state());
+      it.print(voltageUnitsX, 0 + unitsOffsY, id(bdf4x6), "V");
+      if (id(current_range).state == "300mA") {
+        drawValue(it, currentX, 0, id(bdf6x10), 1, 5, id(meas_current).get_state());
+      } else {
+        drawValue(it, currentX, 0, id(bdf6x10), 1, 4, id(meas_current).get_state());
+      }
+      it.print(currentUnitsX, 0 + unitsOffsY, id(bdf4x6), "A");
       
+      it.printf(0, 16, id(bdf6x10), "%s", 
+          id(range0).state ? "ON " : id(range1).state ? "ONv" : "OFF");
+      
+      drawValue(it, voltageX, 16, id(bdf6x10), 2, 1, id(set_voltage).state);
+      it.print(voltageUnitsX, 16 + unitsOffsY, id(bdf4x6), "V");
+      if (id(current_range).state == "300mA") {
+        drawValue(it, currentX, 16, id(bdf6x10), 1, 3, id(limit_current_max).state);
+        drawValue(it, currentX, 24, id(bdf6x10), 1, 3, id(limit_current_min).state);
+      } else {
+        drawValue(it, currentX, 16, id(bdf6x10), 1, 2, id(limit_current_max).state);
+        drawValue(it, currentX, 24, id(bdf6x10), 1, 2, id(limit_current_min).state);
+      }
+
+      it.print(currentUnitsX, 16 + unitsOffsY, id(bdf4x6), "A");
+      it.print(currentUnitsX, 24 + unitsOffsY, id(bdf4x6), "A");
+
 
       bool uncal = false;
       if (id(kCalVoltageFactor).state == 1 || id(kCalVoltageOffset).state == 0 || id(kCalSetVoltageFactor).state == 1 || id(kCalSetVoltageOffset).state == 0 ||
