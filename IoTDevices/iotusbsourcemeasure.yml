@@ -293,8 +293,6 @@ display:
     reset_pin: GPIO12
     update_interval : 200ms
     lambda: |-
-      bool enabled = id(range0).state || id(range1).state;
-
       int baseline, unitsBaseline, dummy;
       id(bdf6x10)->measure("X", &dummy, &dummy, &baseline, &dummy);
       id(bdf4x6)->measure("X", &dummy, &dummy, &unitsBaseline, &dummy);
@@ -312,10 +310,10 @@ display:
       if (id(current_range).state == "300mA") {
         currentDigitsDecimal = 5;
       }
-      drawValue(it, currentX, measureY, id(bdf6x10), 1, currentDigitsDecimal, enabled ? id(meas_current).get_state() : NAN);
+      drawValue(it, currentX, measureY, id(bdf6x10), 1, currentDigitsDecimal, id(meas_current).get_state());
       it.print(currentUnitsX, measureY + unitsOffsY, id(bdf4x6), "A");
       
-      drawValue(it, voltageX, measureY + 10, id(bdf6x10), 2, 3, enabled ? id(deriv_power).get_state() : NAN);
+      drawValue(it, voltageX, measureY + 10, id(bdf6x10), 2, 3, id(deriv_power).get_state());
       it.print(voltageUnitsX, measureY + 10 + unitsOffsY, id(bdf4x6), "W");
 
       drawValue(it, currentX, measureY + 10, id(bdf6x10), 4, 2, id(deriv_energy).get_state());
@@ -779,6 +777,7 @@ sensor:
       - lambda: |-
           static int8_t lastRange = -1;  // -1=off, 0=range0, 1=...
           int8_t thisRange = -1;
+          static bool lastSampleValid = true;
           if (id(range0)->state && !id(range1)->state) {
             thisRange = 0;
           } else if (id(range1)->state && !id(range0)->state) {
@@ -788,7 +787,12 @@ sensor:
 
           if (lastRange != thisRange || thisRange < 0) {  // invalidate the measurement on a range change
             lastRange = thisRange;
-            return 0;
+            if (thisRange < 0 && !lastSampleValid) {  // send NaNs after an initial zero - the zero for integrators to not integrate over the dead time
+              return NAN;
+            } else {
+              lastSampleValid = false;
+              return 0;
+            }
           }
 
           auto value = x * id(kVref);
@@ -797,6 +801,7 @@ sensor:
           } else if (thisRange == 1) {
             value = value * id(kCurrentRatio1) * id(kCalCurrent1Factor).state + id(kCalCurrent1Offset).state;
           }
+          lastSampleValid = true;
           return value;
     unit_of_measurement: A
   - platform: combination
@@ -842,6 +847,7 @@ sensor:
     id: deriv_energy
     sensor: deriv_power
     time_unit: s
+    integration_method: left  # NaNs don't update state, this integrates the zero over the dead period
     accuracy_decimals: 6
     unit_of_measurement: J
 
@@ -850,6 +856,7 @@ sensor:
     id: deriv_accum_current
     sensor: meas_current
     time_unit: h
+    integration_method: left  # NaNs don't update state, this integrates the zero over the dead period
     accuracy_decimals: 6
     unit_of_measurement: Ah
 
