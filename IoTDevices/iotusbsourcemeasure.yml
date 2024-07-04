@@ -315,8 +315,7 @@ display:
       
       // SETPOINT SECTION
       int setY = 16;
-      it.printf(0, setY, id(bdf6x10), "%s", 
-          id(range0).state ? "ON " : id(range1).state ? "ONv" : "OFF");
+      it.print(0, setY, id(bdf6x10), id(enable).state ? "ON " : "OFF");
       
       drawValue(it, voltageX, setY, id(bdf6x10), 2, 1, id(set_voltage).state, id(cursor) == 0 ? id(cursorDigit)[0] : -128);
       it.print(voltageUnitsX, setY + unitsOffsY, id(bdf4x6), "V");
@@ -326,17 +325,17 @@ display:
         currentDigitsDecimal = 3;
       }
       drawValue(it, currentX, setY, id(bdf6x10), 1, currentDigitsDecimal, id(limit_current_max).state, id(cursor) == 1 ? id(cursorDigit)[1] : -128);
-      drawValue(it, currentX, setY + 8, id(bdf6x10), 1, currentDigitsDecimal, id(limit_current_min).state, id(cursor) == 2 ? id(cursorDigit)[2] : -128);
+      drawValue(it, currentX, setY + 10, id(bdf6x10), 1, currentDigitsDecimal, id(limit_current_min).state, id(cursor) == 2 ? id(cursorDigit)[2] : -128);
       
       it.print(currentUnitsX, setY + unitsOffsY, id(bdf4x6), "A");
-      it.print(currentUnitsX, setY + 8 + unitsOffsY, id(bdf4x6), "A");
+      it.print(currentUnitsX, setY + 10 + unitsOffsY, id(bdf4x6), "A");
 
       if (id(cursor) == 3) {
-        drawInverted(it, voltageUnitsX - 8, setY + 8, id(bdf6x10), TextAlign::TOP_RIGHT, id(current_range).state.c_str());
+        drawInverted(it, voltageUnitsX - 8, setY + 10, id(bdf6x10), TextAlign::TOP_RIGHT, id(current_range).state.c_str());
       } else {
-        it.print(voltageUnitsX - 8, setY + 8, id(bdf6x10), TextAlign::TOP_RIGHT, id(current_range).state.c_str());
+        it.print(voltageUnitsX - 8, setY + 10, id(bdf6x10), TextAlign::TOP_RIGHT, id(current_range).state.c_str());
       }
-      it.print(voltageUnitsX - 8, setY + 8 + unitsOffsY, id(bdf4x6), "Rng");
+      it.print(voltageUnitsX - 8, setY + 10 + unitsOffsY, id(bdf4x6), "Rng");
 
       // DEVICE INFO
       bool uncal = false;
@@ -348,8 +347,8 @@ display:
 
       char wifiSsidTrunc[16] = {0};
       strncpy(wifiSsidTrunc, WiFi.SSID().c_str(), 15);
-      it.printf(0, 64-6, id(bdf4x6), TextAlign::BOTTOM_LEFT, wifiSsidTrunc);
-      it.printf(0, 64, id(bdf4x6), TextAlign::BOTTOM_LEFT, WiFi.localIP().toString().c_str());
+      it.print(0, 64-6, id(bdf4x6), TextAlign::BOTTOM_LEFT, wifiSsidTrunc);
+      it.print(0, 64, id(bdf4x6), TextAlign::BOTTOM_LEFT, WiFi.localIP().toString().c_str());
 
       it.printf(128, 64-6, id(bdf4x6), TextAlign::BOTTOM_RIGHT, "%sDucky SMU", uncal ? "-- UNCAL --  " : "");
 
@@ -361,7 +360,7 @@ display:
 
       it.printf(128 - 4, 64, id(bdf4x6), TextAlign::BOTTOM_RIGHT, "%s %2.0fv %2.f,%2.fc", pdState, id(fusb_vbus).get_state(), id(temp_buckboost).state, id(temp_fets).state);
       if (millis() % 1000 >= 500) {
-        it.printf(128, 64, id(bdf4x6), TextAlign::BOTTOM_RIGHT, ".");  // liveness indicator
+        it.print(128, 64, id(bdf4x6), TextAlign::BOTTOM_RIGHT, ".");  // liveness indicator
       }
 
 number:
@@ -888,6 +887,10 @@ sensor:
             } else if (id(cursor) == 2) {
               id(limit_current_min)->make_call().set_value(id(limit_current_min)->state + increment).perform();
             } else if (id(cursor) == 3) {
+              auto index = id(current_range).active_index();
+              if (index.has_value()) {
+                id(current_range)->make_call().set_index(index.value() - 1).perform();
+              }
             }
     on_anticlockwise:
     - then:
@@ -900,6 +903,10 @@ sensor:
             } else if (id(cursor) == 2) {
               id(limit_current_min)->make_call().set_value(id(limit_current_min)->state + increment).perform();
             } else if (id(cursor) == 3) {
+              auto index = id(current_range).active_index();
+              if (index.has_value()) {
+                id(current_range)->make_call().set_index(index.value() + 1).perform();
+              }
             }
 
 text_sensor:

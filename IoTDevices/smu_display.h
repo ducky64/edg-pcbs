@@ -9,7 +9,11 @@ uint32_t intpow10(uint8_t n) {
 void drawInverted(display::Display& it, int x, int y, font::Font* font, display::TextAlign align, const char* text) {
   int width, baseline, dummy;
   font->measure(text, &width, &dummy, &baseline, &dummy);
-  it.filled_rectangle(x, y, width - 1, baseline - 1);
+  if (align == display::TextAlign::TOP_LEFT) {
+    it.filled_rectangle(x, y, width - 1, baseline - 1);
+  } else if (align == display::TextAlign::TOP_RIGHT) {
+    it.filled_rectangle(x - width, y, width - 1, baseline - 1);
+  }
   it.print(x, y, font, COLOR_OFF, align, text);
 }
 
@@ -51,7 +55,7 @@ void drawValue(display::Display& it, int x, int y, font::Font* font,
       thisChar[0] = forcedChar;
     } else {
       if (digitsPos < 0) {
-        if (value < 0 && ((digitsLen < numDigitsDecimal && digitsPos == -1) || (digitsLen >= numDigitsDecimal && digitsPos == -2))) {
+        if (value < 0 && ((digitsLen <= numDigitsDecimal && currentDigit == 1) || (digitsLen > numDigitsDecimal && digitsPos == -1))) {
           thisChar[0] = '-';
         } else if (currentDigit <= 0) {
           thisChar[0] = '0';
