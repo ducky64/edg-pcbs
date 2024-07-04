@@ -22,6 +22,7 @@ uint16_t drawValue(display::Display& it, int x, int y, font::Font* font,
   
   char digits[12] = {0};
   itoa(abs(valueDecimal), digits, 10);
+  uint8_t digitsLen = strlen(digits);
   int8_t digitsOffset = (numDigits + numDigitsDecimal) - strlen(digits);  // negative means overflow, positive is blank / zero digits
 
   char forcedChar = 0;  // if nonzero, all digits replaced with this
@@ -31,38 +32,43 @@ uint16_t drawValue(display::Display& it, int x, int y, font::Font* font,
     forcedChar = '+';
   }
 
-  for (int8_t currentDigit = -1; currentDigit < (numDigits + numDigitsDecimal); currentDigit++) {
+  // start at numDigits (which is one past the equivalent currentDigit) for the negative sign
+  for (int8_t currentDigit = numDigits; currentDigit >= -numDigitsDecimal; currentDigit--) {
+    int8_t digitsPos = (int8_t)digitsLen - (currentDigit + numDigitsDecimal) - 1;  // position within digits[]
     char thisChar[2] = " ";
     if (forcedChar != 0) {
       thisChar[0] = forcedChar;
     } else {
-      if (currentDigit < digitsOffset) {
-        if (value < 0 && ((digitsOffset < numDigits && currentDigit == digitsOffset - 1) || (digitsOffset >= numDigits && currentDigit + 2 == numDigits))) {
+      if (digitsPos < 0) {
+        if (value < 0 && ((digitsLen < numDigitsDecimal && digitsPos == -1) || (digitsLen >= numDigitsDecimal && digitsPos == -2))) {
           thisChar[0] = '-';
-        } else if (currentDigit + 1 >= numDigits) {
+        } else if (currentDigit <= 0) {
           thisChar[0] = '0';
         } else {
           thisChar[0] = ' ';
         }
       } else {
-        thisChar[0] = digits[currentDigit - digitsOffset];
+        thisChar[0] = digits[digitsPos];
       }
     }
-    it.print(x, y, font, thisChar);
-    x += width;
 
-    if ((currentDigit + 1) != (numDigits + numDigitsDecimal)) {  // insert trailing markers like decimals and 3-digit-group separators
-      if (currentDigit + 1 == numDigits) {
+    if (underlineLoc == currentDigit) {
+      it.filled_rectangle(x, y, width - 1, baseline - 1);
+      it.print(x, y, font, COLOR_OFF, thisChar);
+    } else {
+      it.print(x, y, font, thisChar);
+    }
+    x += width;    
+
+    if (currentDigit > -numDigitsDecimal) {  // insert trailing markers like decimals and 3-digit-group separators
+      if (currentDigit == 0) {
         it.print(x - 1, y, font, ".");
         x += width - 2;
-      } else {
-        if (currentDigit < numDigits && ((numDigits - currentDigit) % 3 == 1)) {  // insert a space every 3 digits
-          x += 2;
-        } else if (currentDigit > numDigits && ((currentDigit - numDigits) % 3 == 2)) {
-          x += 2;
-        }
+      } else if (currentDigit % 3 == 0) {
+        x += 2;
       }
     }
   }
+
   return x;
 }
