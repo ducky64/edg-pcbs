@@ -81,13 +81,13 @@ globals:
 
   - id: cursor
     type: int
-    initial_value: '0'  # 0 = voltage, 1 = current lim max, 2 = current lim min, 3 = range
+    initial_value: '0'  # 0 = voltage, 1 = current lim max, 2 = current lim min, 3 = range, 4 = reset integrators
   - id: cursorDigit
-    type: int[4]
-    initial_value: '{-1, -1, -1, 0}'
+    type: int[5]
+    initial_value: '{-1, -1, -1, 0, 0}'
   - id: kCursorDigitLimits
-    type: int[4][2]
-    initial_value: '{{{-1, 1}, {-2, 0}, {-2, 0}, {0, 0}}}'
+    type: int[5][2]
+    initial_value: '{{{-1, 1}, {-2, 0}, {-2, 0}, {0, 0}, {0, 0}}}'
 
 script:
   - id: update_current  # update the current, assuming the device is on, or will be turned on
@@ -293,6 +293,8 @@ display:
     reset_pin: GPIO12
     update_interval : 200ms
     lambda: |-
+      bool enabled = id(range0).state || id(range1).state;
+
       int baseline, unitsBaseline, dummy;
       id(bdf6x10)->measure("X", &dummy, &dummy, &baseline, &dummy);
       id(bdf4x6)->measure("X", &dummy, &dummy, &unitsBaseline, &dummy);
@@ -310,11 +312,21 @@ display:
       if (id(current_range).state == "300mA") {
         currentDigitsDecimal = 5;
       }
-      drawValue(it, currentX, measureY, id(bdf6x10), 1, currentDigitsDecimal, id(meas_current).get_state());
+      drawValue(it, currentX, measureY, id(bdf6x10), 1, currentDigitsDecimal, enabled ? id(meas_current).get_state() : NAN);
       it.print(currentUnitsX, measureY + unitsOffsY, id(bdf4x6), "A");
       
+      drawValue(it, voltageX, measureY + 10, id(bdf6x10), 2, 3, enabled ? id(deriv_power).get_state() : NAN);
+      it.print(voltageUnitsX, measureY + 10 + unitsOffsY, id(bdf4x6), "W");
+
+      drawValue(it, currentX, measureY + 10, id(bdf6x10), 4, 2, id(deriv_energy).get_state());
+      if (id(cursor) == 4) {
+        drawInverted(it, currentUnitsX, measureY + 10 + unitsOffsY, id(bdf4x6), "J");
+      } else {
+        it.print(currentUnitsX, measureY + 10 + unitsOffsY, id(bdf4x6), "J");
+      }
+
       // SETPOINT SECTION
-      int setY = 16;
+      int setY = 26;
       it.print(0, setY, id(bdf6x10), id(enable).state ? "ON " : "OFF");
       
       drawValue(it, voltageX, setY, id(bdf6x10), 2, 1, id(set_voltage).state, id(cursor) == 0 ? id(cursorDigit)[0] : -128);
@@ -602,6 +614,7 @@ select:
 
 button:
   - platform: template
+    id: integrator_reset
     name: Reset integrators
     on_press:
       then:
@@ -644,6 +657,12 @@ binary_sensor:
         input: true
     filters:
       - delayed_on: 10ms
+    on_click:
+    - then:
+        - lambda: |-
+            if (id(cursor) == 4) {
+              id(integrator_reset).press();
+            }
   - platform: gpio
     name: "${name} Dir Up"
     internal: true
@@ -689,6 +708,14 @@ binary_sensor:
     - then:
         - lambda: |-
             id(cursorDigit)[id(cursor)] = min(id(cursorDigit)[id(cursor)] + 1, id(kCursorDigitLimits)[id(cursor)][1]);
+            if (id(cursor) == 3) {
+              auto index = id(current_range).active_index();
+              if (index.has_value()) {
+                id(current_range)->make_call().set_index(index.value() - 1).perform();
+              }
+            } else if (id(cursor) == 4) {
+              id(integrator_reset).press();
+            }
   - platform: gpio
     name: "${name} Dir Right"
     internal: true
@@ -704,6 +731,14 @@ binary_sensor:
     - then:
         - lambda: |-
             id(cursorDigit)[id(cursor)] = max(id(cursorDigit)[id(cursor)] - 1, id(kCursorDigitLimits)[id(cursor)][0]);
+            if (id(cursor) == 3) {
+              auto index = id(current_range).active_index();
+              if (index.has_value()) {
+                id(current_range)->make_call().set_index(index.value() + 1).perform();
+              }
+            } else if (id(cursor) == 4) {
+              id(integrator_reset).press();
+            }
 
 sensor:
   - platform: fusb302
@@ -753,7 +788,7 @@ sensor:
 
           if (lastRange != thisRange || thisRange < 0) {  // invalidate the measurement on a range change
             lastRange = thisRange;
-            return NAN;
+            return 0;
           }
 
           auto value = x * id(kVref);
@@ -809,6 +844,7 @@ sensor:
     time_unit: s
     accuracy_decimals: 6
     unit_of_measurement: J
+
   - platform: integration
     name: "${name} Deriv Cumulative Current"
     id: deriv_accum_current
@@ -886,11 +922,6 @@ sensor:
               id(limit_current_max)->make_call().set_value(id(limit_current_max)->state + increment).perform();
             } else if (id(cursor) == 2) {
               id(limit_current_min)->make_call().set_value(id(limit_current_min)->state + increment).perform();
-            } else if (id(cursor) == 3) {
-              auto index = id(current_range).active_index();
-              if (index.has_value()) {
-                id(current_range)->make_call().set_index(index.value() - 1).perform();
-              }
             }
     on_anticlockwise:
     - then:
@@ -902,11 +933,6 @@ sensor:
               id(limit_current_max)->make_call().set_value(id(limit_current_max)->state + increment).perform();
             } else if (id(cursor) == 2) {
               id(limit_current_min)->make_call().set_value(id(limit_current_min)->state + increment).perform();
-            } else if (id(cursor) == 3) {
-              auto index = id(current_range).active_index();
-              if (index.has_value()) {
-                id(current_range)->make_call().set_index(index.value() + 1).perform();
-              }
             }
 
 text_sensor:
