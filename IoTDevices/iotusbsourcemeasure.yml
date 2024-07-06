@@ -104,7 +104,8 @@ script:
         if (id(enable).state) {  // only write the buck-boost if target is enable
           // set buck-boost to minimum needed + headroom
           float voltageScalingFactor = max(5.0, (id(fusb_vbus).state - 0.4));  // ratio to output volts = Vin, always expect at least 5
-          float convTargetVolts = id(set_voltage).state + id(kBuckBoostHeadroom);
+          // must be higher than measured output to avoid the output back-driving Vconv through the FET body diode; should be hardware diode-gated in a future rev
+          float convTargetVolts = max(id(set_voltage).state, id(meas_voltage_max).state) + id(kBuckBoostHeadroom);
           float currentConvVolts = id(buckboost_ratio).state * voltageScalingFactor;
           float nextConvVolts = min(currentConvVolts + kRampRateVoltsPerS * deltaMillis / 1000.f, convTargetVolts);
           id(buckboost_ratio).make_call().set_value(nextConvVolts / voltageScalingFactor).perform();
@@ -852,6 +853,7 @@ sensor:
           lastSampleValid = true;
           return value;
     unit_of_measurement: A
+
   - platform: combination
     name: "${name} Meas Voltage Noise"
     id: meas_voltage_noise
@@ -876,6 +878,19 @@ sensor:
       - range:
           window_size: 25
           send_every: 5
+
+  - platform: combination
+    name: "${name} Meas Volage Max"
+    id: meas_voltage_max
+    type: sum  # dummy
+    internal: true
+    accuracy_decimals: 7
+    sources:
+      - source: meas_voltage
+    filters:
+      - max:
+          window_size: 5
+          send_every: 1
 
   - platform: combination
     name: "${name} Deriv Power"
