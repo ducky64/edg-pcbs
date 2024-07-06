@@ -22,6 +22,8 @@ esphome:
     - switch.turn_on: conv_enable
     - delay: 0.1s
     - switch.turn_off: conv_enable
+  on_loop:
+    - script.execute: buckboost_control_loop
   includes:
     - smu_display.h
 
@@ -90,6 +92,35 @@ globals:
     initial_value: '{{{-1, 1}, {-2, 0}, {-2, 0}, {0, 0}, {0, 0}}}'
 
 script:
+  - id: buckboost_control_loop
+    then:
+    - lambda: |-
+        const float kRampRateVoltsPerS = 25;  // output ramp rate by estimated Vin
+        const int kMaxDeltaMillis = 50;  // maximum ramp per iteration
+
+        static auto lastRun = millis();
+        auto thisRun = millis();
+        auto deltaMillis = min(thisRun - lastRun, (unsigned int)kMaxDeltaMillis);
+        if (id(enable).state) {  // only write the buck-boost if target is enable
+          // set buck-boost to minimum needed + headroom
+          float voltageScalingFactor = max(5.0, (id(fusb_vbus).state - 0.4));  // ratio to output volts = Vin, always expect at least 5
+          float convTargetVolts = id(set_voltage).state + id(kBuckBoostHeadroom);
+          float currentConvVolts = id(buckboost_ratio).state * voltageScalingFactor;
+          float nextConvVolts = min(currentConvVolts + kRampRateVoltsPerS * deltaMillis / 1000.f, convTargetVolts);
+          id(buckboost_ratio).make_call().set_value(nextConvVolts / voltageScalingFactor).perform();
+          if (!id(control_enable).state) {  // if not yet turned on
+            if (nextConvVolts == convTargetVolts) {  // turn on output enable when target reached
+              id(set_enable_range).execute(false);
+            } else {
+              id(output_rgb_r).turn_off();
+              id(output_rgb_g).turn_off();
+              id(output_rgb_b).turn_on();
+            }
+          }
+        } else {  // turn off converter
+          id(buckboost_ratio).make_call().set_value(0).perform();
+        }
+      
   - id: update_current  # update the current, assuming the device is on, or will be turned on
     then:
     - lambda: |-
@@ -130,13 +161,16 @@ script:
             return;
           }
           id(control_enable).turn_on();
-          id(output_rgb_b).turn_on();
+          id(output_rgb_r).turn_off();
+          id(output_rgb_g).turn_on();
+          id(output_rgb_b).turn_off();
         } else {  // turn off
           id(range0).turn_off();
           id(range1).turn_off();
           id(control_enable).turn_off();
-          id(output_rgb_b).turn_off();
-          id(buckboost_ratio).make_call().set_value(0).perform();;  // turn off the converter last
+          id(output_rgb_r).turn_on();
+          id(output_rgb_g).turn_off();
+          id(output_rgb_b).turn_on();
         }
 
   - id: update_voltage  # update the voltage
@@ -147,12 +181,6 @@ script:
         float targetVolts = id(kVCenter) - (correctedX / id(kVoltageRatio));
         id(dac_voltage)->write_state(targetVolts / id(kVref));
 
-        if (id(enable).state) {  // only write the buck-boost if target is enable
-          // set buck-boost to minimum needed + headroom
-          float convTarget = setVoltage + id(kBuckBoostHeadroom);
-          id(buckboost_ratio).make_call().set_value(convTarget / (id(fusb_vbus).state - 0.4)).perform();
-        }
-        
 light:
   - platform: status_led
     name: "${name} Dbg"
@@ -216,10 +244,7 @@ switch:
     turn_on_action:
       - lambda: id(enable).publish_state(true);
       - script.execute: update_voltage
-      - delay: 100 ms
-      - script.execute: 
-          id: set_enable_range
-          overlap: false
+        # enable handled in buckboost_softstart_loop
     turn_off_action:
       - lambda: id(enable).publish_state(false);
       - script.execute:
