@@ -419,7 +419,9 @@ void setup() {
   // last character gets cut off for some reason
   char shortMacStr[13];
   sprintf(shortMacStr, "%02x%02x%02x", mac[3], mac[4], mac[5]);
-  String selfData = String(kFwVerStr) + " " + shortMacStr + " " + vbatMv / 1000 + "." + (vbatMv % 1000 / 10) + "V  ";
+  char voltageStr[7];
+  sprintf(voltageStr, "%.2f", (float)vbatMv / 1000);
+  String selfData = String(kFwVerStr) + " " + shortMacStr + " " + voltageStr + "V  ";
   int16_t tbx, tby; uint16_t tbw, tbh;
   display.getTextBounds(selfData, 0, 0, &tbx, &tby, &tbw, &tbh);
 
