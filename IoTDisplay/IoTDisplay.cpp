@@ -60,8 +60,9 @@ const int kBusyBlinkIntervalMs = 1000;
 #include <Fonts/FreeMonoBold9pt7b.h>
 // Full displays list at
 // https://github.com/ZinggJM/GxEPD2/tree/master/examples/GxEPD2_Example
-// GxEPD2_7C<GxEPD2_565c, GxEPD2_565c::HEIGHT/2> display(GxEPD2_565c(kEpdCsPin, kEpdDcPin, kOledRstPin, kEpdBusyPin)); // Waveshare 5.65" 7-color, flakey
-#ifdef DISPLAY_750C_Z08
+#ifdef DISPLAY_565C
+  GxEPD2_7C<GxEPD2_565c, GxEPD2_565c::HEIGHT/2> display(GxEPD2_565c(kEpdCsPin, kEpdDcPin, kEpdRstPin, kEpdBusyPin)); // Waveshare 5.65" 7-color, BROKEN
+#elif DISPLAY_750C_Z08
   GxEPD2_3C<GxEPD2_750c_Z08, GxEPD2_750c_Z08::HEIGHT> display(GxEPD2_750c_Z08(kEpdCsPin, kEpdDcPin, kEpdRstPin, kEpdBusyPin)); // Waveshare 3C 7.5" B
 #elif DISPLAY_1330C_GDEM133Z91
   GxEPD2_3C<GxEPD2_1330c_GDEM133Z91, GxEPD2_1330c_GDEM133Z91 ::HEIGHT> display(GxEPD2_1330c_GDEM133Z91(kEpdCsPin, kEpdDcPin, kEpdRstPin, kEpdBusyPin)); // Waveshare 3C 13.3" B
