@@ -61,7 +61,14 @@ const int kBusyBlinkIntervalMs = 1000;
 // Full displays list at
 // https://github.com/ZinggJM/GxEPD2/tree/master/examples/GxEPD2_Example
 // GxEPD2_7C<GxEPD2_565c, GxEPD2_565c::HEIGHT/2> display(GxEPD2_565c(kEpdCsPin, kEpdDcPin, kOledRstPin, kEpdBusyPin)); // Waveshare 5.65" 7-color, flakey
-GxEPD2_3C<GxEPD2_750c_Z08, GxEPD2_750c_Z08::HEIGHT> display(GxEPD2_750c_Z08(kEpdCsPin, kEpdDcPin, kEpdRstPin, kEpdBusyPin)); // works with Waveshare 3C 7.5" B
+#ifdef DISPLAY_750C_Z08
+  GxEPD2_3C<GxEPD2_750c_Z08, GxEPD2_750c_Z08::HEIGHT> display(GxEPD2_750c_Z08(kEpdCsPin, kEpdDcPin, kEpdRstPin, kEpdBusyPin)); // Waveshare 3C 7.5" B
+#elif DISPLAY_1330C_GDEM133Z91
+  GxEPD2_3C<GxEPD2_1330c_GDEM133Z91, GxEPD2_1330c_GDEM133Z91 ::HEIGHT> display(GxEPD2_1330c_GDEM133Z91(kEpdCsPin, kEpdDcPin, kEpdRstPin, kEpdBusyPin)); // Waveshare 3C 13.3" B
+#else
+  static_assert(false, "no display defined");
+#endif
+const size_t kMaxWidth = 680;
 
 const int kMinDisplayGoodMs = 5000;  // minimum time the display should take for a full refresh to be considered good
 const int kMaxDisplayGoodMs = 40000;  // maximum time the display should take for a full refresh to be considered good
@@ -90,8 +97,6 @@ PNG png;
 uint8_t streamData[32768] = {0};  // allocate in static memory, contains PNG image data
 StaticJsonDocument<256> doc;
 
-size_t maxWidth = 480;
-
 
 const char* kFwVerStr = "4";
 
@@ -105,8 +110,15 @@ const int kErrSleepSec = 3600;  // on exceeding max errors, how long to wait unt
 
 
 void PNGDraw(PNGDRAW *pDraw) {
-  uint16_t usPixels[maxWidth];
-  uint8_t ucMask[maxWidth/8];
+  if (pDraw->iWidth > kMaxWidth) {  // would create a buffer overflow
+    for (size_t i=0; i<pDraw->iWidth; i+=2) {
+      display.drawPixel(i, pDraw->y, GxEPD_RED);
+    }
+    return;
+  } 
+
+  uint16_t usPixels[kMaxWidth];
+  uint8_t ucMask[kMaxWidth/8];
   
   png.getLineAsRGB565(pDraw, usPixels, PNG_RGB565_BIG_ENDIAN, 0xffffffff);
   png.getAlphaMask(pDraw, ucMask, 127);
