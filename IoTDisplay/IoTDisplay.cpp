@@ -65,7 +65,7 @@ const int kBusyBlinkIntervalMs = 1000;
 #elif DISPLAY_750C_Z08
   GxEPD2_3C<GxEPD2_750c_Z08, GxEPD2_750c_Z08::HEIGHT> display(GxEPD2_750c_Z08(kEpdCsPin, kEpdDcPin, kEpdRstPin, kEpdBusyPin)); // Waveshare 3C 7.5" B
 #elif DISPLAY_1330C_GDEM133Z91
-  GxEPD2_3C<GxEPD2_1330c_GDEM133Z91, GxEPD2_1330c_GDEM133Z91 ::HEIGHT> display(GxEPD2_1330c_GDEM133Z91(kEpdCsPin, kEpdDcPin, kEpdRstPin, kEpdBusyPin)); // Waveshare 3C 13.3" B
+  GxEPD2_3C<GxEPD2_1330c_GDEM133Z91, GxEPD2_1330c_GDEM133Z91::HEIGHT/2> display(GxEPD2_1330c_GDEM133Z91(kEpdCsPin, kEpdDcPin, kEpdRstPin, kEpdBusyPin)); // Waveshare 3C 13.3" B
 #else
   static_assert(false, "no display defined");
 #endif
