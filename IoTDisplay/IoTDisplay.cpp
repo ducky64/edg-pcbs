@@ -57,7 +57,9 @@ const int kBusyBlinkIntervalMs = 1000;
 #include <GxEPD2_BW.h>
 #include <GxEPD2_3C.h>
 #include <GxEPD2_7C.h>
-#include <Fonts/FreeMonoBold9pt7b.h>
+#include <Fonts/FreeSans9pt7b.h>
+const GFXfont &kFont = FreeSans9pt7b;
+
 // Full displays list at
 // https://github.com/ZinggJM/GxEPD2/tree/master/examples/GxEPD2_Example
 #ifdef DISPLAY_565C
@@ -415,14 +417,14 @@ void setup() {
   display.epd2.setBusyCallback(&busyCallback);
 
   display.setRotation(3);
-  display.setFont(&FreeMonoBold9pt7b);
+  display.setFont(&kFont);
 
   // last character gets cut off for some reason
   char shortMacStr[13];
   sprintf(shortMacStr, "%02x%02x%02x", mac[3], mac[4], mac[5]);
   char voltageStr[7];
   sprintf(voltageStr, "%.2f", (float)vbatMv / 1000);
-  String selfData = String(kFwVerStr) + " " + shortMacStr + " " + voltageStr + "V  ";
+  String selfData = String(shortMacStr) + " " + voltageStr + "V  ";
   int16_t tbx, tby; uint16_t tbw, tbh;
   display.getTextBounds(selfData, 0, 0, &tbx, &tby, &tbw, &tbh);
 
@@ -438,7 +440,7 @@ void setup() {
       }
 
       display.setTextColor(GxEPD_BLACK);
-      display.setCursor(display.width() - tbw, display.height() - tbh);
+      display.setCursor(display.width() - tbw, display.height() - 1 - kFont.glyph[0].yOffset);
       display.print(selfData);
     } while (display.nextPage());
 
@@ -462,7 +464,7 @@ void setup() {
     display.firstPage();
     do {
       display.setTextColor(GxEPD_BLACK);
-      display.setCursor(display.width() - tbw, display.height() - tbh);
+      display.setCursor(display.width() - tbw, display.height() - 1 - kFont.glyph[0].yOffset);
       display.print(selfData);
 
       display.setTextColor(GxEPD_RED);
