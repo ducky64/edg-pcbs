@@ -101,7 +101,7 @@ uint8_t streamData[32768] = {0};  // allocate in static memory, contains PNG ima
 StaticJsonDocument<256> doc;
 
 
-const char* kFwVerStr = "4";
+const char* kFwVerStr = "5";
 
 RTC_DATA_ATTR int bootCount = 0;
 RTC_DATA_ATTR int failureCount = 0;
@@ -127,7 +127,7 @@ void PNGDraw(PNGDRAW *pDraw) {
   png.getAlphaMask(pDraw, ucMask, 127);
 
   for (size_t i=0; i<pDraw->iWidth; i++) {
-    if ((ucMask[i/8] >> ((7-i) % 8)) & 0x1 == 0) {
+    if (!((ucMask[i/8] >> ((7-i) % 8)) & 0x1)) {
       continue;  // alpha - masked out
     }
     if (((usPixels[i] & 0x001f) < 0x04) && (((usPixels[i] >> 11) & 0x001f) < 0x04)) {  // black
