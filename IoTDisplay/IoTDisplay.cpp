@@ -130,14 +130,14 @@ void PNGDraw(PNGDRAW *pDraw) {
     if ((ucMask[i/8] >> ((7-i) % 8)) & 0x1 == 0) {
       continue;  // alpha - masked out
     }
-    if (((usPixels[i] & 0x001f) < 0x04) && (((usPixels[i] >> 11) & 0x001f) < 0x04)) {  // darker than grey
+    if (((usPixels[i] & 0x001f) < 0x04) && (((usPixels[i] >> 11) & 0x001f) < 0x04)) {  // black
       display.drawPixel(i, pDraw->y, GxEPD_BLACK);
+    } else if (((usPixels[i] & 0x001f) > 0x10) && (((usPixels[i] >> 11) & 0x001f) < 0x04)) {  // red
+      display.drawPixel(i, pDraw->y, GxEPD_RED);
     } else if (((usPixels[i] & 0x001f) < 0x1d) && (((usPixels[i] >> 11) & 0x001f) < 0x1d)) {  // mid-grey
       if ((i % 2) == (pDraw->y % 2)) {  // dithering
         display.drawPixel(i, pDraw->y, GxEPD_BLACK);
       }
-    } else if (((usPixels[i] & 0x001f) > 0x1d) && (((usPixels[i] >> 11) & 0x001f) < 0x04)) {  // red
-      display.drawPixel(i, pDraw->y, GxEPD_RED);
     }
   }
 }
