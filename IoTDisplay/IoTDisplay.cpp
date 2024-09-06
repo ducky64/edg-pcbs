@@ -127,11 +127,16 @@ void PNGDraw(PNGDRAW *pDraw) {
   png.getAlphaMask(pDraw, ucMask, 127);
 
   for (size_t i=0; i<pDraw->iWidth; i++) {
-    if (((usPixels[i] & 0x001f) < 0x10) && (((usPixels[i] & 0xf800) >> 11) < 0x10)
-        && ((ucMask[i/8] >> ((7-i) % 8)) & 0x1)) {  // darker than grey
+    if ((ucMask[i/8] >> ((7-i) % 8)) & 0x1 == 0) {
+      continue;  // alpha - masked out
+    }
+    if (((usPixels[i] & 0x001f) < 0x04) && (((usPixels[i] >> 11) & 0x001f) < 0x04)) {  // darker than grey
       display.drawPixel(i, pDraw->y, GxEPD_BLACK);
-    } else if (((usPixels[i] & 0x001f) > 0x10) && (((usPixels[i] & 0xf800) >> 11) < 0x10) 
-        && ((ucMask[i/8] >> ((7-i) % 8)) & 0x1)) {  // red
+    } else if (((usPixels[i] & 0x001f) < 0x1d) && (((usPixels[i] >> 11) & 0x001f) < 0x1d)) {  // mid-grey
+      if ((i % 2) == (pDraw->y % 2)) {  // dithering
+        display.drawPixel(i, pDraw->y, GxEPD_BLACK);
+      }
+    } else if (((usPixels[i] & 0x001f) > 0x1d) && (((usPixels[i] >> 11) & 0x001f) < 0x04)) {  // red
       display.drawPixel(i, pDraw->y, GxEPD_RED);
     }
   }
@@ -424,7 +429,7 @@ void setup() {
   sprintf(shortMacStr, "%02x%02x%02x", mac[3], mac[4], mac[5]);
   char voltageStr[7];
   sprintf(voltageStr, "%.2f", (float)vbatMv / 1000);
-  String selfData = String(shortMacStr) + " " + voltageStr + "V  ";
+  String selfData = String(shortMacStr) + " " + voltageStr + "v  ";
   int16_t tbx, tby; uint16_t tbw, tbh;
   display.getTextBounds(selfData, 0, 0, &tbx, &tby, &tbw, &tbh);
 
