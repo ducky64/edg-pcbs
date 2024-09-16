@@ -23,10 +23,13 @@ bool Fusb302::readRegister(uint8_t addr, size_t len, uint8_t data[]) {
   }
 
   uint8_t reqd = wire_.requestFrom(kI2cAddr, len);
+  if (reqd != len) {
+    return false;
+  }
   for (size_t i=0; i<len; i++) {
     data[i] = wire_.read();
   }
-  return !wire_.endTransmission();
+  return true;
 }
 
 bool Fusb302::readRegister(uint8_t addr, uint8_t& dataOut) {
