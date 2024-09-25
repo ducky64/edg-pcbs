@@ -101,7 +101,7 @@ uint8_t streamData[32768] = {0};  // allocate in static memory, contains PNG ima
 StaticJsonDocument<256> doc;
 
 
-const char* kFwVerStr = "5";
+const char* kFwVerStr = "6";
 
 RTC_DATA_ATTR int bootCount = 0;
 RTC_DATA_ATTR int failureCount = 0;
@@ -429,7 +429,7 @@ void setup() {
   sprintf(shortMacStr, "%02x%02x%02x", mac[3], mac[4], mac[5]);
   char voltageStr[7];
   sprintf(voltageStr, "%.2f", (float)vbatMv / 1000);
-  String selfData = String(shortMacStr) + " " + voltageStr + "v  ";
+  String selfData = String(kFwVerStr) + " " + String(shortMacStr) + " " + voltageStr + "v  ";
   int16_t tbx, tby; uint16_t tbw, tbh;
   display.getTextBounds(selfData, 0, 0, &tbx, &tby, &tbw, &tbh);
 
