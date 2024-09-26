@@ -74,7 +74,7 @@ const GFXfont &kFont = FreeSans9pt7b;
 const size_t kMaxWidth = 680;
 
 const int kMinDisplayGoodMs = 5000;  // minimum time the display should take for a full refresh to be considered good
-const int kMaxDisplayGoodMs = 40000;  // maximum time the display should take for a full refresh to be considered good
+const int kMaxDisplayGoodMs = 60000;  // maximum time the display should take for a full refresh to be considered good
 
 #include "esp_wifi.h"  // support wifi stop
 #include <WiFi.h>
@@ -101,7 +101,7 @@ uint8_t streamData[32768] = {0};  // allocate in static memory, contains PNG ima
 StaticJsonDocument<256> doc;
 
 
-const char* kFwVerStr = "8";
+const char* kFwVerStr = "9";
 
 RTC_DATA_ATTR int bootCount = 0;
 RTC_DATA_ATTR int failureCount = 0;
@@ -112,7 +112,7 @@ const int kRetrySleepSec = 120;  // on error, how long to wait to retry
 const int kMaxErrorCount = 3;  // number of consecutive network failures before displaying error
 const int kErrSleepSec = 3600;  // on exceeding max errors, how long to wait until next attempt
 
-const int kBusyGraceMsec = 10000;
+const int kBusyGraceMsec = 15000;
 
 
 void PNGDraw(PNGDRAW *pDraw) {
