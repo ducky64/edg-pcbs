@@ -101,15 +101,18 @@ uint8_t streamData[32768] = {0};  // allocate in static memory, contains PNG ima
 StaticJsonDocument<256> doc;
 
 
-const char* kFwVerStr = "6";
+const char* kFwVerStr = "8";
 
 RTC_DATA_ATTR int bootCount = 0;
 RTC_DATA_ATTR int failureCount = 0;
+RTC_DATA_ATTR int lastDisplayTimeMsec = 0;
 
 const int kMaxWifiConnectSec = 20;  // max to wait for wifi to come up before sleeping
 const int kRetrySleepSec = 120;  // on error, how long to wait to retry
 const int kMaxErrorCount = 3;  // number of consecutive network failures before displaying error
 const int kErrSleepSec = 3600;  // on exceeding max errors, how long to wait until next attempt
+
+const int kBusyGraceMsec = 10000;
 
 
 void PNGDraw(PNGDRAW *pDraw) {
@@ -180,6 +183,9 @@ void setup() {
   setCpuFrequencyMhz(80);  // downclock to reduce power draw
 
   bootCount++;
+
+  const int savedLastDisplayTimeMsec = lastDisplayTimeMsec;  // store and clear
+  lastDisplayTimeMsec = 0;
 
   const char* resetReason = "";
   switch (esp_reset_reason()) {
@@ -262,7 +268,8 @@ void setup() {
     yield();
   }
   long int timeConnectWifi = millis();
-  log_i("Connected WiFi: %.1fs, %s, RSSI=%i", (float)(timeConnectWifi - timeStartWifi) / 1000, WiFi.localIP().toString(), WiFi.RSSI());
+  int rssi = WiFi.RSSI();
+  log_i("Connected WiFi: %.1fs, %s, RSSI=%i", (float)(timeConnectWifi - timeStartWifi) / 1000, WiFi.localIP().toString(), rssi);
   digitalWrite(kLedR, 1);
 
   // fetch metadata
@@ -275,7 +282,11 @@ void setup() {
     http.setTimeout(15*1000);
     String httpUrl = (String) kHttpServer + kMetadataPostfix +
         "?mac=" + macStr + "&vbat=" + vbatMv + "&fwVer=" + kFwVerStr +
-        "&boot=" + bootCount + "&rst=" + resetReason + "&part=" + bootPartition->label;
+        "&boot=" + bootCount + "&rst=" + resetReason + "&part=" + bootPartition->label +
+        "&rssi=" + rssi;
+    if (savedLastDisplayTimeMsec > 0) {
+      httpUrl = httpUrl + "&lastDisplayTime=" + savedLastDisplayTimeMsec;
+    }
     if (failureCount > 0) {
       httpUrl = httpUrl + "&fail=" + failureCount;
     }
@@ -318,8 +329,6 @@ void setup() {
 
   if (errorStatus == NULL && runOta) {
     log_i("Ota: start");
-
-    String httpUrl = (String) kHttpServer + kOtaPostfix + "?mac=" + macStr;
     if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
       log_e("Ota: Update.begin == false");
     } else {
@@ -373,7 +382,7 @@ void setup() {
   if (errorStatus == NULL) {
     long int timeStartGet = millis();
     HTTPClient http;
-    http.useHTTP10(true);  // disabe chunked encoding, since the stream doesn't remove metadata
+    http.useHTTP10(true);  // disable chunked encoding, since the stream doesn't remove metadata
     http.setTimeout(15*1000);
     String httpUrl = (String) kHttpServer + kImagePostfix + "?mac=" + macStr;
     http.begin(httpUrl);
@@ -435,6 +444,9 @@ void setup() {
 
   long int timeStartDisplay = millis();
   if (errorStatus == NULL) {  
+    log_i("No errors");
+    failureCount = 0;
+
     log_i("Display: show image");
     display.firstPage();
     do {
@@ -448,36 +460,45 @@ void setup() {
       display.setCursor(display.width() - tbw, display.height() - 1 - kFont.glyph[0].yOffset);
       display.print(selfData);
     } while (display.nextPage());
-
-    long int timeDisplay = millis() - timeStartDisplay;
-    log_i("Display done: %.1fs", (float)timeDisplay / 1000);
-    if (timeDisplay < kMinDisplayGoodMs || timeDisplay > kMaxDisplayGoodMs) {
-      errorStatus = "Display refresh unexpected time";
-    }
-  }
-  
-  if (errorStatus != NULL) {
+  } else {  
     failureCount++;
     log_e("Failure %d, error: %s", failureCount, errorStatus);
-  } else {
-    log_i("No errors");
-    failureCount = 0;
-  }
-  
-  if (failureCount >= kMaxErrorCount) {
-    log_i("Display: show error");
-    display.firstPage();
-    do {
-      display.setTextColor(GxEPD_BLACK);
-      display.setCursor(display.width() - tbw, display.height() - 1 - kFont.glyph[0].yOffset);
-      display.print(selfData);
 
-      display.setTextColor(GxEPD_RED);
-      display.getTextBounds(errorStatus, 0, 0, &tbx, &tby, &tbw, &tbh);
-      display.setCursor((display.width() - tbw) / 2, (display.height() - tbh) / 2);
-      display.print(errorStatus);
-    } while (display.nextPage());
+    if (failureCount >= kMaxErrorCount) {
+      log_i("Display: show error");
+      display.firstPage();
+      do {
+        display.setTextColor(GxEPD_BLACK);
+        display.setCursor(display.width() - tbw, display.height() - 1 - kFont.glyph[0].yOffset);
+        display.print(selfData);
+
+        display.setTextColor(GxEPD_RED);
+        display.getTextBounds(errorStatus, 0, 0, &tbx, &tby, &tbw, &tbh);
+        display.setCursor((display.width() - tbw) / 2, (display.height() - tbh) / 2);
+        display.print(errorStatus);
+      } while (display.nextPage());
+    }
   }
+
+  // allow extra grace period for EPD BUSY signal
+  const long int timeEndGrace = millis() + kBusyGraceMsec;
+  while (millis() < timeEndGrace && digitalRead(kEpdBusyPin) == 1) {
+    bool ledOn = millis() % kBusyBlinkIntervalMs <= kBlinkIntervalMs/2;
+    digitalWrite(kLedR, ledOn);
+    digitalWrite(kLedG, ledOn);
+    esp_sleep_enable_timer_wakeup(kBlinkIntervalMs/4 * 1000ull);
+    esp_light_sleep_start();
+  }
+
+  long int timeDisplay = millis() - timeStartDisplay;
+  lastDisplayTimeMsec = timeDisplay;
+  log_i("Display done: %.1fs", (float)timeDisplay / 1000);
+  if (timeDisplay < kMinDisplayGoodMs || timeDisplay > kMaxDisplayGoodMs) {
+    errorStatus = "Display refresh unexpected time";
+  }
+
+  digitalWrite(kLedR, 0);
+  digitalWrite(kLedG, 0);
   display.hibernate();
 
   if (errorStatus == NULL && esp_ota_check_rollback_is_possible()) {
@@ -491,8 +512,6 @@ void setup() {
       log_e("Ota: rollback failed: %i", rollbackStatus);
     }
   }
-
-  digitalWrite(kLedG, 0);
 
   // put device to sleep
   digitalWrite(kEpdGate, 1);
