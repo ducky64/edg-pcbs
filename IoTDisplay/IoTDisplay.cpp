@@ -73,8 +73,8 @@ const GFXfont &kFont = FreeSans9pt7b;
 #endif
 const size_t kMaxWidth = 680;
 
-const int kMinDisplayGoodMs = 5000;  // minimum time the display should take for a full refresh to be considered good
-const int kMaxDisplayGoodMs = 60000;  // maximum time the display should take for a full refresh to be considered good
+const int kMinDisplayGoodMs = 15000;  // minimum time the display should take for a full refresh to be considered good
+const int kMaxDisplayGoodMs = 45000;  // maximum time the display should take for a full refresh to be considered good
 
 #include "esp_wifi.h"  // support wifi stop
 #include <WiFi.h>
@@ -101,7 +101,7 @@ uint8_t streamData[32768] = {0};  // allocate in static memory, contains PNG ima
 StaticJsonDocument<256> doc;
 
 
-const char* kFwVerStr = "9";
+const char* kFwVerStr = "10";
 
 RTC_DATA_ATTR int bootCount = 0;
 RTC_DATA_ATTR int failureCount = 0;
@@ -112,7 +112,7 @@ const int kRetrySleepSec = 120;  // on error, how long to wait to retry
 const int kMaxErrorCount = 3;  // number of consecutive network failures before displaying error
 const int kErrSleepSec = 3600;  // on exceeding max errors, how long to wait until next attempt
 
-const int kBusyGraceMsec = 15000;
+const int kBusyGraceMsec = 25000;
 
 
 void PNGDraw(PNGDRAW *pDraw) {
@@ -423,7 +423,8 @@ void setup() {
 
   // DISPLAY RENDERING CODE
   //
-  digitalWrite(kEpdGate, 0);  // turn on display - TODO this should be done later
+  digitalWrite(kEpdGate, 0);  // turn on display
+  delay(10);  // wait for power to stabilize
   spi.begin(kEpdSckPin, -1, kEpdMosiPin, -1);
   display.epd2.selectSPI(spi, SPISettings(4000000, MSBFIRST, SPI_MODE0));
   display.init(0);
@@ -484,8 +485,9 @@ void setup() {
   const long int timeEndGrace = millis() + kBusyGraceMsec;
   while (millis() < timeEndGrace && digitalRead(kEpdBusyPin) == 1) {
     bool ledOn = millis() % kBusyBlinkIntervalMs <= kBlinkIntervalMs/2;
-    digitalWrite(kLedR, ledOn);
-    digitalWrite(kLedG, ledOn);
+    bool altOn = millis() % (kBusyBlinkIntervalMs*2) <= kBusyBlinkIntervalMs;
+    digitalWrite(kLedR, ledOn & altOn);
+    digitalWrite(kLedG, ledOn & !altOn);
     esp_sleep_enable_timer_wakeup(kBlinkIntervalMs/4 * 1000ull);
     esp_light_sleep_start();
   }
@@ -512,6 +514,11 @@ void setup() {
       log_e("Ota: rollback failed: %i", rollbackStatus);
     }
   }
+
+  // release pins (put into INPUT mode) before shutting off power
+  spi.end();  // release SPI pins
+  display.end();  // release CS, DC, RST
+  delay(10);
 
   // put device to sleep
   digitalWrite(kEpdGate, 1);
