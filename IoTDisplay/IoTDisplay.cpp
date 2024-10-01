@@ -101,7 +101,7 @@ uint8_t streamData[32768] = {0};  // allocate in static memory, contains PNG ima
 StaticJsonDocument<256> doc;
 
 
-const char* kFwVerStr = "10";
+const char* kFwVerStr = "11";
 
 RTC_DATA_ATTR int bootCount = 0;
 RTC_DATA_ATTR int failureCount = 0;
@@ -113,6 +113,15 @@ const int kMaxErrorCount = 3;  // number of consecutive network failures before 
 const int kErrSleepSec = 3600;  // on exceeding max errors, how long to wait until next attempt
 
 const int kBusyGraceMsec = 25000;
+
+
+void ledWrite(int ledPin, bool state) {
+  if (state) {
+    pinMode(ledPin, INPUT_PULLUP);
+  } else {
+    pinMode(ledPin, INPUT_PULLDOWN);
+  }
+}
 
 
 void PNGDraw(PNGDRAW *pDraw) {
@@ -146,7 +155,7 @@ void PNGDraw(PNGDRAW *pDraw) {
 }
 
 void busyCallback(const void*) {
-  digitalWrite(kLedG, millis() % kBusyBlinkIntervalMs <= kBlinkIntervalMs/2);
+  ledWrite(kLedG, millis() % kBusyBlinkIntervalMs <= kBlinkIntervalMs/2);
   esp_sleep_enable_timer_wakeup(kBlinkIntervalMs/4 * 1000ull);
   esp_light_sleep_start();
 }
@@ -217,9 +226,9 @@ void setup() {
   pinMode(kEpdGate, OUTPUT);
   pinMode(kMemGate, OUTPUT);
 
-  digitalWrite(kLedR, 0);
-  digitalWrite(kLedG, 0);
-  digitalWrite(kLedB, 0);
+  ledWrite(kLedR, 0);
+  ledWrite(kLedG, 0);
+  ledWrite(kLedB, 0);
   gpio_hold_dis((gpio_num_t)kEpdGate);
   gpio_hold_dis((gpio_num_t)kMemGate);
   digitalWrite(kEpdGate, 1);  // start off
@@ -250,16 +259,16 @@ void setup() {
   sprintf(macStr, "%02x%02x%02x%02x%02x%02x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 
   log_i("Total heap: %d, PSRAM: %d", ESP.getHeapSize(), ESP.getPsramSize());
-  digitalWrite(kLedR, 0);
-  digitalWrite(kLedG, 0);
-  digitalWrite(kLedB, 0);
+  ledWrite(kLedR, 0);
+  ledWrite(kLedG, 0);
+  ledWrite(kLedB, 0);
 
   // NETWORK CODE
   //
   long int timeStartWifi = millis();
   WiFi.begin(ssid, password);
   while(WiFi.status() != WL_CONNECTED) {
-    digitalWrite(kLedR, millis() % kBlinkIntervalMs <= kBlinkIntervalMs/2);
+    ledWrite(kLedR, millis() % kBlinkIntervalMs <= kBlinkIntervalMs/2);
     if ((millis() - timeStartWifi) > kMaxWifiConnectSec * 1000) {
       errorStatus = "no wifi";
       break;
@@ -270,7 +279,7 @@ void setup() {
   long int timeConnectWifi = millis();
   int rssi = WiFi.RSSI();
   log_i("Connected WiFi: %.1fs, %s, RSSI=%i", (float)(timeConnectWifi - timeStartWifi) / 1000, WiFi.localIP().toString(), rssi);
-  digitalWrite(kLedR, 1);
+  ledWrite(kLedR, 1);
 
   // fetch metadata
   unsigned long sleepTimeSec = 0;
@@ -357,7 +366,7 @@ void setup() {
             break;
           }
           log_d("  %i KiB", otaBytes / 1024);
-          digitalWrite(kLedB, millis() % 200 >= 100);
+          ledWrite(kLedB, millis() % 200 >= 100);
         }
         http.end();
         log_i("Ota: got %i, wrote %i", otaBytes, otaWritten);
@@ -375,7 +384,7 @@ void setup() {
         log_e("Ota: response error %i", httpResponseCode);
       }
     }
-    digitalWrite(kLedB, 0);
+    ledWrite(kLedB, 0);
   }
 
   // fetch image data
@@ -418,8 +427,8 @@ void setup() {
   }
   long int timeStopWifi = millis();
   log_i("Network active: %.1fs", (float)(timeStopWifi - timeStartWifi) / 1000);
-  digitalWrite(kLedR, 0);
-  digitalWrite(kLedG, 1);
+  ledWrite(kLedR, 0);
+  ledWrite(kLedG, 1);
 
   // DISPLAY RENDERING CODE
   //
@@ -486,8 +495,8 @@ void setup() {
   while (millis() < timeEndGrace && digitalRead(kEpdBusyPin) == 1) {
     bool ledOn = millis() % kBusyBlinkIntervalMs <= kBlinkIntervalMs/2;
     bool altOn = millis() % (kBusyBlinkIntervalMs*2) <= kBusyBlinkIntervalMs;
-    digitalWrite(kLedR, ledOn & altOn);
-    digitalWrite(kLedG, ledOn & !altOn);
+    ledWrite(kLedR, ledOn & altOn);
+    ledWrite(kLedG, ledOn & !altOn);
     esp_sleep_enable_timer_wakeup(kBlinkIntervalMs/4 * 1000ull);
     esp_light_sleep_start();
   }
@@ -499,8 +508,8 @@ void setup() {
     errorStatus = "Display refresh unexpected time";
   }
 
-  digitalWrite(kLedR, 0);
-  digitalWrite(kLedG, 0);
+  ledWrite(kLedR, 0);
+  ledWrite(kLedG, 0);
   display.hibernate();
 
   if (errorStatus == NULL && esp_ota_check_rollback_is_possible()) {
@@ -552,8 +561,8 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-  digitalWrite(kLedG, 0);
+  ledWrite(kLedG, 0);
   delay(100);
-  digitalWrite(kLedG, 1);
+  ledWrite(kLedG, 1);
   delay(100);
 }
