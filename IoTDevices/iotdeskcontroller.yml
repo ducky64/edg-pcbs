@@ -16,6 +16,8 @@ esphome:
       - lambda: "id(desk).request_limits();"
       - delay: 0.1s
       - lambda: "id(desk).request_settings();"
+  on_loop:
+    - script.execute: toggle1234_led_loop
 
 external_components:
   - source:
@@ -29,14 +31,16 @@ external_components:
     # jiecang_desk_controller: VERBOSE
 
 
-# device constants
 globals:
+  # configuration constants
   - id: kBrightnessBackground
     type: float
     initial_value: '0.15'
   - id: kBrightnessActive
     type: float
     initial_value: '0.33'
+
+  # stored values
   - id: DeskMem1Pos  # cm, local stored copy
     type: float
     restore_value: true
@@ -54,10 +58,21 @@ globals:
     restore_value: true
     initial_value: '0'
 
+  # temporary state
+  - id: toggle12_state  # last memory state for toggle1/2, 1=mem1, 2=mem2, 0=invalid
+    type: int
+    initial_value: '0'
+  - id: toggle34_state  # last memory state for toggle3/4, 1=mem3, 2=mem4, 0=invalid
+    type: int
+    initial_value: '0'
+  - id: memory_target  # 0 = none / idle, 1-4 = memory positions
+    type: int
+    initial_value: '0'
+
 script:
   - id: NpxSet  # helper function to make LED ops take less lines
     parameters:
-      lednum: int  # 1
+      lednum: int  # 0-indexed
       bright: float  # 0-1
       red: float  # 0-1
       green: float
@@ -66,8 +81,8 @@ script:
     then:
       - light.addressable_set:
           id: led
-          range_from: !lambda return lednum - 1;
-          range_to: !lambda return lednum - 1;
+          range_from: !lambda return lednum;
+          range_to: !lambda return lednum;
           red: !lambda return red * bright;
           green: !lambda return green * bright;
           blue: !lambda return blue * bright;
@@ -78,11 +93,58 @@ script:
             - delay: !lambda return duration_ms;
             - light.addressable_set:
                 id: led
-                range_from: !lambda return lednum - 1;
-                range_to: !lambda return lednum - 1;
+                range_from: !lambda return lednum;
+                range_to: !lambda return lednum;
                 red: 0
                 green: 0
                 blue: 0
+  - id: toggle1234_led_loop
+    then:
+    - lambda: |-
+        const int kUpdateFreq = 50;  // run at most this frequently
+        auto currMillis = millis();
+        static auto lastMillis = currMillis;
+        if (currMillis < lastMillis + kUpdateFreq) {
+          return;
+        }
+
+        auto currHeight = id(desk_height).state;
+        static auto lastHeight = currHeight;
+        static auto lastHeightUpdate = currMillis;
+        if (currHeight != lastHeight) {
+          lastHeight = currHeight;
+          lastHeightUpdate = currMillis;
+        }
+
+        uint8_t activeLed = 255;  // NPX id and color for active LED
+        float r = 0, g = 0, b = 0;
+        if (id(memory_target) == 1) {
+          activeLed = 0; r = 0; g = 1; b = 1;
+        } else if (id(memory_target) == 2) {
+          activeLed = 0; r = 1; g = 1; b = 0;
+        } else if (id(memory_target) == 3) {
+          activeLed = 1; r = 0; g = 1; b = 1;
+        } else if (id(memory_target) == 4) {
+          activeLed = 1; r = 1; g = 1; b = 0;
+        }
+
+        static auto lastBlink = 0;
+        if (currMillis < lastHeightUpdate + 500) {  // blink if active moving
+          if (currMillis > lastBlink + 500) {
+            id(NpxSet).execute(activeLed, id(kBrightnessActive), r, g, b, 250);
+            lastBlink = currMillis;
+          }
+        } else {
+          lastBlink = 0;
+          id(NpxSet).execute(activeLed, id(kBrightnessBackground), r, g, b, 0);
+        }
+
+        for (uint8_t i=0; i<2; i++) {  // clear other LEDs
+          if (i != activeLed) {
+            id(NpxSet).execute(i, 0, 0, 0, 0, 0);
+          }
+        }
+
 
 wifi:
   <<: !include ../wifi_config.yaml
@@ -113,31 +175,28 @@ jiecang_desk_controller:
   id: desk
   buttons:
     step_up:
-      name: "Step up"
+      name: "${name} Step up"
     step_down:
-      name: "Step down"
+      name: "${name} Step down"
     position1:
-      name: "Position 1"
+      name: "${name} Position 1"
     position2:
-      name: "Position 2"
+      name: "${name} Position 2"
     position3:
-      name: "Position 3"
+      name: "${name} Position 3"
     position4:
-      name: "Position 4"
+      name: "${name} Position 4"
   numbers:
     height:
       id: desk_height
-      name: "Height"
-    height_pct:
-      id: desk_height_pct
-      name: "Height Pct"
+      name: "${name} Height"
   sensors:
     height_min:
       id: desk_height_min
-      name: "Height Min"
+      name: "${name} Height Min"
     height_max:
       id: desk_height_max
-      name: "Height Max"
+      name: "${name} Height Max"
 
 matrix_keypad:
   id: keypad
@@ -165,37 +224,73 @@ matrix_keypad:
 binary_sensor:
   - platform: matrix_keypad
     keypad_id: keypad
-    name: "Key0"
-    key: 0
+    name: "${name} Key0"
+    key: 0  # toggle memory positions 1/2
     on_click:
     - min_length: 10ms
       max_length: 999ms
       then:
-        - lambda: id(desk).goto_position(1);
-        - lambda: id(NpxSet).execute(1, id(kBrightnessBackground), 0, 1, 0, 0);
+        - lambda: |-
+            auto d0 = abs(id(desk_height).state - id(DeskMem1Pos));
+            auto d1 = abs(id(desk_height).state - id(DeskMem2Pos));
+            if (id(toggle12_state) == 2 || id(toggle12_state) == 0 && d0 >= d1) {  // toggle OR go to further position
+              id(desk).goto_position(1);
+              id(memory_target) = 1;
+              id(toggle12_state) = 1;
+            } else {
+              id(desk).goto_position(2);
+              id(memory_target) = 2;
+              id(toggle12_state) = 2;
+            }
     - min_length: 2000ms
       max_length: 3000ms
       then:
-        - lambda: id(desk).save_position(1);
-        - lambda: id(NpxSet).execute(1, id(kBrightnessActive), 0, 1, 0, 250);
+        - lambda: |-
+            if (id(toggle12_state) == 0 || id(toggle12_state) == 1) {
+              id(desk).save_position(1);
+              id(DeskMem1Pos) = id(desk_height).state;
+              id(memory_target) = 1;
+            } else {
+              id(desk).save_position(2);
+              id(DeskMem2Pos) = id(desk_height).state;
+              id(memory_target) = 2;
+            }
   - platform: matrix_keypad
     keypad_id: keypad
-    name: "Key1"
-    key: 1
+    name: "${name} Key1"
+    key: 1  # toggle memory positions 3/4
     on_click:
     - min_length: 10ms
       max_length: 999ms
       then:
-        - lambda: id(desk).goto_position(2);
-        - lambda: id(NpxSet).execute(2, id(kBrightnessBackground), 1, 0, 0, 0);
+        - lambda: |-
+            auto d0 = abs(id(desk_height).state - id(DeskMem3Pos));
+            auto d1 = abs(id(desk_height).state - id(DeskMem4Pos));
+            if (id(toggle34_state) == 2 || id(toggle34_state) == 0 && d0 >= d1) {  // toggle OR go to further position
+              id(desk).goto_position(3);
+              id(memory_target) = 3;
+              id(toggle34_state) = 1;
+            } else {
+              id(desk).goto_position(4);
+              id(memory_target) = 4;
+              id(toggle34_state) = 2;
+            }
     - min_length: 2000ms
       max_length: 3000ms
       then:
-        - lambda: id(desk).save_position(2);
-        - lambda: id(NpxSet).execute(2, id(kBrightnessActive), 1, 0, 0, 250);
+        - lambda: |-
+            if (id(toggle34_state) == 0 || id(toggle34_state) == 1) {
+              id(desk).save_position(3);
+              id(DeskMem3Pos) = id(desk_height).state;
+              id(memory_target) = 3;
+            } else {
+              id(desk).save_position(4);
+              id(DeskMem4Pos) = id(desk_height).state;
+              id(memory_target) = 4;
+            }
   - platform: matrix_keypad
     keypad_id: keypad
-    name: "Key2"
+    name: "${name} Key2"
     key: 2
     on_press:
       then:
@@ -206,7 +301,7 @@ binary_sensor:
         - lambda: "id(desk).request_settings();"
   - platform: matrix_keypad
     keypad_id: keypad
-    name: "Key3"
+    name: "${name} Key3"
     key: 3
     on_press:
       then:
@@ -216,15 +311,18 @@ binary_sensor:
   - platform: matrix_keypad
     keypad_id: keypad
     id: keypad_4
-    name: "Key4"
+    name: "${name} Key4"
     key: 4
     on_state:
       - while:
           condition:
             binary_sensor.is_on: keypad_4
           then:
-            - lambda: id(desk).step_down();
-            - delay: 250ms
+            - lambda: |-
+                id(desk).step_down();
+                id(memory_target) = 0;
+                id(NpxSet).execute(4, id(kBrightnessActive), 0, 1, 0, 250);
+            - delay: 500ms
     on_release:
       then:
         - lambda: id(desk).stop();
@@ -232,18 +330,39 @@ binary_sensor:
   - platform: matrix_keypad
     keypad_id: keypad
     id: keypad_5
-    name: "Key5"
+    name: "${name} Key5"
     key: 5
     on_state:
       - while:
           condition:
             binary_sensor.is_on: keypad_5
           then:
-            - lambda: id(desk).step_up();
-            - delay: 250ms
+            - lambda: |-
+                id(desk).step_up();
+                id(memory_target) = 0;
+                id(NpxSet).execute(5, id(kBrightnessActive), 0, 1, 0, 250);
+            - delay: 500ms
     on_release:
       then:
         - lambda: id(desk).stop();
+
+sensor:  # displays for saved state
+  - platform: template
+    name: "${name} Mem1"
+    lambda: return id(DeskMem1Pos);
+    update_interval: 1s
+  - platform: template
+    name: "${name} Mem2"
+    lambda: return id(DeskMem2Pos);
+    update_interval: 1s
+  - platform: template
+    name: "${name} Mem3"
+    lambda: return id(DeskMem3Pos);
+    update_interval: 1s
+  - platform: template
+    name: "${name} Mem4"
+    lambda: return id(DeskMem4Pos);
+    update_interval: 1s
 
 light:
   - platform: neopixelbus  # seens to work better than esp32_rmt_led_strip
@@ -291,7 +410,7 @@ display:
     reset_pin: GPIO2
     update_interval : 200ms
     lambda: |-
-      it.printf(0, 0, id(bdf6x10), TextAlign::TOP_LEFT, "%.1f / %.0f%%", id(desk_height).state, id(desk_height_pct).state);
+      it.printf(0, 0, id(bdf6x10), TextAlign::TOP_LEFT, "%.1f", id(desk_height));
       it.printf(0, 8, id(bdf6x10), TextAlign::TOP_LEFT, "%.1f - %1.f", id(desk_height_min).state, id(desk_height_max).state);
 
       // char wifiSsidTrunc[16] = {0};
