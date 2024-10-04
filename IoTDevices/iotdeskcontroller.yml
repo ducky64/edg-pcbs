@@ -53,6 +53,7 @@ uart:
           
 # based on https://github.com/Rocka84/esphome_components/blob/master/components/jiecang_desk_controller/example_basic.yaml
 # note, protocol reverse engineering here: https://gitlab.com/pimp-my-desk/desk-control/jiecang-reverse-engineering
+# and https://github.com/phord/Jarvis
 jiecang_desk_controller:
   id: desk
   buttons:
@@ -158,6 +159,7 @@ binary_sensor:
       then:
         - lambda: id(desk).goto_height(50);
         - lambda: ESP_LOGI("top", "GOTO 50");
+        - rtttl.play: 'two_short:d=4,o=5,b=100:16e6,16e6'
   - platform: matrix_keypad
     keypad_id: keypad
     id: keypad_4
@@ -191,7 +193,7 @@ binary_sensor:
         - lambda: id(desk).stop();
 
 light:
-  - platform: neopixelbus
+  - platform: neopixelbus  # seens to work better than esp32_rmt_led_strip
     id: led
     variant: sk6812
     pin: GPIO7
@@ -207,6 +209,15 @@ light:
     pin:
       number: GPIO9
       inverted: true
+
+output:
+  - platform: ledc
+    pin: GPIO8
+    id: rtttl_out
+
+rtttl:
+  output: rtttl_out
+  gain: 1%
 
 i2c:
   scl: GPIO1
