@@ -10,13 +10,12 @@ esphome:
     priority: 0  # when mostly everything else is done
     then:
       - lambda: pinMode(6, OUTPUT_OPEN_DRAIN );  // mode not set correctly in matrix_keypad
-      - delay: 0.2s  # give controller a chance to handle the response before sending the next command
+      - delay: 0.1s  # give controller a chance to handle the response before sending the next command
       - lambda: "id(desk).request_physical_limits();"
-      - delay: 0.2s
+      - delay: 0.1s
       - lambda: "id(desk).request_limits();"
-      - delay: 0.2s
+      - delay: 0.1s
       - lambda: "id(desk).request_settings();"
-
 
 external_components:
   - source:
@@ -24,15 +23,71 @@ external_components:
       url: https://github.com/Rocka84/esphome_components/
     components: [ jiecang_desk_controller ]
 
+# logger:  # for debugging desk controller component
+#   level: VERBOSE
+#   logs:
+    # jiecang_desk_controller: VERBOSE
+
+
+# device constants
+globals:
+  - id: kBrightnessBackground
+    type: float
+    initial_value: '0.15'
+  - id: kBrightnessActive
+    type: float
+    initial_value: '0.33'
+  - id: DeskMem1Pos  # cm, local stored copy
+    type: float
+    restore_value: true
+    initial_value: '0'
+  - id: DeskMem2Pos
+    type: float
+    restore_value: true
+    initial_value: '0'
+  - id: DeskMem3Pos
+    type: float
+    restore_value: true
+    initial_value: '0'
+  - id: DeskMem4Pos
+    type: float
+    restore_value: true
+    initial_value: '0'
+
+script:
+  - id: NpxSet  # helper function to make LED ops take less lines
+    parameters:
+      lednum: int  # 1
+      bright: float  # 0-1
+      red: float  # 0-1
+      green: float
+      blue: float
+      duration_ms: int  # 0 to latch
+    then:
+      - light.addressable_set:
+          id: led
+          range_from: !lambda return lednum - 1;
+          range_to: !lambda return lednum - 1;
+          red: !lambda return red * bright;
+          green: !lambda return green * bright;
+          blue: !lambda return blue * bright;
+      - if:
+          condition:
+            - lambda: return duration_ms > 0;
+          then:
+            - delay: !lambda return duration_ms;
+            - light.addressable_set:
+                id: led
+                range_from: !lambda return lednum - 1;
+                range_to: !lambda return lednum - 1;
+                red: 0
+                green: 0
+                blue: 0
+
 wifi:
   <<: !include ../wifi_config.yaml
 
 <<: !include ../common_config.yaml
-
-logger:
-  level: VERBOSE
-  logs:
-    jiecang_desk_controller: VERBOSE
 
 uart:
   id: desk_uart
@@ -57,12 +112,6 @@ uart:
 jiecang_desk_controller:
   id: desk
   buttons:
-    move_up:
-      name: "Move up"
-    move_down:
-      name: "Move down"
-    stop:
-      name: "Stop"
     step_up:
       name: "Step up"
     step_down:
@@ -123,25 +172,12 @@ binary_sensor:
       max_length: 999ms
       then:
         - lambda: id(desk).goto_position(1);
+        - lambda: id(NpxSet).execute(1, id(kBrightnessBackground), 0, 1, 0, 0);
     - min_length: 2000ms
       max_length: 3000ms
       then:
         - lambda: id(desk).save_position(1);
-        - light.addressable_set:
-            id: led
-            range_from: 0
-            range_to: 0
-            red: 0%
-            green: 25%
-            blue: 25%
-        - delay: 250ms
-        - light.addressable_set:
-            id: led
-            range_from: 0
-            range_to: 0
-            red: 0%
-            green: 0%
-            blue: 0%
+        - lambda: id(NpxSet).execute(1, id(kBrightnessActive), 0, 1, 0, 250);
   - platform: matrix_keypad
     keypad_id: keypad
     name: "Key1"
@@ -151,25 +187,12 @@ binary_sensor:
       max_length: 999ms
       then:
         - lambda: id(desk).goto_position(2);
+        - lambda: id(NpxSet).execute(2, id(kBrightnessBackground), 1, 0, 0, 0);
     - min_length: 2000ms
       max_length: 3000ms
       then:
         - lambda: id(desk).save_position(2);
-        - light.addressable_set:
-            id: led
-            range_from: 1
-            range_to: 1
-            red: 0%
-            green: 25%
-            blue: 25%
-        - delay: 250ms
-        - light.addressable_set:
-            id: led
-            range_from: 1
-            range_to: 1
-            red: 0%
-            green: 0%
-            blue: 0%
+        - lambda: id(NpxSet).execute(2, id(kBrightnessActive), 1, 0, 0, 250);
   - platform: matrix_keypad
     keypad_id: keypad
     name: "Key2"
@@ -177,9 +200,9 @@ binary_sensor:
     on_press:
       then:
         - lambda: "id(desk).request_physical_limits();"
-        - delay: 0.2s
+        - delay: 0.1s
         - lambda: "id(desk).request_limits();"
-        - delay: 0.2s
+        - delay: 0.1s
         - lambda: "id(desk).request_settings();"
   - platform: matrix_keypad
     keypad_id: keypad
