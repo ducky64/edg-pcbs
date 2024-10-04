@@ -101,7 +101,7 @@ script:
   - id: toggle1234_led_loop
     then:
     - lambda: |-
-        const int kUpdateFreq = 50;  // run at most this frequently
+        const int kUpdateFreq = 100;  // run at most this frequently
         auto currMillis = millis();
         static auto lastMillis = currMillis;
         if (currMillis < lastMillis + kUpdateFreq) {
@@ -410,7 +410,7 @@ display:
     reset_pin: GPIO2
     update_interval : 200ms
     lambda: |-
-      it.printf(0, 0, id(bdf6x10), TextAlign::TOP_LEFT, "%.1f", id(desk_height));
+      it.printf(0, 0, id(bdf6x10), TextAlign::TOP_LEFT, "%.1f", id(desk_height).state);
       it.printf(0, 8, id(bdf6x10), TextAlign::TOP_LEFT, "%.1f - %1.f", id(desk_height_min).state, id(desk_height_max).state);
 
       // char wifiSsidTrunc[16] = {0};
