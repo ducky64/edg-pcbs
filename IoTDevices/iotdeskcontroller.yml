@@ -1,0 +1,237 @@
+substitutions:
+  name: "DeskController"
+
+esphome:
+  name: ducky-deskcontroller
+  name_add_mac_suffix: true
+  platform: esp32
+  board: esp32-c3-devkitm-1
+  on_boot:
+    priority: 0  # when mostly everything else is done
+    then:
+      - lambda: pinMode(6, OUTPUT_OPEN_DRAIN );  // mode not set correctly in matrix_keypad
+      - delay: 0.2s  # give controller a chance to handle the response before sending the next command
+      - lambda: "id(desk).request_physical_limits();"
+      - delay: 0.2s
+      - lambda: "id(desk).request_limits();"
+      - delay: 0.2s
+      - lambda: "id(desk).request_settings();"
+
+
+external_components:
+  - source:
+      type: git
+      url: https://github.com/Rocka84/esphome_components/
+    components: [ jiecang_desk_controller ]
+
+wifi:
+  <<: !include ../wifi_config.yaml
+
+<<: !include ../common_config.yaml
+
+logger:
+  level: VERBOSE
+  logs:
+    jiecang_desk_controller: VERBOSE
+
+uart:
+  id: desk_uart
+  tx_pin: GPIO5
+  rx_pin: GPIO4
+  baud_rate: 9600
+  debug:
+    direction: BOTH
+    dummy_receiver: true
+    after:
+      delimiter: [0x7E]
+      # timeout: 5ms
+    sequence:
+        # Use mulcmu's method for reading uart without a custome component: https://community.home-assistant.io/t/how-to-uart-read-without-custom-component/491950?u=mahko_mahko
+      - lambda: |-
+          UARTDebug::log_int(direction, bytes, ',');                // Log the message as int. Good for height message checks.
+          UARTDebug::log_hex(direction, bytes, ',');                // Log the message in hex. Good for checking against protocol documentation.
+          
+# based on https://github.com/Rocka84/esphome_components/blob/master/components/jiecang_desk_controller/example_basic.yaml
+# note, protocol reverse engineering here: https://gitlab.com/pimp-my-desk/desk-control/jiecang-reverse-engineering
+jiecang_desk_controller:
+  id: desk
+  buttons:
+    move_up:
+      name: "Move up"
+    move_down:
+      name: "Move down"
+    stop:
+      name: "Stop"
+    step_up:
+      name: "Step up"
+    step_down:
+      name: "Step down"
+    position1:
+      name: "Position 1"
+    position2:
+      name: "Position 2"
+    position3:
+      name: "Position 3"
+    position4:
+      name: "Position 4"
+  numbers:
+    height:
+      id: desk_height
+      name: "Height"
+    height_pct:
+      id: desk_height_pct
+      name: "Height Pct"
+  sensors:
+    height_min:
+      id: desk_height_min
+      name: "Height Min"
+    height_max:
+      id: desk_height_max
+      name: "Height Max"
+
+matrix_keypad:
+  id: keypad
+  rows:
+    - pin: 
+        number: GPIO6
+        mode: OUTPUT_OPEN_DRAIN  # this doesn't actually work
+    - pin:
+        number: GPIO3
+        mode: OUTPUT_OPEN_DRAIN
+
+  columns:
+    - pin:
+        number: GPIO19
+        mode: INPUT_PULLUP
+    - pin:
+        number: GPIO18
+        mode: INPUT_PULLUP
+    - pin:
+        number: GPIO10
+        mode: INPUT_PULLUP
+
+  keys: "012345"
+
+binary_sensor:
+  - platform: matrix_keypad
+    keypad_id: keypad
+    name: "Key0"
+    key: 0
+    on_click:
+    - min_length: 50ms
+      max_length: 999ms
+      then:
+        - lambda: id(desk).goto_position(1);
+    - min_length: 1000ms
+      max_length: 3000ms
+      then:
+        - lambda: id(desk).save_position(1);
+  - platform: matrix_keypad
+    keypad_id: keypad
+    name: "Key1"
+    key: 1
+    on_click:
+    - min_length: 50ms
+      max_length: 999ms
+      then:
+        - lambda: id(desk).goto_position(2);
+    - min_length: 1000ms
+      max_length: 3000ms
+      then:
+        - lambda: id(desk).save_position(2);
+  - platform: matrix_keypad
+    keypad_id: keypad
+    name: "Key2"
+    key: 2
+    on_press:
+      then:
+        - lambda: "id(desk).request_physical_limits();"
+        - delay: 0.2s
+        - lambda: "id(desk).request_limits();"
+        - delay: 0.2s
+        - lambda: "id(desk).request_settings();"
+  - platform: matrix_keypad
+    keypad_id: keypad
+    name: "Key3"
+    key: 3
+    on_press:
+      then:
+        - lambda: id(desk).goto_height(50);
+        - lambda: ESP_LOGI("top", "GOTO 50");
+  - platform: matrix_keypad
+    keypad_id: keypad
+    id: keypad_4
+    name: "Key4"
+    key: 4
+    on_state:
+      - while:
+          condition:
+            binary_sensor.is_on: keypad_4
+          then:
+            - lambda: id(desk).step_down();
+            - delay: 250ms
+    on_release:
+      then:
+        - lambda: id(desk).stop();
+
+  - platform: matrix_keypad
+    keypad_id: keypad
+    id: keypad_5
+    name: "Key5"
+    key: 5
+    on_state:
+      - while:
+          condition:
+            binary_sensor.is_on: keypad_5
+          then:
+            - lambda: id(desk).step_up();
+            - delay: 250ms
+    on_release:
+      then:
+        - lambda: id(desk).stop();
+
+light:
+  - platform: neopixelbus
+    id: led
+    variant: sk6812
+    pin: GPIO7
+    num_leds: 6
+    name: "${name} Neopixels"
+    effects:
+      - addressable_rainbow:
+          name: Rainbow
+  - platform: status_led
+    name: "${name} Dbg"
+    id: debug_led
+    internal: true
+    pin:
+      number: GPIO9
+      inverted: true
+
+i2c:
+  scl: GPIO1
+  sda: GPIO0
+  frequency: 400kHz
+  scan: false
+
+font:
+  - file: "resources/4x6.bdf"  # characters actually 3x5 plus 1px descender
+    id: bdf4x6
+  - file: "resources/6x10.bdf"  # characters actually 5x7 plus 2px descender
+    id: bdf6x10
+
+display:
+  - platform: ssd1306_i2c
+    model: "SSD1306 128x64"
+    address: 0x3c
+    reset_pin: GPIO2
+    update_interval : 200ms
+    lambda: |-
+      it.printf(0, 0, id(bdf6x10), TextAlign::TOP_LEFT, "%.1f / %.0f%%", id(desk_height).state, id(desk_height_pct).state);
+      it.printf(0, 8, id(bdf6x10), TextAlign::TOP_LEFT, "%.1f - %1.f", id(desk_height_min).state, id(desk_height_max).state);
+
+      // char wifiSsidTrunc[16] = {0};
+      // strncpy(wifiSsidTrunc, WiFi.SSID().c_str(), 15);
+      // it.print(0, 64-6, id(bdf4x6), TextAlign::BOTTOM_LEFT, wifiSsidTrunc);
+      it.print(0, 64, id(bdf4x6), TextAlign::BOTTOM_LEFT, WiFi.localIP().toString().c_str());
+      it.printf(128, 64, id(bdf4x6), TextAlign::BOTTOM_RIGHT, "Ducky Desk");
