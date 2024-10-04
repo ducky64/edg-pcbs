@@ -348,20 +348,40 @@ binary_sensor:
 
 sensor:  # displays for saved state
   - platform: template
+    id: display_mem1
     name: "${name} Mem1"
-    lambda: return id(DeskMem1Pos);
+    lambda: |-
+      if (id(DeskMem1Pos) != id(display_mem1).state) {
+        return id(DeskMem1Pos);
+      }
+      return {};
     update_interval: 1s
   - platform: template
+    id: display_mem2
     name: "${name} Mem2"
-    lambda: return id(DeskMem2Pos);
+    lambda: |-
+      if (id(DeskMem2Pos) != id(display_mem2).state) {
+        return id(DeskMem2Pos);
+      }
+      return {};
     update_interval: 1s
   - platform: template
+    id: display_mem3
     name: "${name} Mem3"
-    lambda: return id(DeskMem3Pos);
+    lambda: |-
+      if (id(DeskMem3Pos) != id(display_mem3).state) {
+        return id(DeskMem3Pos);
+      }
+      return {};
     update_interval: 1s
   - platform: template
+    id: display_mem4
     name: "${name} Mem4"
-    lambda: return id(DeskMem4Pos);
+    lambda: |-
+      if (id(DeskMem4Pos) != id(display_mem4).state) {
+        return id(DeskMem4Pos);
+      }
+      return {};
     update_interval: 1s
 
 light:
