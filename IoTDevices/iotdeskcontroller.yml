@@ -119,27 +119,57 @@ binary_sensor:
     name: "Key0"
     key: 0
     on_click:
-    - min_length: 50ms
+    - min_length: 10ms
       max_length: 999ms
       then:
         - lambda: id(desk).goto_position(1);
-    - min_length: 1000ms
+    - min_length: 2000ms
       max_length: 3000ms
       then:
         - lambda: id(desk).save_position(1);
+        - light.addressable_set:
+            id: led
+            range_from: 0
+            range_to: 0
+            red: 0%
+            green: 25%
+            blue: 25%
+        - delay: 250ms
+        - light.addressable_set:
+            id: led
+            range_from: 0
+            range_to: 0
+            red: 0%
+            green: 0%
+            blue: 0%
   - platform: matrix_keypad
     keypad_id: keypad
     name: "Key1"
     key: 1
     on_click:
-    - min_length: 50ms
+    - min_length: 10ms
       max_length: 999ms
       then:
         - lambda: id(desk).goto_position(2);
-    - min_length: 1000ms
+    - min_length: 2000ms
       max_length: 3000ms
       then:
         - lambda: id(desk).save_position(2);
+        - light.addressable_set:
+            id: led
+            range_from: 1
+            range_to: 1
+            red: 0%
+            green: 25%
+            blue: 25%
+        - delay: 250ms
+        - light.addressable_set:
+            id: led
+            range_from: 1
+            range_to: 1
+            red: 0%
+            green: 0%
+            blue: 0%
   - platform: matrix_keypad
     keypad_id: keypad
     name: "Key2"
