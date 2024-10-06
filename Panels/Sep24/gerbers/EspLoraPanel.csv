@@ -1,0 +1,130 @@
+Id,Designator,Footprint,Quantity,Designation,Supplier and Ref,JLCPCB Part #,Manufacturer,Part
+1,"DH1,DH2,DH3",edg:JlcToolingHole_1.152mm,3,,,,,
+2,DJ1,Connector_JST:JST_PH_B6B-PH-K_1x06_P2.00mm_Vertical,1,,,,JST,B6B-PH-K
+3,"DQ1,DQ2,DQ3",Package_TO_SOT_SMD:SOT-23,3,"30V 5.7A 26.5m?@10V,5.7A 1.4W 1.5V@250uA 1PCSNChannel SOT-23-3L  MOSFETs ROHS",,C20917,Alpha & Omega Semicon,AO3400A
+4,"DR1,DR2,DR6,DR7,DR8,DR12",Resistor_SMD:R_0603_1608Metric,6,100mW Thick Film Resistors 75V ±100ppm/? ±1% 4.7k? 0603  Chip Resistor - Surface Mount ROHS,,C23162,UNI-ROYAL(Uniroyal Elec),0603WAF4701T5E
+5,DTP1,edg:TestPoint_TE_RCT_0805,1,gnd,,C5199798,Keystone,5015
+6,DFB1,Inductor_SMD:L_0805_2012Metric,1,±25% 100?@100MHz 0805  Ferrite Beads ROHS,,C1015,Sunlord,GZ2012D101TF
+7,DTP2,edg:TestPoint_TE_RCT_0805,1,pwr,,C5199798,Keystone,5015
+8,DU1,Package_TO_SOT_SMD:SOT-223-3_TabPin2,1,,,C435835,STMicroelectronics,LDL1117S33R
+9,"DC1,DC4,DC13",Capacitor_SMD:C_0603_1608Metric,3,50V 100nF X7R ±10% 0603  Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C14663,YAGEO,CC0603KRX7R9BB104
+10,"DC2,DC8",Capacitor_SMD:C_0805_2012Metric,2,25V 4.7uF X5R ±10% 0805  Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C1779,Samsung Electro-Mechanics,CL21A475KAQNNNE
+11,DTP3,edg:TestPoint_TE_RCT_0805,1,v3v3,,C5199798,Keystone,5015
+12,DD1,Diode_SMD:D_SOD-323,1,3.6V~3.8V 200mW 3.6V SOD-323  Zener Diodes ROHS,,C2891789,YONGYUTAI,BZT52C3V6S
+13,DU2,RF_Module:ESP-WROOM-02,1,,,C2934560,Espressif Systems,ESP32-C3-WROOM-02
+14,"DC3,DC11,DC14",Capacitor_SMD:C_0805_2012Metric,3,25V 10uF X5R ±10% 0805  Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C15850,Samsung Electro-Mechanics,CL21A106KAYNNNE
+15,DJ2,Connector:Tag-Connect_TC2030-IDC-NL_2x03_P1.27mm_Vertical,1,,,,,
+16,DR3,Resistor_SMD:R_0603_1608Metric,1,100mW Thick Film Resistors 75V ±100ppm/? ±1% 10k? 0603  Chip Resistor - Surface Mount ROHS,,C25804,UNI-ROYAL(Uniroyal Elec),0603WAF1002T5E
+17,"DC5,DC6,DC7,DC9,DC10,DC15,DC16",Capacitor_SMD:C_0603_1608Metric,7,50V 1uF X5R ±10% 0603  Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C15849,Samsung Electro-Mechanics,CL10A105KB8NNNC
+18,"DSW1,DSW2,DSW3,DSW4,DSW5,DSW6",Switch_Keyboard_Hotswap_Kailh:SW_Hotswap_Kailh_MX,6,,,,Kailh,PG151101S11
+19,"DD2,DD3,DD4,DD5,DD6,DD7",Diode_SMD:D_SOD-323,6,40V 600mV@1A 1A SOD-323  Schottky Diodes ROHS,,C191023,Guangdong Hottech,1N5819WS
+20,DD8,LED_SMD:LED_0603_1608Metric,1,-40?~+85? Red 0603  LED Indication - Discrete ROHS,,C2286,Hubei KENTO Elec,KT-0603R
+21,DR4,Resistor_SMD:R_0603_1608Metric,1,100mW Thick Film Resistors 75V ±100ppm/? ±1% 820? 0603  Chip Resistor - Surface Mount ROHS,,C23253,UNI-ROYAL(Uniroyal Elec),0603WAF8200T5E
+22,DJ3,Connector_FFC-FPC:TE_3-1734839-0_1x30-1MP_P0.5mm_Horizontal,1,,,C262645,Jushuo,AFC07-S30ECA-00
+23,DU3,edg:Lcd_Er_Oled0.96_1.1_Outline,1,,,,EastRising,ER-OLED-0.96-1.1
+24,DR5,Resistor_SMD:R_0603_1608Metric,1,100mW Thick Film Resistors 75V ±100ppm/? ±1% 470k? 0603  Chip Resistor - Surface Mount ROHS,,C23178,UNI-ROYAL(Uniroyal Elec),0603WAF4703T5E
+25,DR9,Resistor_SMD:R_0603_1608Metric,1,100mW Thick Film Resistors 75V ±100ppm/? ±1% 1k? 0603  Chip Resistor - Surface Mount ROHS,,C21190,UNI-ROYAL(Uniroyal Elec),0603WAF1001T5E
+26,DC12,Capacitor_SMD:C_0603_1608Metric,1,50V 33nF X7R ±10% 0603  Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C21117,Samsung Electro-Mechanics,CL10B333KB8NNNC
+27,DTP4,edg:TestPoint_TE_RCT_0805,1,spk_chain_1,,C5199798,Keystone,5015
+28,DU4,Package_SO:MSOP-8-1EP_3x3mm_P0.65mm_EP1.68x1.88mm_ThermalVias,1,,,C27396,Texas Instruments,TPA2005D1
+29,"DR10,DR11",Resistor_SMD:R_0603_1608Metric,2,100mW Thick Film Resistors 75V ±100ppm/? ±1% 68k? 0603  Chip Resistor - Surface Mount ROHS,,C23231,UNI-ROYAL(Uniroyal Elec),0603WAF6802T5E
+30,DJ4,Connector_JST:JST_PH_B2B-PH-K_1x02_P2.00mm_Vertical,1,,,,JST,B2B-PH-K
+31,DTP5,edg:TestPoint_TE_RCT_0805,1,npx,,C5199798,Keystone,5015
+32,"DD9,DD10,DD11,DD12,DD13,DD14",edg:LED_SK6812MINI-E,6,,,,Opsco Optoelectronics,SK6812MINI-E
+1,"LH1,LH2,LH3",edg:JlcToolingHole_1.152mm,3,,,,,
+2,LJ1,Connector_USB:USB_C_Receptacle_XKB_U262-16XN-4BVC11,1,,,C165948,Sparkfun,COM-15111
+3,"LR1,LR2",Resistor_SMD:R_0603_1608Metric,2,100mW Thick Film Resistors 75V ±100ppm/? ±1% 5.1k? 0603  Chip Resistor - Surface Mount ROHS,,C23186,UNI-ROYAL(Uniroyal Elec),0603WAF5101T5E
+4,LTP1,edg:TestPoint_TE_RCT_0805,1,gnd,,C5199798,Keystone,5015
+5,LFB1,Inductor_SMD:L_0805_2012Metric,1,±25% 100?@100MHz 0805  Ferrite Beads ROHS,,C1015,Sunlord,GZ2012D101TF
+6,LTP2,edg:TestPoint_TE_RCT_0805,1,pwr,,C5199798,Keystone,5015
+7,LU1,Package_TO_SOT_SMD:SOT-223-3_TabPin2,1,,,C435835,STMicroelectronics,LDL1117S33R
+8,"LC1,LC4,LC7,LC27,LC33",Capacitor_SMD:C_0603_1608Metric,5,50V 100nF X7R ±10% 0603  Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C14663,YAGEO,CC0603KRX7R9BB104
+9,"LC2,LC21,LC25,LC26",Capacitor_SMD:C_0805_2012Metric,4,25V 4.7uF X5R ±10% 0805  Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C1779,Samsung Electro-Mechanics,CL21A475KAQNNNE
+10,LTP3,edg:TestPoint_TE_RCT_0805,1,v3v3,,C5199798,Keystone,5015
+11,LD1,Diode_SMD:D_SOD-323,1,3.6V~3.8V 200mW 3.6V SOD-323  Zener Diodes ROHS,,C2891789,YONGYUTAI,BZT52C3V6S
+12,LU2,RF_Module:ESP32-S3-WROOM-1,1,,,C2913202,Espressif Systems,ESP32-S3-WROOM-1-N16R8
+13,LC3,Capacitor_SMD:C_1206_3216Metric,1,25V 22uF X5R ±10% 1206  Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C12891,Samsung Electro-Mechanics,CL31A226KAHNNNE
+14,LJ2,Connector:Tag-Connect_TC2030-IDC-FP_2x03_P1.27mm_Vertical,1,,,,,
+15,LSW1,Button_Switch_SMD:SW_SPST_SKQG_WithoutStem,1,,,C318884,,5.1mm switch
+16,"LR3,LR12",Resistor_SMD:R_0603_1608Metric,2,100mW Thick Film Resistors 75V ±100ppm/? ±1% 10k? 0603  Chip Resistor - Surface Mount ROHS,,C25804,UNI-ROYAL(Uniroyal Elec),0603WAF1002T5E
+17,"LC5,LC8,LC19,LC20,LC22,LC23,LC32",Capacitor_SMD:C_0603_1608Metric,7,50V 1uF X5R ±10% 0603  Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C15849,Samsung Electro-Mechanics,CL10A105KB8NNNC
+18,LU3,Package_TO_SOT_SMD:SOT-23,1,,,C456094,Nexperia,PESD5V0X1BT
+19,LD2,LED_SMD:LED_0603_1608Metric,1,-40?~+85? Red 0603  LED Indication - Discrete ROHS,,C2286,Hubei KENTO Elec,KT-0603R
+20,"LR4,LR5,LR6",Resistor_SMD:R_0603_1608Metric,3,100mW Thick Film Resistors 75V ±100ppm/? ±1% 820? 0603  Chip Resistor - Surface Mount ROHS,,C23253,UNI-ROYAL(Uniroyal Elec),0603WAF8200T5E
+21,LD3,LED_SMD:LED_0603_1608Metric,1,20mA Colorless transparent lens -40?~+85? 585.5nm~591.5nm Yellow 120° 60mW 0603  LED Indication - Discrete ROHS,,C72038,Everlight Elec,19-213/Y2C-CQ2R2L/3T(CY)
+22,LD4,LED_SMD:LED_0603_1608Metric,1,White 0603  LED Indication - Discrete ROHS,,C2290,Hubei KENTO Elec,KT-0603W
+23,LU4,Package_DFN_QFN:QFN-24-1EP_4x4mm_P0.5mm_EP2.6x2.6mm,1,,,C191341,Semtech Corporation,SX1262IMLTRT
+24,LX1,Crystal:Crystal_SMD_3225-4Pin_3.2x2.5mm,1,30MHz SMD Crystal Resonator 20pF ±10ppm ±30ppm -40?~+85? SMD3225-4P Crystals ROHS,,C29538,Yangxing Tech,X322530MSB4SI
+25,LC6,Capacitor_SMD:C_0603_1608Metric,1,25V 470nF X7R ±10% 0603  Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C1623,Samsung Electro-Mechanics,CL10B474KA8NNNC
+26,"LC9,LC11,LC12",Capacitor_SMD:C_0603_1608Metric,5,50V 47pF C0G ±5% 0603  Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C1671,Samsung Electro-Mechanics,CL10C470JB8NNNC
+27,LC10,Capacitor_SMD:C_0603_1608Metric,1,50V 47nF X7R ±10% 0603  Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C1622,Samsung Electro-Mechanics,CL10B473KB8NNNC
+28,LL1,Inductor_SMD:L_0805_2012Metric,1,100mA 15uH ±20% 650m? 0805  Inductors (SMD) ROHS,,C5344252,FH (Guangdong Fenghua Advanced Tech),CMP201209JD150MT
+29,LU5,Package_TO_SOT_SMD:SOT-363_SC-70-6,1,,,C470892,pSemi,PE4259
+30,"LR7,LR8",Resistor_SMD:R_0603_1608Metric,2,100mW Thick Film Resistors 75V ±100ppm/? ±1% 1k? 0603  Chip Resistor - Surface Mount ROHS,,C21190,UNI-ROYAL(Uniroyal Elec),0603WAF1001T5E
+31,LL2,Inductor_SMD:L_0603_1608Metric,1,200mA 47nH ±5% 1? 0603  Inductors (SMD) ROHS,,C90210,FH(Guangdong Fenghua Advanced Tech),VHF160808H47NJT
+32,LL3,Inductor_SMD:L_0603_1608Metric,1,700mA 3.3nH ±5% 0603  Power Inductors ROHS,,C329435,PSA(Prosperity Dielectrics),FEC0603CP-3N3J-LRH
+33,LC13,Capacitor_SMD:C_0603_1608Metric,1,250V 2.2pF NP0 ±5% 0603  Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C961507,"IHHEC(HOLY STONE ENTERPRISE CO., LTD)",C0603N2R2J251T
+34,"LC14,LC15,LC16,LC17,LC18",Capacitor_SMD:C_0603_1608Metric,5,250V 3pF C0G ±5% 0603  Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C2939817,FH (Guangdong Fenghua Advanced Tech),0603CG3R0C251NT
+35,"LL4,LL6",Inductor_SMD:L_0603_1608Metric,2,500mA 8.2nH ±5% 350m? 0603  Inductors (SMD) ROHS,,C964027,HYHONGYEX,HBLS1608-8N2J
+36,LL5,Inductor_SMD:L_0603_1608Metric,1,300mA 12nH ±5% 450m? 0603  Inductors (SMD) ROHS,,C964029,HYHONGYEX,HBLS1608-12NJ
+37,LJ3,Connector_Coaxial:SMA_Amphenol_901-143_Horizontal,1,,,,Amphenol RF,901-143
+38,LTP4,edg:TestPoint_TE_RCT_0805,1,lr.sck,,C5199798,Keystone,5015
+39,LTP5,edg:TestPoint_TE_RCT_0805,1,lr.mosi,,C5199798,Keystone,5015
+40,LTP6,edg:TestPoint_TE_RCT_0805,1,lr.miso,,C5199798,Keystone,5015
+41,LTP7,edg:TestPoint_TE_RCT_0805,1,lr_cs,,C5199798,Keystone,5015
+42,LTP8,edg:TestPoint_TE_RCT_0805,1,lr_rs,,C5199798,Keystone,5015
+43,LTP9,edg:TestPoint_TE_RCT_0805,1,lr_di,,C5199798,Keystone,5015
+44,"LR9,LR10",Resistor_SMD:R_0603_1608Metric,2,100mW Thick Film Resistors 75V ±100ppm/? ±1% 4.7k? 0603  Chip Resistor - Surface Mount ROHS,,C23162,UNI-ROYAL(Uniroyal Elec),0603WAF4701T5E
+45,LTP10,edg:TestPoint_TE_RCT_0805,1,i2c.scl,,C5199798,Keystone,5015
+46,LTP11,edg:TestPoint_TE_RCT_0805,1,i2c.sda,,C5199798,Keystone,5015
+47,LJ4,Connector_FFC-FPC:Hirose_FH12-30S-0.5SH_1x30-1MP_P0.50mm_Horizontal,1,,,C262671,Jushuo,AFC01-S30FCA-00
+48,LU6,edg:Lcd_Er_Oled0.96_1.1_Outline,1,,,,EastRising,ER-OLED-0.96-1.1
+49,LR11,Resistor_SMD:R_0603_1608Metric,1,100mW Thick Film Resistors 75V ±100ppm/? ±1% 470k? 0603  Chip Resistor - Surface Mount ROHS,,C23178,UNI-ROYAL(Uniroyal Elec),0603WAF4703T5E
+50,LC24,Capacitor_SMD:C_0805_2012Metric,1,25V 10uF X5R ±10% 0805  Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C15850,Samsung Electro-Mechanics,CL21A106KAYNNNE
+51,LU7,Package_TO_SOT_SMD:SOT-23,1,,,C143831,Diodes Incorporated,APX803S-29SA-7
+52,LJ5,Connector_Card:microSD_HC_Molex_104031-0811,1,,,C585350,Molex,104031-0811
+53,LU8,Package_DFN_QFN:HVQFN-40-1EP_6x6mm_P0.5mm_EP4.1x4.1mm,1,,,C3303790,NXP,PN7160A1HN/C100Y
+54,"LC28,LC29,LC30,LC31",Capacitor_SMD:C_0805_2012Metric,4,50V 2.2uF X5R ±10% 0805  Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C377773,Samsung Electro-Mechanics,CL21A225KBQNNNE
+55,LX2,Crystal:Crystal_SMD_3225-4Pin_3.2x2.5mm,1,27.12MHz SMD Crystal Resonator 10pF ±10ppm ±30ppm -40?~+85? SMD3225-4P Crystals ROHS,,C29975,Yangxing Tech,X32252712MMB4SI
+56,"LC34,LC35,LC44",Capacitor_SMD:C_0603_1608Metric,3,50V 10pF C0G ±5% 0603  Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C1634,Samsung Electro-Mechanics,CL10C100JB8NNNC
+57,"LR13,LR14",Resistor_SMD:R_0603_1608Metric,2,100mW Thick Film Resistors 75V ±100ppm/? ±1% 2.2k? 0603  Chip Resistor - Surface Mount ROHS,,C4190,UNI-ROYAL(Uniroyal Elec),0603WAF2201T5E
+58,"LC36,LC37",Capacitor_SMD:C_0603_1608Metric,2,50V 1nF X7R ±10% 0603  Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C1588,Samsung Electro-Mechanics,CL10B102KB8NNNC
+59,"LL7,LL8",Inductor_SMD:L_0603_1608Metric,2,900mA 220nH ±5% 200m? 0603  Inductors (SMD) ROHS,,C393974,FH(Guangdong Fenghua Advanced Tech),FHW0603UFR22JST
+60,"LC38,LC39",Capacitor_SMD:C_0603_1608Metric,2,50V 560pF X7R ±10% 0603  Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C376842,CCTC,TCC0603X7R561K500CT
+61,LANT1,board:an13219,1,,,,,
+62,"LR15,LR16",Resistor_SMD:R_0603_1608Metric,2,100mW Thick Film Resistors 75V ±1% ±200ppm/? 2.49? 0603  Chip Resistor - Surface Mount ROHS,,C2930146,FOJAN,FRC0603F2R49TS
+63,"LC40,LC41",Capacitor_SMD:C_0603_1608Metric,2,50V 150pF X7R ±10% 0603  Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C1594,FH(Guangdong Fenghua Advanced Tech),0603B151K500NT
+1,"TH1,TH2,TH3",edg:JlcToolingHole_1.152mm,3,,,,,
+2,TJ1,Connector_USB:USB_C_Receptacle_XKB_U262-16XN-4BVC11,1,,,C165948,Sparkfun,COM-15111
+3,"TR1,TR2",Resistor_SMD:R_0603_1608Metric,2,100mW Thick Film Resistors 75V ±100ppm/? ±1% 5.1k? 0603  Chip Resistor - Surface Mount ROHS,,C23186,UNI-ROYAL(Uniroyal Elec),0603WAF5101T5E
+4,TTP1,edg:TestPoint_TE_RCT_0805,1,gnd,,C5199798,Keystone,5015
+5,TFB1,Inductor_SMD:L_0805_2012Metric,1,±25% 100?@100MHz 0805  Ferrite Beads ROHS,,C1015,Sunlord,GZ2012D101TF
+6,TTP2,edg:TestPoint_TE_RCT_0805,1,pwr,,C5199798,Keystone,5015
+7,TU1,Package_TO_SOT_SMD:SOT-23-6,1,,,C527684,Texas Instruments,TPS54202H
+8,TR3,Resistor_SMD:R_0603_1608Metric,1,100mW Thick Film Resistors 75V ±100ppm/? ±1% 6.8k? 0603  Chip Resistor - Surface Mount ROHS,,C23212,UNI-ROYAL(Uniroyal Elec),0603WAF6801T5E
+9,TR4,Resistor_SMD:R_0603_1608Metric,1,100mW Thick Film Resistors 75V ±100ppm/? ±1% 1.5k? 0603  Chip Resistor - Surface Mount ROHS,,C22843,UNI-ROYAL(Uniroyal Elec),0603WAF1501T5E
+10,"TC1,TC2,TC12,TC14,TC15,TC17,TC18,TC19,TC20",Capacitor_SMD:C_0603_1608Metric,9,50V 100nF X7R ±10% 0603  Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C14663,YAGEO,CC0603KRX7R9BB104
+11,TL1,Inductor_SMD:L_1210_3225Metric,1,1.2A 10uH ±20% 1.6A 305m? 1210  Inductors (SMD) ROHS,,C2047632,TDK,TFM322512ALMA100MTAA
+12,"TC3,TC4",Capacitor_SMD:C_0805_2012Metric,2,25V 10uF X5R ±10% 0805  Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C15850,Samsung Electro-Mechanics,CL21A106KAYNNNE
+13,TR5,Resistor_SMD:R_0603_1608Metric,1,100mW Thick Film Resistors 75V ±100ppm/? ±1% 510k? 0603  Chip Resistor - Surface Mount ROHS,,C23192,UNI-ROYAL(Uniroyal Elec),0603WAF5103T5E
+14,TTP3,edg:TestPoint_TE_RCT_0805,1,v3v3,,C5199798,Keystone,5015
+15,TD1,Diode_SMD:D_SOD-323,1,3.6V~3.8V 200mW 3.6V SOD-323  Zener Diodes ROHS,,C2891789,YONGYUTAI,BZT52C3V6S
+16,TU2,Package_TO_SOT_SMD:SOT-23-5,1,,,C2872564,Texas Instruments,TLV75730PDBVR
+17,"TC5,TC6,TC7,TC8,TC9,TC10,TC13",Capacitor_SMD:C_0603_1608Metric,7,50V 1uF X5R ±10% 0603  Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C15849,Samsung Electro-Mechanics,CL10A105KB8NNNC
+18,TU3,Package_TO_SOT_SMD:SOT-23-5,1,,,C2863639,Texas Instruments,TLV75728PDBVR
+19,TU4,Package_TO_SOT_SMD:SOT-23-5,1,,,C1509296,Texas Instruments,TLV75712PDBVR
+20,TU5,RF_Module:ESP32-S3-WROOM-1,1,,,C2913202,Espressif Systems,ESP32-S3-WROOM-1-N16R8
+21,TC11,Capacitor_SMD:C_1206_3216Metric,1,25V 22uF X5R ±10% 1206  Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C12891,Samsung Electro-Mechanics,CL31A226KAHNNNE
+22,TJ2,Connector:Tag-Connect_TC2030-IDC-FP_2x03_P1.27mm_Vertical,1,,,,,
+23,TR6,Resistor_SMD:R_0603_1608Metric,1,100mW Thick Film Resistors 75V ±100ppm/? ±1% 10k? 0603  Chip Resistor - Surface Mount ROHS,,C25804,UNI-ROYAL(Uniroyal Elec),0603WAF1002T5E
+24,TU6,Package_TO_SOT_SMD:SOT-23,1,,,C456094,Nexperia,PESD5V0X1BT
+25,"TR7,TR8",Resistor_SMD:R_0603_1608Metric,2,100mW Thick Film Resistors 75V ±100ppm/? ±1% 4.7k? 0603  Chip Resistor - Surface Mount ROHS,,C23162,UNI-ROYAL(Uniroyal Elec),0603WAF4701T5E
+26,TTP4,edg:TestPoint_TE_RCT_0805,1,i2c.scl,,C5199798,Keystone,5015
+27,TTP5,edg:TestPoint_TE_RCT_0805,1,i2c.sda,,C5199798,Keystone,5015
+28,TU7,edg:Symbol_DucklingSolid,1,,,,,
+29,TD2,LED_SMD:LED_0603_1608Metric,1,-40?~+85? Red 0603  LED Indication - Discrete ROHS,,C2286,Hubei KENTO Elec,KT-0603R
+30,TR9,Resistor_SMD:R_0603_1608Metric,1,100mW Thick Film Resistors 75V ±100ppm/? ±1% 820? 0603  Chip Resistor - Surface Mount ROHS,,C23253,UNI-ROYAL(Uniroyal Elec),0603WAF8200T5E
+31,TJ3,Connector_FFC-FPC:TE_2-1734839-4_1x24-1MP_P0.5mm_Horizontal,1,,,C262643,Jushuo,AFC07-S24ECA-00
+32,TC16,Capacitor_SMD:C_0603_1608Metric,1,50V 15pF C0G ±5% 0603  Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C1644,Samsung Electro-Mechanics,CL10C150JB8NNNC
+33,TU8,edg:Molex_1050281001,1,,,C585422,Molex,1050281001
+34,TX1,Crystal:Crystal_SMD_3225-4Pin_3.2x2.5mm,1,±15ppm 1.8V~3.3V 25MHz -40?~+85? SMD-3225_4P Pre-programmed Oscillators ROHS,,C390553,,SG-8101CE 25.000000MHz TBGPA
