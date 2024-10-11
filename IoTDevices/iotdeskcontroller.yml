@@ -21,6 +21,15 @@ esphome:
   on_loop:
     - script.execute: toggle1234_led_loop
 
+wifi:
+  <<: !include ../wifi_config.yaml
+
+<<: !include ../common_config.yaml
+
+api:
+  reboot_timeout: 0s
+
+
 external_components:
   - source:
       type: git
@@ -171,11 +180,6 @@ script:
           }
         }
 
-
-wifi:
-  <<: !include ../wifi_config.yaml
-
-<<: !include ../common_config.yaml
 
 uart:
   id: desk_uart
@@ -426,7 +430,6 @@ light:
     internal: true
     pin:
       number: GPIO9
-      inverted: true
 
 output:
   - platform: ledc
