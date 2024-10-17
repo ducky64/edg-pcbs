@@ -1,0 +1,71 @@
+substitutions:
+  name: "NfcTest"
+
+esphome:
+  name: ducky-nfctest
+  name_add_mac_suffix: true
+  platform: esp32
+  board: esp32-s3-devkitc-1  # 8MB flash without PSRAM
+
+wifi:
+  <<: !include ../wifi_config.yaml
+
+# HASS API
+api:
+
+# Allow API
+ota:
+  - platform: esphome
+
+# Print Updates
+logger:
+  hardware_uart: UART0
+
+# WebServer component, displays some information
+web_server:
+    port: 80
+
+light:
+  - platform: status_led
+    name: "${name} Dbg"
+    id: debug_led
+    internal: true
+    pin:
+      number: GPIO1
+  - platform: binary
+    name: "${name} LedYlw"
+    id: led_ylw
+    output: out_led_ylw
+
+output:
+  - id: out_led_ylw
+    platform: gpio
+    pin: GPIO42
+
+i2c:
+  scl: GPIO17
+  sda: GPIO18
+  frequency: 400kHz  # must be at least 100kHz or a fatal timeout happens
+
+pn7160_i2c:
+  irq_pin: GPIO47
+  ven_pin: GPIO39
+
+  emulation_message: https://www.home-assistant.io/tag/pulse_ce
+
+  on_tag:
+    then:
+    - text_sensor.template.publish:  # show the last scanned tag
+        id: nfc_tag
+        state: !lambda 'return x;'
+    - light.turn_on:  # indicate scanned tag, does the wrong thing with multiple tags
+        id: led_ylw
+  on_tag_removed:
+    then:
+    - light.turn_off:
+        id: led_ylw
+
+text_sensor:
+  - platform: template
+    name: "NFC Tag"
+    id: nfc_tag
