@@ -146,7 +146,7 @@ script:
         const int kUpdateFreq = 100;  // run at most this frequently
         auto currMillis = millis();
         static auto lastMillis = currMillis;
-        if (currMillis < lastMillis + kUpdateFreq) {
+        if ((currMillis - lastMillis) < kUpdateFreq) {
           return;
         }
 
