@@ -50,6 +50,13 @@ globals:
   - id: kBrightnessActive
     type: float
     initial_value: '0.33'
+  
+  - id: kScreenActiveMillis
+    type: int
+    initial_value: '15000'
+  - id: LastScreenActivityMillis
+    type: int
+    initial_value: '0'
 
   # stored values
   - id: DeskMem1Pos  # cm, local stored copy
@@ -81,7 +88,7 @@ globals:
     initial_value: '0'
 
 script:
-  - id: mem_target_init  # guesses the last memory target on startuip
+  - id: mem_target_init  # guesses the last memory target on startup
     then:
     - lambda: |-
         const float kMaxDelta = 0.1;
@@ -164,11 +171,12 @@ script:
         }
 
         static auto lastBlink = 0;
-        if (currMillis < lastHeightUpdate + 500) {  // blink if active moving
-          if (currMillis > lastBlink + 500) {
+        if ((currMillis - lastHeightUpdate) < 500) {  // blink if active moving
+          if ((currMillis - lastBlink) > 500) {
             id(NpxSet).execute(activeLed, id(kBrightnessActive), r, g, b, 250);
             lastBlink = currMillis;
           }
+          id(LastScreenActivityMillis) = millis();
         } else {
           lastBlink = 0;
           id(NpxSet).execute(activeLed, id(kBrightnessBackground), r, g, b, 0);
@@ -265,13 +273,16 @@ binary_sensor:
             auto d1 = abs(id(desk_height).state - id(DeskMem2Pos));
             if (id(toggle12_state) == 2 || id(toggle12_state) == 0 && d0 >= d1) {  // toggle OR go to further position
               id(desk).goto_position(1);
+              id(desk).goto_position(1);  // repeat since just sending once is flakey
               id(memory_target) = 1;
               id(toggle12_state) = 1;
             } else {
               id(desk).goto_position(2);
+              id(desk).goto_position(2);
               id(memory_target) = 2;
               id(toggle12_state) = 2;
             }
+            id(LastScreenActivityMillis) = millis();
     - min_length: 2000ms
       max_length: 3000ms
       then:
@@ -285,6 +296,7 @@ binary_sensor:
               id(DeskMem2Pos) = id(desk_height).state;
               id(memory_target) = 2;
             }
+            id(LastScreenActivityMillis) = millis();
   - platform: matrix_keypad
     keypad_id: keypad
     name: "${name} Key1"
@@ -298,13 +310,16 @@ binary_sensor:
             auto d1 = abs(id(desk_height).state - id(DeskMem4Pos));
             if (id(toggle34_state) == 2 || id(toggle34_state) == 0 && d0 >= d1) {  // toggle OR go to further position
               id(desk).goto_position(3);
+              id(desk).goto_position(3);
               id(memory_target) = 3;
               id(toggle34_state) = 1;
             } else {
               id(desk).goto_position(4);
+              id(desk).goto_position(4);
               id(memory_target) = 4;
               id(toggle34_state) = 2;
             }
+            id(LastScreenActivityMillis) = millis();
     - min_length: 2000ms
       max_length: 3000ms
       then:
@@ -318,6 +333,7 @@ binary_sensor:
               id(DeskMem4Pos) = id(desk_height).state;
               id(memory_target) = 4;
             }
+            id(LastScreenActivityMillis) = millis();
   - platform: matrix_keypad
     keypad_id: keypad
     name: "${name} Key2"
@@ -352,6 +368,7 @@ binary_sensor:
                 id(desk).step_down();
                 id(memory_target) = 0;
                 id(NpxSet).execute(4, id(kBrightnessActive), 0, 1, 0, 250);
+                id(LastScreenActivityMillis) = millis();
             - delay: 500ms
     on_release:
       then:
@@ -371,6 +388,7 @@ binary_sensor:
                 id(desk).step_up();
                 id(memory_target) = 0;
                 id(NpxSet).execute(5, id(kBrightnessActive), 0, 1, 0, 250);
+                id(LastScreenActivityMillis) = millis();
             - delay: 500ms
     on_release:
       then:
@@ -459,6 +477,10 @@ display:
     reset_pin: GPIO2
     update_interval : 200ms
     lambda: |-
+      if ((millis() - id(LastScreenActivityMillis)) > id(kScreenActiveMillis)) {
+        return;  // screen off from inactivity
+      }
+
       it.printf(0, 0, id(bdf6x10), TextAlign::TOP_LEFT, "%.1f", id(desk_height).state);
       it.printf(0, 8, id(bdf6x10), TextAlign::TOP_LEFT, "%.1f - %1.f", id(desk_height_min).state, id(desk_height_max).state);
 
