@@ -179,7 +179,11 @@ script:
           id(LastScreenActivityMillis) = millis();
         } else {
           lastBlink = 0;
-          id(NpxSet).execute(activeLed, id(kBrightnessBackground), r, g, b, 0);
+          if ((millis() - id(LastScreenActivityMillis)) <= id(kScreenActiveMillis)) {
+            id(NpxSet).execute(activeLed, id(kBrightnessBackground), r, g, b, 0);
+          } else {  // LED off from inactivity
+            activeLed = 255;
+          }
         }
 
         for (uint8_t i=0; i<2; i++) {  // clear other LEDs
