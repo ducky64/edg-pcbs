@@ -102,7 +102,7 @@ uint8_t streamData[32768] = {0};  // allocate in static memory, contains PNG ima
 StaticJsonDocument<256> doc;
 
 
-const char* kFwVerStr = "11";
+const char* kFwVerStr = "12";
 
 // these are RTC_NOINIT_ATTR to survive a WDT reset
 // they are manually init'd to 0 post-reset depending on the reset reason
