@@ -1,0 +1,8 @@
+Designator,Val,Package,Mid X,Mid Y,Rotation,Layer
+JJ2,usb,USB_C_Receptacle_XKB_U262-16XN-4BVC11,-28.075,-25.0,90.0,bottom
+JSW1,mcu.boot,MembraneSwitch_4mm,29.500000,-25.000000,-90.000000,bottom
+JSW2,sw[0],MembraneSwitch_4mm,9.500000,-25.000000,-90.000000,bottom
+JSW3,sw[1],MembraneSwitch_4mm,19.500000,-35.000000,-90.000000,bottom
+JSW4,sw[2],MembraneSwitch_4mm,19.500000,-15.000000,-90.000000,bottom
+JU4,stick,Joystick_XboxElite2,-10.500000,-25.000000,-90.000000,bottom
+OU1,obd,J1962,-55.500000,-23.000000,180.000000,bottom
