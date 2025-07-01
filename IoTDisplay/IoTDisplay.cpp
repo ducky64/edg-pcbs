@@ -5,6 +5,7 @@
 
 #include "esp_sleep.h"
 #include "esp_adc_cal.h"
+#include "esp_task_wdt.h"
 
 // ESP32-S3 variant, new version
 // touch_duck=TOUCH13, 21,
@@ -101,10 +102,12 @@ uint8_t streamData[32768] = {0};  // allocate in static memory, contains PNG ima
 StaticJsonDocument<256> doc;
 
 
-const char* kFwVerStr = "11";
+const char* kFwVerStr = "12";
 
-RTC_DATA_ATTR int bootCount = 0;
-RTC_DATA_ATTR int failureCount = 0;
+// these are RTC_NOINIT_ATTR to survive a WDT reset
+// they are manually init'd to 0 post-reset depending on the reset reason
+RTC_NOINIT_ATTR int bootCount;
+RTC_NOINIT_ATTR int failureCount;
 RTC_DATA_ATTR int lastDisplayTimeMsec = 0;
 
 const int kMaxWifiConnectSec = 20;  // max to wait for wifi to come up before sleeping
@@ -155,6 +158,7 @@ void PNGDraw(PNGDRAW *pDraw) {
 }
 
 void busyCallback(const void*) {
+  esp_task_wdt_reset();
   ledWrite(kLedG, millis() % kBusyBlinkIntervalMs <= kBlinkIntervalMs/2);
   esp_sleep_enable_timer_wakeup(kBlinkIntervalMs/4 * 1000ull);
   esp_light_sleep_start();
@@ -190,11 +194,10 @@ uint16_t analogReadCalibratedMv(int pin, adc_attenuation_t atten = ADC_11db) {
 
 void setup() {
   setCpuFrequencyMhz(80);  // downclock to reduce power draw
+  esp_task_wdt_init(5, true);
+  esp_task_wdt_add(NULL);
 
-  bootCount++;
-
-  const int savedLastDisplayTimeMsec = lastDisplayTimeMsec;  // store and clear
-  lastDisplayTimeMsec = 0;
+  const char* errorStatus = NULL;  // set when an error occurs, to a short descriptive string
 
   const char* resetReason = "";
   switch (esp_reset_reason()) {
@@ -202,21 +205,46 @@ void setup() {
       case ESP_RST_SW: resetReason = "SW"; break;
       case ESP_RST_PANIC: resetReason = "PANIC"; break;
       case ESP_RST_INT_WDT: resetReason = "INT_WDT"; break;
+      case ESP_RST_TASK_WDT: resetReason = "TASK_WDT"; break;
       case ESP_RST_WDT: resetReason = "WDT"; break;
       case ESP_RST_DEEPSLEEP: resetReason = "DEEPSLEEP"; break;
       case ESP_RST_BROWNOUT: resetReason = "BROWNOUT"; break;
       case ESP_RST_UNKNOWN: resetReason = "UNKNOWN"; break;
       default: resetReason = "other"; break;
-      break;
   }
+
+  switch (esp_reset_reason()) {
+      case ESP_RST_INT_WDT:
+      case ESP_RST_TASK_WDT:
+      case ESP_RST_WDT:
+        bootCount++;
+        failureCount++;
+        if (failureCount >= 3) {
+          errorStatus = "wdt";
+        }
+        break;
+      case ESP_RST_PANIC:      
+      case ESP_RST_BROWNOUT:
+        bootCount++;
+        failureCount++;
+        break;
+      case ESP_RST_DEEPSLEEP:
+        bootCount++;
+        break;
+      default: 
+        bootCount = 0;
+        failureCount = 0;      
+  }
+
+  const int savedLastDisplayTimeMsec = lastDisplayTimeMsec;  // store and clear
+  lastDisplayTimeMsec = 0;
 
   const esp_partition_t* bootPartition = esp_ota_get_boot_partition();
 
   Serial.begin(115200);
   esp_log_level_set("*", ESP_LOG_INFO);
-  const char* errorStatus = NULL;  // set when an error occurs, to a short descriptive string
 
-  log_i("Boot %d, %s, part=%s %s", bootCount, resetReason, 
+  log_i("Boot %d (fail %d), %s, part=%s %s", bootCount, failureCount, resetReason, 
       bootPartition->label, esp_ota_check_rollback_is_possible() ? "R" : "");
 
   pinMode(kLedR, OUTPUT);
@@ -234,9 +262,11 @@ void setup() {
   digitalWrite(kEpdGate, 1);  // start off
   digitalWrite(kMemGate, 1);
 
+  // SENSE VOLTAGE
+  //
   gpio_hold_dis((gpio_num_t)kVsenseGate);
   digitalWrite(kVsenseGate, 1);
-  delay(2);
+  delay(5);  // wait for vsense to stabilize
   uint16_t vBatAdcMv = analogReadCalibratedMv(kVsense, ADC_11db);
   adc_attenuation_t atten = ADC_11db;
   if (vBatAdcMv < 1100) {  // lower attenuation ranges have lower errors, re-sample in a lower range
@@ -265,26 +295,32 @@ void setup() {
 
   // NETWORK CODE
   //
+  esp_task_wdt_reset();
+  int rssi = 0;
   long int timeStartWifi = millis();
-  WiFi.begin(ssid, password);
-  while(WiFi.status() != WL_CONNECTED) {
-    ledWrite(kLedR, millis() % kBlinkIntervalMs <= kBlinkIntervalMs/2);
-    if ((millis() - timeStartWifi) > kMaxWifiConnectSec * 1000) {
-      errorStatus = "no wifi";
-      break;
+  if (errorStatus == NULL) {
+    WiFi.begin(ssid, password);
+    while(WiFi.status() != WL_CONNECTED) {
+      esp_task_wdt_reset();
+      ledWrite(kLedR, millis() % kBlinkIntervalMs <= kBlinkIntervalMs/2);
+      if ((millis() - timeStartWifi) > kMaxWifiConnectSec * 1000) {
+        errorStatus = "no wifi";
+        break;
+      }
+      delay(1);
+      yield();
     }
-    delay(1);
-    yield();
+    long int timeConnectWifi = millis();
+    rssi = WiFi.RSSI();
+    log_i("Connected WiFi: %.1fs, %s, RSSI=%i", (float)(timeConnectWifi - timeStartWifi) / 1000, WiFi.localIP().toString(), rssi);
+    ledWrite(kLedR, 1);
   }
-  long int timeConnectWifi = millis();
-  int rssi = WiFi.RSSI();
-  log_i("Connected WiFi: %.1fs, %s, RSSI=%i", (float)(timeConnectWifi - timeStartWifi) / 1000, WiFi.localIP().toString(), rssi);
-  ledWrite(kLedR, 1);
 
   // fetch metadata
   unsigned long sleepTimeSec = 0;
   bool runOta = false;
   if (errorStatus == NULL) {
+    esp_task_wdt_reset();
     long int timeStartGet = millis();
     HTTPClient http;
     http.useHTTP10(true);  // disabe chunked encoding, since the stream doesn't remove metadata
@@ -308,6 +344,7 @@ void setup() {
       WiFiClient* stream = http.getStreamPtr();
       uint8_t* streamDataPtr = streamData;
       while(http.connected()) {
+        esp_task_wdt_reset();
         size_t streamAvailable = stream->available();
         size_t bufferLeft = sizeof(streamData) - (streamDataPtr - streamData);
         int c = stream->readBytes(streamDataPtr, min(streamAvailable, min(bufferLeft, kMaxChunk)));
@@ -337,6 +374,7 @@ void setup() {
   long int timeMetaDone = millis();
 
   if (errorStatus == NULL && runOta) {
+    esp_task_wdt_reset();
     log_i("Ota: start");
     if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
       log_e("Ota: Update.begin == false");
@@ -355,6 +393,7 @@ void setup() {
       if (httpResponseCode == 200) {
         WiFiClient* stream = http.getStreamPtr();
         while(http.connected()) {
+          esp_task_wdt_reset();
           size_t streamAvailable = stream->available();
           int c = stream->readBytes(streamData, min(streamAvailable, min(sizeof(streamData), kMaxChunk)));
           otaBytes += c;
@@ -374,7 +413,7 @@ void setup() {
         if (otaWritten == otaBytes) {
           if (Update.end(true)) {  // evenIfRemaining set b/c the size is not known ahead of time
             log_i("Ota: success, rebooting");
-            delay(10);
+            delay(5);
             ESP.restart();
           } else {
             log_i("Ota: failed: %s", Update.errorString());
@@ -389,6 +428,7 @@ void setup() {
 
   // fetch image data
   if (errorStatus == NULL) {
+    esp_task_wdt_reset();
     long int timeStartGet = millis();
     HTTPClient http;
     http.useHTTP10(true);  // disable chunked encoding, since the stream doesn't remove metadata
@@ -403,6 +443,7 @@ void setup() {
       WiFiClient* stream = http.getStreamPtr();
       uint8_t* streamDataPtr = streamData;
       while(http.connected()) {
+        esp_task_wdt_reset();
         size_t streamAvailable = stream->available();
         size_t bufferLeft = sizeof(streamData) - (streamDataPtr - streamData);
         int c = stream->readBytes(streamDataPtr, min(streamAvailable, min(bufferLeft, kMaxChunk)));
@@ -421,6 +462,7 @@ void setup() {
   }
 
   // done with all network tasks, stop wifi to save power
+  esp_task_wdt_reset();
   WiFi.disconnect();
   if (esp_wifi_stop() != ESP_OK) {
     log_e("Failed disable WiFi");
@@ -432,8 +474,9 @@ void setup() {
 
   // DISPLAY RENDERING CODE
   //
+  esp_task_wdt_reset();
   digitalWrite(kEpdGate, 0);  // turn on display
-  delay(10);  // wait for power to stabilize
+  delay(5);  // wait for power to stabilize
   spi.begin(kEpdSckPin, -1, kEpdMosiPin, -1);
   display.epd2.selectSPI(spi, SPISettings(4000000, MSBFIRST, SPI_MODE0));
   display.init(0);
@@ -493,6 +536,7 @@ void setup() {
   // allow extra grace period for EPD BUSY signal
   const long int timeEndGrace = millis() + kBusyGraceMsec;
   while (millis() < timeEndGrace && digitalRead(kEpdBusyPin) == 1) {
+    esp_task_wdt_reset();
     bool ledOn = millis() % kBusyBlinkIntervalMs <= kBlinkIntervalMs/2;
     bool altOn = millis() % (kBusyBlinkIntervalMs*2) <= kBusyBlinkIntervalMs;
     ledWrite(kLedR, ledOn & altOn);
@@ -512,6 +556,9 @@ void setup() {
   ledWrite(kLedG, 0);
   display.hibernate();
 
+  // CHECK FOR ROLLBACK
+  //
+  esp_task_wdt_reset();
   if (errorStatus == NULL && esp_ota_check_rollback_is_possible()) {
     log_i("Ota: validate");
     esp_ota_mark_app_valid_cancel_rollback();
@@ -527,7 +574,7 @@ void setup() {
   // release pins (put into INPUT mode) before shutting off power
   spi.end();  // release SPI pins
   display.end();  // release CS, DC, RST
-  delay(10);
+  delay(5);
 
   // put device to sleep
   digitalWrite(kEpdGate, 1);
