@@ -24,6 +24,8 @@ RU3, RU4 AH1806 Hall Effect
 
 JU1 MP2722
 
+Fuses
+
 From a prior design iteration
 MCP73831
 JQ1, JQ4 SOT23 generic PFET
