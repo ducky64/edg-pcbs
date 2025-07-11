@@ -1,0 +1,63 @@
+substitutions:
+  name: "RollerBlinds"
+
+esphome:
+  name: ducky-iotrollerblinds
+  name_add_mac_suffix: true
+  platform: esp32
+  board: esp32-c3-devkitm-1
+
+wifi:
+  <<: !include ../wifi_config.yaml
+
+<<: !include ../common_config.yaml
+
+light:
+  - platform: status_led
+    name: "${name} Dbg"
+    id: debug_led
+    internal: true
+    pin:
+      number: GPIO9
+      inverted: true
+
+output:
+  - platform: ledc
+    pin: GPIO3
+    id: output_motor1
+    frequency: 500 Hz
+  - platform: ledc
+    pin: GPIO19
+    id: output_motor2
+    frequency: 500 Hz
+
+fan:
+  - platform: hbridge
+    id: motor
+    name: "Motor"
+    pin_a: output_motor1
+    pin_b: output_motor2
+    decay_mode: slow
+
+sensor:
+  # - platform: adc  # unusable with wifi
+  #   name: "${name} Vin"
+  #   pin: GPIO5
+  #   accuracy_decimals: 2
+  #   update_interval: 60s
+  #   attenuation: 12dB
+  #   filters:
+  #     - multiply: 11.00
+
+  - platform: rotary_encoder
+    name: "Encoder"
+    pin_a:
+      number: GPIO18
+      mode:
+        input: true
+        pullup: true
+    pin_b:
+      number: GPIO10
+      mode:
+        input: true
+        pullup: true
