@@ -1,0 +1,138 @@
+substitutions:
+  name: "DeskLamp"
+
+esphome:
+  name: ducky-iotleddriver
+  name_add_mac_suffix: true
+  platform: esp32
+  board: esp32-c3-devkitm-1
+  on_boot:
+    - light.turn_on:  # set default brightness
+        id: light_white
+        brightness: 70%
+        transition_length: 0s
+    - light.turn_off:  # but don't turn on
+        id: light_white
+        transition_length: 0s
+
+wifi:
+  <<: !include ../wifi_config.yaml
+
+<<: !include ../common_config.yaml
+
+light:
+  - platform: status_led
+    name: "${name} Dbg"
+    id: debug_led
+    internal: true
+    pin:
+      number: GPIO9
+      inverted: true
+
+  - platform: monochromatic
+    id: light_white
+    name: "${name} White"
+    output: output_white
+    effects:
+      - flicker:
+          name: Flicker
+          alpha: 95%
+          intensity: 2%
+        
+  - platform: rgb
+    id: light_rgb
+    name: "${name} RGB"
+    red: output_red
+    green: output_green
+    blue: output_blue
+    effects:
+      - flicker:
+          name: Flicker
+          alpha: 95%
+          intensity: 2%
+      - random:
+          name: Random
+          transition_length: 5s
+          update_interval: 5s
+
+output:
+  - platform: ledc
+    pin: GPIO1
+    id: output_white
+  - platform: ledc
+    pin: GPIO3
+    id: output_red
+  - platform: ledc
+    pin: GPIO4
+    id: output_green
+  - platform: ledc
+    pin: GPIO5
+    id: output_blue
+
+# binary_sensor:
+#   - platform: gpio
+#     name: "${name} Encoder Sw"
+#     pin: 
+#       number: GPIO6
+#       inverted: true
+#       mode:
+#         input: true
+#         pullup: true
+#     filters:
+#       - delayed_on: 10ms
+#     on_click:
+#     - then:
+#         - lambda: |-
+#             auto white = id(light_white);
+#             auto rgb = id(light_rgb);
+#             if (!white->remote_values.is_on() && !rgb->remote_values.is_on()) {  // currently off, turn on
+#               white->turn_on().perform();
+#             } else {  // any light on, turn off all
+#               white->turn_off().perform();
+#               rgb->turn_off().perform();
+#             }
+
+sensor:
+  - platform: adc
+    name: "${name} Vin"
+    pin: GPIO0
+    accuracy_decimals: 2
+    update_interval: 60s
+    attenuation: 12dB
+    filters:
+      - multiply: 7.8125
+  # - platform: rotary_encoder
+  #   name: "${name} Encoder"
+  #   resolution: 2  # so each detent generates one action
+  #   pin_a:
+  #     number: GPIO15
+  #     inverted: true
+  #     mode:
+  #       input: true
+  #       pullup: true
+  #   pin_b:
+  #     number: GPIO7
+  #     inverted: true
+  #     mode:
+  #       input: true
+  #       pullup: true
+  #   on_clockwise:
+  #   - then:
+  #       - lambda: |-
+  #           auto white = id(light_white);
+  #           auto call = white->turn_on();
+  #           if (white->remote_values.is_on()) {  // first turn when off only turns on without changing level
+  #             call.set_brightness(white->remote_values.get_brightness() + 0.1);
+  #           }
+  #           call.perform();
+  #   on_anticlockwise:
+  #   - then:
+  #       - lambda: |-
+  #           auto white = id(light_white);
+  #           if (white->remote_values.get_brightness() <= 0.1) {
+  #             white->turn_off().perform();
+  #           } else {
+  #             auto call = white->turn_on();
+  #             call.set_brightness(white->remote_values.get_brightness() - 0.1);
+  #             call.perform();
+  #           }
