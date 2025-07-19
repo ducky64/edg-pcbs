@@ -1,9 +1,8 @@
 substitutions:
-  # name: "RollerBlinds"
-  name: "RollerBlinds2"
+  name: "CurtainCrawler"
 
 esphome:
-  name: ducky-iotrollerblinds
+  name: ducky-iotcurtaincrawler
   name_add_mac_suffix: true
   platform: esp32
   board: esp32-c3-devkitm-1
@@ -24,34 +23,38 @@ light:
 
 output:
   - platform: ledc
-    pin: GPIO3
+    pin: GPIO19
     id: output_motor1
     frequency: 500 Hz
   - platform: ledc
-    pin: GPIO19
+    pin: GPIO3
     id: output_motor2
     frequency: 500 Hz
 
 fan:
   - platform: hbridge
     id: motor
-    name: "${name} Motor"
+    name: "Motor"
     pin_a: output_motor1
     pin_b: output_motor2
     decay_mode: slow
+  
+i2c:
+  sda: GPIO6
+  scl: GPIO7
 
 sensor:
-  - platform: adc
-    name: "${name} Vin"
-    pin: GPIO4  # GPIO3 as designed is unusable with WiFi
-    accuracy_decimals: 2
-    update_interval: 60s
-    attenuation: 12dB
-    filters:
-      - multiply: 11.00
+  # - platform: adc  # unusable with wifi
+  #   name: "${name} Vin"
+  #   pin: GPIO5
+  #   accuracy_decimals: 2
+  #   update_interval: 60s
+  #   attenuation: 12dB
+  #   filters:
+  #     - multiply: 11.00
 
   - platform: rotary_encoder
-    name: "${name} Encoder"
+    name: "Encoder"
     pin_a:
       number: GPIO18
       mode:
@@ -62,3 +65,7 @@ sensor:
       mode:
         input: true
         pullup: true
+  - platform: bh1750
+    name: "${name} BH1750 Illuminance"
+    address: 0x23
+    update_interval: 60s

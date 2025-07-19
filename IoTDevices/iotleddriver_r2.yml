@@ -57,13 +57,13 @@ light:
 
 output:
   - platform: ledc
-    pin: GPIO1
+    pin: GPIO4
     id: output_white
   - platform: ledc
     pin: GPIO3
     id: output_red
   - platform: ledc
-    pin: GPIO4
+    pin: GPIO1
     id: output_green
   - platform: ledc
     pin: GPIO5
