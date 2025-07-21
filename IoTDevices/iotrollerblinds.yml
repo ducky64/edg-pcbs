@@ -30,7 +30,7 @@ light:
 globals:
   - id: kPwmDeadzone
     type: float
-    initial_value: '0.2'  # in fractional duty-cycle, this is treated as the zero point for motor output
+    initial_value: '0.4'  # in fractional duty-cycle, this is treated as the zero point for motor output
   - id: kRampRate
     type: float
     initial_value: '1.0'  # in fractional duty-cycle (post-dead-zone) per second
