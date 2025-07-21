@@ -30,7 +30,7 @@ light:
 globals:
   - id: kPwmDeadzone
     type: float
-    initial_value: '0.75'  # in fractional duty-cycle, this is treated as the zero point for motor output
+    initial_value: '0.9'  # in fractional duty-cycle, this is treated as the zero point for motor output
   - id: kRampRate
     type: float
     initial_value: '0.5'  # in fractional duty-cycle (post-dead-zone) per second
@@ -44,18 +44,6 @@ globals:
 # User Calibrations
 number:
   - platform: template
-    name: "${name} Cal Top"
-    id: cal_pos_top
-    icon: mdi:format-vertical-align-top
-    mode: box
-    restore_value: true
-    step: 1
-    min_value: -10000
-    max_value: 10000
-    set_action:
-      - then:
-        - lambda: id(cal_pos_top).publish_state(x);
-  - platform: template
     name: "${name} Cal Bottom"
     id: cal_pos_bot
     icon: mdi:format-vertical-align-bottom
@@ -67,6 +55,18 @@ number:
     set_action:
       - then:
         - lambda: id(cal_pos_bot).publish_state(x);
+  - platform: template
+    name: "${name} Cal Range"
+    id: cal_pos_range
+    icon: mdi:format-vertical-align-top
+    mode: box
+    restore_value: true
+    step: 1
+    min_value: -10000
+    max_value: 10000
+    set_action:
+      - then:
+        - lambda: id(cal_pos_range).publish_state(x);
   - platform: template
     name: "${name} Cal Slow"  # scale motor output when within this fraction of target
     id: cal_slow
@@ -123,8 +123,7 @@ cover:
 
     has_position: true
     lambda: |-
-      return (float(id(pos_encoder).state) - id(cal_pos_bot).state) /
-        (id(cal_pos_top).state - id(cal_pos_bot).state);
+      return (float(id(pos_encoder).state) - id(cal_pos_bot).state) / id(cal_pos_range).state;
 
     open_action:
       - lambda: |-
