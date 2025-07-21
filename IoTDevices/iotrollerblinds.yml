@@ -30,10 +30,16 @@ light:
 globals:
   - id: kPwmDeadzone
     type: float
-    initial_value: '0.9'  # in fractional duty-cycle, this is treated as the zero point for motor output
+    initial_value: '0.2'  # in fractional duty-cycle, this is treated as the zero point for motor output
   - id: kRampRate
     type: float
-    initial_value: '0.5'  # in fractional duty-cycle (post-dead-zone) per second
+    initial_value: '1.0'  # in fractional duty-cycle (post-dead-zone) per second
+  - id: kStuckTime
+    type: float
+    initial_value: '1.0'  # if haven't moved for this long, set fault mode and stop the motors
+  - id: kTimeoutTime
+    type: float
+    initial_value: '60.0'  # maximum time in motion, otherwise set fault mode
   - id: move_dir
     type: int
     initial_value: '0'  # move command, resets to 0 when target reached
@@ -80,6 +86,12 @@ number:
       - then:
         - lambda: id(cal_slow).publish_state(x);
 
+switch:
+  - platform: template
+    name: "${name} Fault"
+    id: fault
+    optimistic: true
+
 sensor:
   - platform: adc
     name: "${name} Vin"
@@ -109,11 +121,11 @@ output:
   - platform: ledc
     pin: GPIO3
     id: output_motor1
-    frequency: 200 Hz
+    frequency: 25 Hz
   - platform: ledc
     pin: GPIO19
     id: output_motor2
-    frequency: 200 Hz
+    frequency: 25 Hz
 
 cover:
   - platform: template
@@ -167,16 +179,35 @@ interval:
       lambda: |-
         static float current_control = 0;
         static long past_time = millis();
+        
+        long this_time = millis();
 
-        if (id(move_dir) == 0) {  // turn off when not moving
-          id(output_motor1).set_level(0.0);
-          id(output_motor2).set_level(0.0);
-          current_control = 0;
-          past_time = millis();
-          return;
+        // used for time-in-state calculation
+        static long move_dir_entry_time = 0;  // millis since move_dir changed from 0 -> something else
+        static bool last_move_dir = false;  // true if move_dir is commanding a move
+
+        if (!last_move_dir && id(move_dir) != 0) {
+          move_dir_entry_time = this_time;
+        }
+        last_move_dir = id(move_dir) != 0;
+
+        // stuck / fault detection
+        static long last_encoder_time = 0;
+        static int last_encoder = 0;
+
+        int this_encoder = id(pos_encoder).state;
+        if (this_encoder != last_encoder) {
+          last_encoder_time = this_time;
+          last_encoder = this_encoder;
+        }
+        if (id(move_dir) != 0
+            && ((this_time - move_dir_entry_time > id(kStuckTime) * 1000
+                 && this_time - last_encoder_time > id(kStuckTime) * 1000)
+                || this_time - move_dir_entry_time > id(kTimeoutTime) * 1000)) {
+          id(fault).publish_state(true);
         }
 
-        // note, this is designed to restart from a mid-prior run
+        // calculate control target
         if (id(pos_target) > 1) {  // clamp
           id(pos_target) = 1.0;
         } else if (id(pos_target) < 0) {
@@ -198,8 +229,7 @@ interval:
         }
 
         // apply ramp rate
-        long current_time = millis();
-        float max_ramp = float(current_time - past_time) / 1000 * id(kRampRate);
+        float max_ramp = float(this_time - past_time) / 1000 * id(kRampRate);
         if (target_control > current_control && target_control - current_control > max_ramp) {
           current_control = current_control + max_ramp;
         } else if (target_control < current_control && current_control - target_control > max_ramp) {
@@ -209,7 +239,13 @@ interval:
         }
 
         // translate controls to motor commands
-        if (current_control >= 0) {
+        if (id(move_dir) == 0 || id(fault).state) {  // turn off when not moving
+          id(move_dir) = 0;
+          current_control = 0;
+
+          id(output_motor1).set_level(0.0);
+          id(output_motor2).set_level(0.0);
+        } else if (current_control >= 0) {
           float raw_control = current_control * (1 - id(kPwmDeadzone)) + id(kPwmDeadzone);
           id(output_motor1).set_level(0.0);
           id(output_motor2).set_level(raw_control);
@@ -218,4 +254,4 @@ interval:
           id(output_motor1).set_level(-raw_control);
           id(output_motor2).set_level(0.0);
         }
-        past_time = current_time;
+        past_time = this_time;
