@@ -4,7 +4,8 @@ substitutions:
 esphome:
   name: ducky-iotcurtaincrawler
   name_add_mac_suffix: true
-  platform: esp32
+
+esp32:
   board: esp32-c3-devkitm-1
 
 wifi:
@@ -21,40 +22,145 @@ light:
       number: GPIO9
       inverted: true
 
+# device constants
+globals:
+  - id: kPwmDeadzone
+    type: float
+    initial_value: '1.0'  # in fractional duty-cycle, this is treated as the zero point for motor output
+  - id: kRampRate
+    type: float
+    initial_value: '1.0'  # in fractional duty-cycle (post-dead-zone) per second
+  - id: kStuckTime
+    type: float
+    initial_value: '1.0'  # if haven't moved for this long, set fault mode and stop the motors
+  - id: kTimeoutTime
+    type: float
+    initial_value: '60.0'  # maximum time in motion, otherwise set fault mode
+  - id: move_dir
+    type: int
+    initial_value: '0'  # move command, resets to 0 when target reached
+  - id: pos_target
+    type: float
+    initial_value: '0'
+
+# User Calibrations
+number:
+  - platform: template
+    name: "${name} Cal Bottom"
+    id: cal_pos_bot
+    icon: mdi:format-vertical-align-bottom
+    mode: box
+    restore_value: true
+    step: 1
+    min_value: -10000
+    max_value: 10000
+    set_action:
+      - then:
+        - lambda: id(cal_pos_bot).publish_state(x);
+  - platform: template
+    name: "${name} Cal Range"
+    id: cal_pos_range
+    icon: mdi:format-vertical-align-top
+    mode: box
+    restore_value: true
+    step: 1
+    min_value: -10000
+    max_value: 10000
+    set_action:
+      - then:
+        - lambda: id(cal_pos_range).publish_state(x);
+  - platform: template
+    name: "${name} Cal Slow"  # scale motor output when within this fraction of target
+    id: cal_slow
+    icon: mdi:speedometer-slow
+    mode: box
+    restore_value: true
+    step: 0.01
+    min_value: 0
+    max_value: 1
+    set_action:
+      - then:
+        - lambda: id(cal_slow).publish_state(x);
+
+switch:
+  - platform: template
+    name: "${name} Fault"
+    id: fault
+    optimistic: true
+
 output:
   - platform: ledc
     pin: GPIO19
     id: output_motor1
-    frequency: 500 Hz
+    frequency: 25 Hz
   - platform: ledc
     pin: GPIO3
     id: output_motor2
-    frequency: 500 Hz
+    frequency: 25 Hz
 
-fan:
-  - platform: hbridge
-    id: motor
-    name: "Motor"
-    pin_a: output_motor1
-    pin_b: output_motor2
-    decay_mode: slow
+cover:
+  - platform: template
+    name: "${name}"
+    device_class: shade
+    id: cover_shade
+
+    has_position: true
+    lambda: |-
+      return (float(id(pos_encoder).state) - id(cal_pos_bot).state) / id(cal_pos_range).state;
+
+    open_action:
+      - lambda: |-
+          id(move_dir) = 1;
+          id(pos_target) = 1.0;
+          id(cover_shade).current_operation = COVER_OPERATION_OPENING;
+          id(cover_shade).publish_state();
+    close_action:
+      - lambda: |-
+          id(move_dir) = -1;
+          id(pos_target) = 0.0;
+          id(cover_shade).current_operation = COVER_OPERATION_CLOSING;
+          id(cover_shade).publish_state();
+    position_action:
+      - lambda: |-
+          id(move_dir) = pos > id(cover_shade).position ? 1 : -1;
+          id(pos_target) = pos;
+          if (id(move_dir) > 0) {
+            id(cover_shade).current_operation = COVER_OPERATION_OPENING;
+            id(cover_shade).publish_state();
+          } else {
+            id(cover_shade).current_operation = COVER_OPERATION_CLOSING;
+            id(cover_shade).publish_state();
+          }
+
+    stop_action:
+      - lambda: |-
+          id(move_dir) = 0;
+          id(cover_shade).current_operation = COVER_OPERATION_IDLE;
+          id(cover_shade).publish_state();
+      - output.set_level:
+          id: output_motor1
+          level: 0.0
+      - output.set_level:
+          id: output_motor2
+          level: 0.0
   
 i2c:
   sda: GPIO6
   scl: GPIO7
 
 sensor:
-  # - platform: adc  # unusable with wifi
-  #   name: "${name} Vin"
-  #   pin: GPIO5
-  #   accuracy_decimals: 2
-  #   update_interval: 60s
-  #   attenuation: 12dB
-  #   filters:
-  #     - multiply: 11.00
+  - platform: adc
+    name: "${name} Vin"
+    pin: GPIO1  # original pin unusable with wifi
+    accuracy_decimals: 2
+    update_interval: 1s
+    attenuation: 12dB
+    filters:
+      - multiply: 11.00
 
   - platform: rotary_encoder
-    name: "Encoder"
+    name: "${name} Encoder"
+    id: pos_encoder
     pin_a:
       number: GPIO18
       mode:
@@ -69,3 +175,110 @@ sensor:
     name: "${name} BH1750 Illuminance"
     address: 0x23
     update_interval: 60s
+
+# used to test magnetic sensors
+# binary_sensor:
+#   - platform: gpio
+#     name: "EncA"
+#     pin:
+#       number: GPIO18
+#       inverted: true
+#       mode:
+#         input: true
+#         pullup: true
+#     filters:
+#       - delayed_on: 10ms
+#   - platform: gpio
+#     name: "EncB"
+#     pin:
+#       number: GPIO10
+#       inverted: true
+#       mode:
+#         input: true
+#         pullup: true
+#     filters:
+#       - delayed_on: 10ms
+
+
+interval:
+  - interval: 100ms
+    then:
+      lambda: |-
+        static float current_control = 0;
+        static long past_time = millis();
+        
+        long this_time = millis();
+
+        // used for time-in-state calculation
+        static long move_dir_entry_time = 0;  // millis since move_dir changed from 0 -> something else
+        static bool last_move_dir = false;  // true if move_dir is commanding a move
+
+        if (!last_move_dir && id(move_dir) != 0) {
+          move_dir_entry_time = this_time;
+        }
+        last_move_dir = id(move_dir) != 0;
+
+        // stuck / fault detection
+        static long last_encoder_time = 0;
+        static int last_encoder = 0;
+
+        int this_encoder = id(pos_encoder).state;
+        if (this_encoder != last_encoder) {
+          last_encoder_time = this_time;
+          last_encoder = this_encoder;
+        }
+        if (id(move_dir) != 0
+            && ((this_time - move_dir_entry_time > id(kStuckTime) * 1000
+                 && this_time - last_encoder_time > id(kStuckTime) * 1000)
+                || this_time - move_dir_entry_time > id(kTimeoutTime) * 1000)) {
+          id(fault).publish_state(true);
+        }
+
+        // calculate control target
+        if (id(pos_target) > 1) {  // clamp
+          id(pos_target) = 1.0;
+        } else if (id(pos_target) < 0) {
+          id(pos_target) = 0.0;
+        }
+
+        float current_pos = id(cover_shade).position;
+        if ((id(move_dir) > 0 && current_pos >= id(pos_target)) || 
+            (id(move_dir) < 0 && current_pos <= id(pos_target))) {  // check target reached
+          id(move_dir) = 0;
+          id(cover_shade).current_operation = COVER_OPERATION_IDLE;
+          id(cover_shade).publish_state();
+        }
+
+        float target_control = id(move_dir);  // determine control target
+        float target_delta = abs(id(pos_target) - current_pos);  // apply scaling
+        if (target_delta < id(cal_slow).state) {
+          target_control *= target_delta / id(cal_slow).state;
+        }
+
+        // apply ramp rate
+        float max_ramp = float(this_time - past_time) / 1000 * id(kRampRate);
+        if (target_control > current_control && target_control - current_control > max_ramp) {
+          current_control = current_control + max_ramp;
+        } else if (target_control < current_control && current_control - target_control > max_ramp) {
+          current_control = current_control - max_ramp;
+        } else {
+          current_control = target_control;
+        }
+
+        // translate controls to motor commands
+        if (id(move_dir) == 0 || id(fault).state) {  // turn off when not moving
+          id(move_dir) = 0;
+          current_control = 0;
+
+          id(output_motor1).set_level(0.0);
+          id(output_motor2).set_level(0.0);
+        } else if (current_control >= 0) {
+          float raw_control = current_control * (1 - id(kPwmDeadzone)) + id(kPwmDeadzone);
+          id(output_motor1).set_level(0.0);
+          id(output_motor2).set_level(raw_control);
+        } else {
+          float raw_control = current_control * (1 - id(kPwmDeadzone)) - id(kPwmDeadzone);
+          id(output_motor1).set_level(-raw_control);
+          id(output_motor2).set_level(0.0);
+        }
+        past_time = this_time;
