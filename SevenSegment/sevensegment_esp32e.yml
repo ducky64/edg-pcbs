@@ -4,8 +4,6 @@ substitutions:
 esphome:
   name: ducky-sevensegment
   name_add_mac_suffix: true
-  platform: esp32
-  board: esp32dev
   on_boot:
     - light.turn_on:
         id: led
@@ -13,10 +11,14 @@ esphome:
   includes:
     - digit.h
 
+esp32:
+  board: esp32dev
+
 wifi:
   <<: !include ../wifi_config.yaml
 
-captive_portal:
+# typically we would include ../common_config.yaml
+# but we want to disable the webserver (to allow bluetooth proxy) and add the play_rtttl service
 
 # HASS API
 api:
@@ -30,13 +32,9 @@ api:
 
 # Allow API
 ota:
+  - platform: esphome
 
-# Print Updates
-logger:
-
-# WebServer component, displays some information
-web_server:
-    port: 80
+bluetooth_proxy:
 
 time:
   - platform: sntp
