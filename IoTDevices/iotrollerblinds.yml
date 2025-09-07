@@ -14,8 +14,12 @@ preferences:
 
 wifi:
   <<: !include ../wifi_config.yaml
+  reboot_timeout: 0s  # do not reboot, brief motor on power-on means calibration drifts
 
 <<: !include ../common_config.yaml
+
+api:
+  reboot_timeout: 0s  # do not reboot, brief motor on power-on means calibration drifts
 
 light:
   - platform: status_led
