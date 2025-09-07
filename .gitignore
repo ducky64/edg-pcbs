@@ -30,3 +30,7 @@ fp-info-cache
 
 # Secrets
 wifi_config.yaml
+
+# Mechanical
+*.stl
+*.FCBak
