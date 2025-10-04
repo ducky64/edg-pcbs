@@ -15,6 +15,12 @@ use esp_hal::timer::systimer::SystemTimer;
 use esp_hal::timer::timg::TimerGroup;
 use esp_wifi::ble::controller::BleConnector;
 
+use esp_hal::{
+    delay::Delay,
+    gpio::{Level, Output, OutputConfig}
+};
+use esp_println::println;
+
 extern crate alloc;
 
 // This creates a default app-descriptor required by the esp-idf bootloader.
@@ -48,8 +54,14 @@ async fn main(spawner: Spawner) {
     // TODO: Spawn some tasks
     let _ = spawner;
 
+    println!("Quack quack quack world");
+
+    let mut led = Output::new(peripherals.GPIO9, Level::Low, OutputConfig::default());
+    led.set_high();
+
     loop {
         Timer::after(Duration::from_secs(1)).await;
+        led.toggle();
     }
 
     // for inspiration have a look at the examples at https://github.com/esp-rs/esp-hal/tree/esp-hal-v1.0.0-rc.0/examples/src/bin
