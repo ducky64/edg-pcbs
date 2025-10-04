@@ -59,16 +59,22 @@ async fn main(spawner: Spawner) {
     let mut led = Output::new(peripherals.GPIO9, Level::Low, OutputConfig::default());
     let button = Input::new(peripherals.GPIO10, InputConfig::default().with_pull(Pull::Up));
 
-    led.set_high();
+    spawner.spawn(blinky(led, button)).ok();
 
     loop {
         Timer::after(Duration::from_secs(1)).await;
+    }
+}
+
+
+#[embassy_executor::task]
+async fn blinky(mut led: Output<'static>, button: Input<'static>) {
+    loop {
         if button.is_high() {  // button open
             led.set_high();  // LED off
         } else {
             led.set_low();
         }
+        Timer::after(Duration::from_secs(1)).await;
     }
-
-    // for inspiration have a look at the examples at https://github.com/esp-rs/esp-hal/tree/esp-hal-v1.0.0-rc.0/examples/src/bin
 }
