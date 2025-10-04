@@ -17,7 +17,7 @@ use esp_wifi::ble::controller::BleConnector;
 
 use esp_hal::{
     delay::Delay,
-    gpio::{Level, Output, OutputConfig}
+    gpio::{Input, InputConfig, Pull, Level, Output, OutputConfig}
 };
 use esp_println::println;
 
@@ -57,11 +57,17 @@ async fn main(spawner: Spawner) {
     println!("Quack quack quack world");
 
     let mut led = Output::new(peripherals.GPIO9, Level::Low, OutputConfig::default());
+    let button = Input::new(peripherals.GPIO10, InputConfig::default().with_pull(Pull::Up));
+
     led.set_high();
 
     loop {
         Timer::after(Duration::from_secs(1)).await;
-        led.toggle();
+        if button.is_high() {  // button open
+            led.set_high();  // LED off
+        } else {
+            led.set_low();
+        }
     }
 
     // for inspiration have a look at the examples at https://github.com/esp-rs/esp-hal/tree/esp-hal-v1.0.0-rc.0/examples/src/bin
