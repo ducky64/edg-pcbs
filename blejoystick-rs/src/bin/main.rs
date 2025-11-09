@@ -17,7 +17,8 @@ use esp_wifi::ble::controller::BleConnector;
 
 use esp_hal::{
     delay::Delay,
-    gpio::{Input, InputConfig, Pull, Level, Output, OutputConfig}
+    gpio::{Input, InputConfig, Pull, Level, Output, OutputConfig},
+    analog::adc::{AdcConfig, Adc, Attenuation},
 };
 use esp_println::println;
 
@@ -57,12 +58,25 @@ async fn main(spawner: Spawner) {
     println!("Quack quack quack world");
 
     let mut led = Output::new(peripherals.GPIO9, Level::Low, OutputConfig::default());
-    let button = Input::new(peripherals.GPIO10, InputConfig::default().with_pull(Pull::Up));
+    let button = Input::new(peripherals.GPIO6, InputConfig::default().with_pull(Pull::Up));
+
+    let mut adc_config = esp_hal::analog::adc::AdcConfig::new();
+    let mut joystick_x_pin = adc_config.enable_pin(peripherals.GPIO4, Attenuation::_11dB);
+    let mut joystick_y_pin = adc_config.enable_pin(peripherals.GPIO3, Attenuation::_11dB);
+    let mut trig_pin = adc_config.enable_pin(peripherals.GPIO1, Attenuation::_11dB);
+    let mut vbat_pin = adc_config.enable_pin(peripherals.GPIO0, Attenuation::_11dB);
+    let mut adc = esp_hal::analog::adc::Adc::new(peripherals.ADC1, adc_config);
+
 
     spawner.spawn(blinky(led, button)).ok();
 
     loop {
-        Timer::after(Duration::from_secs(1)).await;
+        let joystick_x_value = nb::block!(adc.read_oneshot(&mut joystick_x_pin)).unwrap();
+        let joystick_y_value = nb::block!(adc.read_oneshot(&mut joystick_y_pin)).unwrap();
+        let trig_value = nb::block!(adc.read_oneshot(&mut trig_pin)).unwrap();
+        let vbat_value = nb::block!(adc.read_oneshot(&mut vbat_pin)).unwrap();
+        println!("JX {joystick_x_value}    JY {joystick_y_value}    T {trig_value}    VB {vbat_value}");
+        Timer::after(Duration::from_millis(100)).await;
     }
 }
 
@@ -75,6 +89,6 @@ async fn blinky(mut led: Output<'static>, button: Input<'static>) {
         } else {
             led.set_low();
         }
-        Timer::after(Duration::from_secs(1)).await;
+        Timer::after(Duration::from_millis(10)).await;
     }
 }

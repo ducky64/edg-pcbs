@@ -98,6 +98,7 @@ dependencies = [
  "esp-hal-embassy",
  "esp-println",
  "esp-wifi",
+ "nb 1.1.0",
  "smoltcp",
  "static_cell",
  "trouble-host",
