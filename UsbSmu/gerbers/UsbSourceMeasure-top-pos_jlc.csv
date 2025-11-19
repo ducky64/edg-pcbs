@@ -277,7 +277,7 @@ U10,reg_vcontrol.ic,SOT-23-5,75.000000,69.000000,0.0,top
 U11,reg_vcontroln.ic,SOT-23-6,59.000000,79.000000,180.0,top
 U12,control.comp_source.ic,SOT-353_SC-70-5,59.000000,58.500000,180.0,top
 U13,control.comp_sink.ic,SOT-353_SC-70-5,59.000000,53.500000,180.0,top
-U14,control.off_sw.ic,SOT-363_SC-70-6,59.000000,63.500000,0.000000,top
+U14,control.off_sw.ic,SOT-363_SC-70-6,59.000000,63.500000,180.0,top
 U15,control.driver.high_gate.ic,SOT-23-6,98.000000,100.000000,270.0,top
 U16,control.driver.low_gate.ic,SOT-23-6,104.000000,100.000000,270.0,top
 U17,control.isense.ranges[0].sense_sw.ic,SOT-23-6,100.000000,66.000000,90.0,top
