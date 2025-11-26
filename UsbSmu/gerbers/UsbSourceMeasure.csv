@@ -106,7 +106,7 @@ Id,Designator,Footprint,Quantity,Designation,Supplier and Ref,JLCPCB Part #,Manu
 105,"R65,R66",Resistor_SMD:R_0603_1608Metric,2,100mW Thick Film Resistors 75V ±100ppm/? ±1% 150? 0603 Chip Resistor - Surface Mount ROHS,,C22808,UNI-ROYAL(Uniroyal Elec),0603WAF1500T5E,
 106,"C78,C79",Capacitor_SMD:C_0603_1608Metric,2,50V 150pF X7R ±10% 0603 Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS,,C1594,FH(Guangdong Fenghua Advanced Tech),0603B151K500NT,
 107,R70,Resistor_SMD:R_0603_1608Metric,1,100mW Thick Film Resistors 75V ±100ppm/? ±1% 22k? 0603 Chip Resistor - Surface Mount ROHS,,C31850,UNI-ROYAL(Uniroyal Elec),0603WAF2202T5E,
-108,U31,Package_SO:VSSOP-8_2.3x2mm_P0.5mm,1,,,C2867561,Texas Instruments,SN74LVC2G02DCUT,
+108,U31,Package_SO:VSSOP-8_2.3x2mm_P0.5mm,1,,,C133589,Texas Instruments,SN74LVC2G02DCUR,
 109,"U32,U33",Package_TO_SOT_SMD:SOT-563,2,,,,,,"DNP: OOS, TMP1075N"
 110,R73,Resistor_SMD:R_0603_1608Metric,1,100mW Thick Film Resistors 75V ±100ppm/? ±1% 120k? 0603 Chip Resistor - Surface Mount ROHS,,C25808,UNI-ROYAL(Uniroyal Elec),0603WAF1203T5E,
 111,SW1,edg:RotaryEncoder_Bourns_PEC11S,1,,,,Bourns,,"DNP: OOS, PEC11S-929K-S0015"
