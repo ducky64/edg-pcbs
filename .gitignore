@@ -18,9 +18,6 @@ _autosave-*
 fp-info-cache
 *.pyc
 
-# Netlist files (exported from Eeschema)
-*.net
-
 # Autorouter files (exported from Pcbnew)
 *.dsn
 *.ses
