@@ -13,6 +13,9 @@ wifi:
 
 <<: !include ../common_config.yaml
 
+api:
+  reboot_timeout: 0s  # do not reboot, brief motor on power-on means calibration drifts
+
 light:
   - platform: status_led
     name: "${name} Dbg"
@@ -38,7 +41,7 @@ globals:
     initial_value: '60.0'  # maximum time in motion, otherwise set fault mode
   - id: move_dir
     type: int
-    initial_value: '0'  # move command, resets to 0 when target reached
+    initial_value: '0'  # move command, resets to 0 when target reached, in abstract shade direction
   - id: pos_target
     type: float
     initial_value: '0'
@@ -153,7 +156,7 @@ sensor:
     name: "${name} Vin"
     pin: GPIO1  # original pin unusable with wifi
     accuracy_decimals: 2
-    update_interval: 1s
+    update_interval: 60s
     attenuation: 12dB
     filters:
       - multiply: 11.00
@@ -249,7 +252,8 @@ interval:
           id(cover_shade).publish_state();
         }
 
-        float target_control = id(move_dir);  // determine control target
+        int sign = id(cal_pos_range).state >= 0 ? 1 : -1;  // allow inverting direction with calibration
+        float target_control = id(move_dir) * sign;  // determine control target
         float target_delta = abs(id(pos_target) - current_pos);  // apply scaling
         if (target_delta < id(cal_slow).state) {
           target_control *= target_delta / id(cal_slow).state;
