@@ -1,0 +1,14 @@
+TU13 Lepton Socket: OOS at JLC
+TR13 12.4KOhm: OOS
+R4: 390kOhm: OOS
+TX2: 25MHz oscillator 3225 OOS
+TU8: W5500
+TU10: VL53L5CX
+TJ2 Magjack
+JU10, TU12: CH32V003
+ESP32S3/C6
+FSW1: EC11J encoder
+
+TC1 1nF 1kV
+TD1 PoE TVS
+TFB1, TFB2 0603 ferrite beads
