@@ -1,6 +1,9 @@
 #![no_std]
 #![no_main]
 
+mod prelude;
+use crate::prelude::*;
+
 use defmt_rtt as _;
 
 use embassy_executor::Spawner;
@@ -30,9 +33,11 @@ async fn main(spawner: Spawner) {
         rcc: hal::rcc::Config::SYSCLK_FREQ_144MHZ_HSI,
         ..Default::default()
     });
+    info!("Start");
 
     let mut led = Output::new(p.PB4, Level::Low, Speed::High);
     spawner.spawn(blinky(led).expect("led task"));
+    info!("LED init");
 
     let driver = Driver::new(p.USBD, Irqs, p.PA12, p.PA11);
 
@@ -84,6 +89,8 @@ async fn main(spawner: Spawner) {
             let _ = echo(&mut class).await;
         }
     };
+
+    info!("USB init");
 
     // Run everything concurrently.
     // If we had made everything `'static` above instead, we could do this using separate tasks instead.
