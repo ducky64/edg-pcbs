@@ -4,6 +4,7 @@
 mod prelude;
 use crate::prelude::*;
 
+use ch32_hal::mode::{Async, Blocking};
 use defmt_rtt as _;
 
 use embassy_executor::Spawner;
@@ -17,6 +18,10 @@ use hal::usbd::{Driver, Instance};
 use hal::{bind_interrupts, peripherals, println, usb, Config};
 use {ch32_hal as hal, panic_halt as _};
 use hal::gpio::{Level, Output, Speed};
+use hal::spi::Spi;
+
+use smart_leds::SmartLedsWrite;
+use ws2812_spi::prerendered::Ws2812;
 
 bind_interrupts!(struct Irqs {
     USB_LP_CAN1_RX0 => hal::usbd::InterruptHandler<hal::peripherals::USBD>;
@@ -36,8 +41,13 @@ async fn main(spawner: Spawner) {
     info!("Start");
 
     let mut led = Output::new(p.PB4, Level::Low, Speed::High);
-    spawner.spawn(blinky(led).expect("led task"));
-    info!("LED init");
+    spawner.spawn(led_task(led).expect("led task"));
+
+    let mut spi_config = hal::spi::Config::default();
+    spi_config.frequency = Hertz::khz(3000);
+    // let spi = Spi::new_blocking_txonly(p.SPI1,p.PB3 , p.PB5, spi_config);
+    let spi = Spi::new_txonly(p.SPI1,p.PB3 , p.PB5, p.DMA1_CH3, spi_config);
+    spawner.spawn(npx_task(spi).expect("npx task"));
 
     let driver = Driver::new(p.USBD, Irqs, p.PA12, p.PA11);
 
@@ -117,13 +127,44 @@ async fn echo<'d, T: Instance + 'd>(class: &mut CdcAcmClass<'d, Driver<'d, T>>) 
     }
 }
 
-
 #[embassy_executor::task]
-async fn blinky(mut led: Output<'static>) {
+async fn led_task(mut led: Output<'static>) {
+    info!("LED task start");
+
     loop {
         led.set_high();
-        Timer::after_millis(250).await;
+        Timer::after_millis(500).await;
         led.set_low();
-        Timer::after_millis(250).await;
+        Timer::after_millis(500).await;
+    }
+}
+
+#[embassy_executor::task]
+async fn npx_task(mut spi: Spi<'static, peripherals::SPI1, Async>) {
+    use smart_leds::{RGB8};
+
+    let mut colors = [
+        RGB8 { r: 32, g: 32, b: 0 },
+        RGB8 { r: 16, g: 0, b: 16 },
+        RGB8 { r: 0, g: 32, b: 32 }
+    ];
+
+    let mut colors2 = [
+        RGB8 { r: 32, g: 0, b: 32 },
+        RGB8 { r: 16, g: 0, b: 16 },
+        RGB8 { r: 0, g: 32, b: 32 }
+    ];
+
+    let mut npx_buf: [u8; 512] = [0; 512];
+    let mut npx = Ws2812::new(spi, &mut npx_buf);
+
+    info!("NPX task start");
+
+    loop {
+        info!("NPX loop");
+        npx.write(colors.into_iter()).unwrap();
+        Timer::after_millis(100).await;
+        npx.write(colors2.into_iter()).unwrap();
+        Timer::after_millis(100).await;
     }
 }
