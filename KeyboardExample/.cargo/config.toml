@@ -1,0 +1,24 @@
+# based on https://github.com/rappet/hackoween-badge/blob/main/firmware/.cargo/config.toml
+
+[build]
+# note, must not have the 'a' extension
+# qingke package raises a compiler error about atomics
+# see resolution in https://github.com/ch32-rs/ch32-hal/issues/59
+target = "riscv32imc-unknown-none-elf"
+
+[target."riscv32imc-unknown-none-elf"]
+rustflags = [
+  "-C", "link-arg=-Tlink.x",
+  "-C", "link-arg=-Tdefmt.x",
+]
+# runner = "riscv64-unknown-elf-gdb -q -x openocd.gdb"
+# runner = "riscv-none-embed-gdb -q -x openocd.gdb"
+# runner = "gdb -q -x openocd.gdb"
+# runner = "wlink -v flash"
+
+# runner = "wlink -v flash --enable-sdi-print --watch-serial --erase"
+# runner = "wlink -v flash"
+
+# requires a newer (possibly pre-release) version of probe-rs
+# see https://github.com/ch32-rs/ch32-hal/discussions/176
+runner = "probe-rs run --chip ch32v203k8t6"
