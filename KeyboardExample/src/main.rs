@@ -40,8 +40,8 @@ async fn main(spawner: Spawner) {
     });
     info!("Start");
 
-    let mut led = Output::new(p.PB4, Level::Low, Speed::High);
-    spawner.spawn(led_task(led).expect("led task"));
+    // note, this interferes with the npx SPI and should not be used
+    let _led = Output::new(p.PB4, Level::Low, Speed::Low);
 
     let mut spi_config = hal::spi::Config::default();
     spi_config.frequency = Hertz::khz(3000);
@@ -128,18 +128,6 @@ async fn echo<'d, T: Instance + 'd>(class: &mut CdcAcmClass<'d, Driver<'d, T>>) 
 }
 
 #[embassy_executor::task]
-async fn led_task(mut led: Output<'static>) {
-    info!("LED task start");
-
-    loop {
-        led.set_high();
-        Timer::after_millis(500).await;
-        led.set_low();
-        Timer::after_millis(500).await;
-    }
-}
-
-#[embassy_executor::task]
 async fn npx_task(mut spi: Spi<'static, peripherals::SPI1, Async>) {
     use smart_leds::{RGB8};
 
@@ -161,7 +149,6 @@ async fn npx_task(mut spi: Spi<'static, peripherals::SPI1, Async>) {
     info!("NPX task start");
 
     loop {
-        info!("NPX loop");
         npx.write(colors.into_iter()).unwrap();
         Timer::after_millis(100).await;
         npx.write(colors2.into_iter()).unwrap();
