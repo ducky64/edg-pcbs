@@ -7,6 +7,19 @@ use crate::prelude::*;
 use ch32_hal::mode::{Async, Blocking};
 use defmt_rtt as _;
 
+use core::panic::PanicInfo;
+#[panic_handler]
+fn panic(info: &PanicInfo) -> ! {
+    // This will print the panic message, file, and line number via defmt!
+    defmt::error!("{}", defmt::Display2Format(info));
+
+    // Halt the CPU
+    loop {
+        core::hint::spin_loop();
+    }
+}
+
+
 use embassy_executor::Spawner;
 use embassy_futures::join::join;
 use embassy_time::Timer;
@@ -16,15 +29,27 @@ use embassy_usb::Builder;
 use hal::time::Hertz;
 use hal::usbd::{Driver, Instance};
 use hal::{bind_interrupts, peripherals};
-use {ch32_hal as hal, panic_halt as _};
+use {ch32_hal as hal};
 use hal::gpio::{Level, Output, Speed};
 use hal::spi::Spi;
+use hal::i2c::{I2c, Config as I2cConfig};
 
 use smart_leds::SmartLedsWrite;
 use ws2812_spi::prerendered::Ws2812;
 
+use embedded_graphics::{
+    mono_font::{ascii::FONT_6X10, MonoTextStyleBuilder},
+    pixelcolor::BinaryColor,
+    prelude::*,
+    text::{Baseline, Text},
+};
+use ssd1306::{prelude::*, I2CDisplayInterface, Ssd1306};
+
+
 bind_interrupts!(struct Irqs {
     USB_LP_CAN1_RX0 => hal::usbd::InterruptHandler<hal::peripherals::USBD>;
+    I2C1_EV => hal::i2c::EventInterruptHandler<hal::peripherals::I2C1>;
+    I2C1_ER => hal::i2c::ErrorInterruptHandler<hal::peripherals::I2C1>;
 });
 
 // If you are trying this and your USB device doesn't connect, the most
@@ -48,6 +73,20 @@ async fn main(spawner: Spawner) {
     // let spi = Spi::new_blocking_txonly(p.SPI1,p.PB3 , p.PB5, spi_config);
     let spi = Spi::new_txonly(p.SPI1,p.PB3 , p.PB5, p.DMA1_CH3, spi_config);
     spawner.spawn(npx_task(spi).expect("npx task"));
+
+    // Initialize I2C1 with PB6 (SCL) and PB7 (SDA) using DMA for async operations
+    let i2c = I2c::new(
+        p.I2C1, 
+        p.PB6, 
+        p.PB7,
+        Irqs,
+        p.DMA1_CH6,
+        p.DMA1_CH7,
+        Hertz(400_000),
+        I2cConfig::default()
+    );
+    let oled_rst = Output::new(p.PB1, Level::Low, Speed::Low);
+    spawner.spawn(display_task(i2c, oled_rst).expect("display task"));
 
     let driver = Driver::new(p.USBD, Irqs, p.PA12, p.PA11);
 
@@ -131,16 +170,22 @@ async fn echo<'d, T: Instance + 'd>(class: &mut CdcAcmClass<'d, Driver<'d, T>>) 
 async fn npx_task(mut spi: Spi<'static, peripherals::SPI1, Async>) {
     use smart_leds::{RGB8};
 
-    let mut colors = [
-        RGB8 { r: 4, g: 4, b: 0 },
-        RGB8 { r: 2, g: 0, b: 2 },
-        RGB8 { r: 0, g: 4, b: 4 }
-    ];
+    let colors = [
+        RGB8 { r: 2, g: 0, b: 0 },
+        RGB8 { r: 0, g: 2, b: 0 },
+        RGB8 { r: 0, g: 0, b: 2 },
 
-    let mut colors2 = [
-        RGB8 { r: 4, g: 0, b: 4 },
-        RGB8 { r: 2, g: 0, b: 2 },
-        RGB8 { r: 0, g: 4, b: 4 }
+        RGB8 { r: 1, g: 1, b: 0 },
+        RGB8 { r: 0, g: 1, b: 1 },
+        RGB8 { r: 1, g: 0, b: 1 },
+
+        RGB8 { r: 1, g: 0, b: 0 },
+        RGB8 { r: 0, g: 1, b: 0 },
+        RGB8 { r: 0, g: 0, b: 1 },
+
+        RGB8 { r: 1, g: 1, b: 1 },
+        RGB8 { r: 2, g: 2, b: 2 },
+        RGB8 { r: 3, g: 3, b: 3 },
     ];
 
     let mut npx_buf: [u8; 512] = [0; 512];
@@ -150,8 +195,49 @@ async fn npx_task(mut spi: Spi<'static, peripherals::SPI1, Async>) {
 
     loop {
         npx.write(colors.into_iter()).unwrap();
-        Timer::after_millis(100).await;
-        npx.write(colors2.into_iter()).unwrap();
-        Timer::after_millis(100).await;
+        Timer::after_millis(1000).await;
+    }
+}
+
+#[embassy_executor::task]
+async fn display_task(i2c: I2c<'static, peripherals::I2C1, Async>, mut rst: Output<'static>) {
+    info!("Display task start");
+
+    rst.set_low();
+    Timer::after_millis(10).await;
+
+    rst.set_high();
+    Timer::after_millis(10).await;
+
+
+    let interface = I2CDisplayInterface::new(i2c);
+    let mut display = Ssd1306::new(interface, DisplaySize128x64, DisplayRotation::Rotate0)
+        .into_buffered_graphics_mode();
+    display.init().expect("display init failed");
+
+    let text_style = MonoTextStyleBuilder::new()
+        .font(&FONT_6X10)
+        .text_color(BinaryColor::On)
+        .build();
+
+
+    let mut count = 0;
+
+    loop {
+        display.clear(BinaryColor::Off).unwrap();
+        
+        Text::with_baseline("Hello world!", Point::zero(), text_style, Baseline::Top)
+            .draw(&mut display)
+            .unwrap();
+
+        Text::with_baseline("Hello Rust!", Point::new(0, 16), text_style, Baseline::Top)
+            .draw(&mut display)
+            .unwrap();
+
+        display.flush().expect("display flush failed");
+        info!("Display refresh");
+
+        count += 1;
+        Timer::after_millis(500).await;
     }
 }
