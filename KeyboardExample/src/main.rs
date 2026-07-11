@@ -15,7 +15,7 @@ use embassy_usb::driver::EndpointError;
 use embassy_usb::Builder;
 use hal::time::Hertz;
 use hal::usbd::{Driver, Instance};
-use hal::{bind_interrupts, peripherals, println, usb, Config};
+use hal::{bind_interrupts, peripherals};
 use {ch32_hal as hal, panic_halt as _};
 use hal::gpio::{Level, Output, Speed};
 use hal::spi::Spi;
@@ -35,7 +35,7 @@ bind_interrupts!(struct Irqs {
 #[embassy_executor::main(entry = "qingke_rt::entry")]
 async fn main(spawner: Spawner) {
     let p = hal::init(hal::Config {
-        rcc: hal::rcc::Config::SYSCLK_FREQ_144MHZ_HSI,
+        rcc: hal::rcc::Config::SYSCLK_FREQ_144MHZ_HSE,
         ..Default::default()
     });
     info!("Start");
@@ -132,15 +132,15 @@ async fn npx_task(mut spi: Spi<'static, peripherals::SPI1, Async>) {
     use smart_leds::{RGB8};
 
     let mut colors = [
-        RGB8 { r: 32, g: 32, b: 0 },
-        RGB8 { r: 16, g: 0, b: 16 },
-        RGB8 { r: 0, g: 32, b: 32 }
+        RGB8 { r: 4, g: 4, b: 0 },
+        RGB8 { r: 2, g: 0, b: 2 },
+        RGB8 { r: 0, g: 4, b: 4 }
     ];
 
     let mut colors2 = [
-        RGB8 { r: 32, g: 0, b: 32 },
-        RGB8 { r: 16, g: 0, b: 16 },
-        RGB8 { r: 0, g: 32, b: 32 }
+        RGB8 { r: 4, g: 0, b: 4 },
+        RGB8 { r: 2, g: 0, b: 2 },
+        RGB8 { r: 0, g: 4, b: 4 }
     ];
 
     let mut npx_buf: [u8; 512] = [0; 512];

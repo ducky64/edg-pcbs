@@ -119,7 +119,7 @@ dependencies = [
  "futures",
  "nb 1.1.0",
  "proc-macro2",
- "qingke",
+ "qingke 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "qingke-rt",
  "quote",
  "rand_core",
@@ -718,13 +718,11 @@ dependencies = [
  "embassy-time",
  "embassy-usb",
  "embassy-usb-driver",
- "embedded-can",
  "embedded-graphics",
  "embedded-hal 1.0.0",
  "heapless 0.8.0",
- "micromath",
  "panic-halt",
- "qingke",
+ "qingke 0.7.0 (git+https://github.com/ch32-rs/qingke.git)",
  "qingke-rt",
  "smart-leds",
  "ssd1306",
@@ -788,9 +786,6 @@ name = "micromath"
 version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3c8dda44ff03a2f238717214da50f65d5a53b45cd213a7370424ffdb6fae815"
-dependencies = [
- "num-traits",
-]
 
 [[package]]
 name = "nb"
@@ -907,12 +902,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "qingke"
+version = "0.7.0"
+source = "git+https://github.com/ch32-rs/qingke.git#284240ea39b5c7f99d66cf99871b58128eb8b5a5"
+dependencies = [
+ "bit_field",
+ "cfg-if",
+ "riscv 0.15.0",
+]
+
+[[package]]
 name = "qingke-rt"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f3f5debfcb74752c0949a1f2700e5c98a34ae06174b6551034d99de0d12f13c"
 dependencies = [
- "qingke",
+ "qingke 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "qingke-rt-macros",
 ]
 
