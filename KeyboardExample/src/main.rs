@@ -30,9 +30,11 @@ use hal::time::Hertz;
 use hal::usbd::{Driver, Instance};
 use hal::{bind_interrupts, peripherals};
 use {ch32_hal as hal};
-use hal::gpio::{Level, Output, Speed};
+use hal::gpio::{Level, Input, Output, Speed, Pull};
 use hal::spi::Spi;
 use hal::i2c::{I2c, Config as I2cConfig};
+
+use keyberon::matrix::Matrix;
 
 use smart_leds::SmartLedsWrite;
 use ws2812_spi::prerendered::Ws2812;
@@ -44,6 +46,30 @@ use embedded_graphics::{
     text::{Baseline, Text},
 };
 use ssd1306::{prelude::*, I2CDisplayInterface, Ssd1306};
+
+
+// pinmaps from edg
+// [
+// i2c=I2C1,
+// i2c.scl=PB6, 29,
+// i2c.sda=PB7, 30,
+// led=PB4, 27,
+// enc_a=PA3, 9,
+// enc_b=PA2, 8,
+// enc_sw=PA1, 7,
+// oled_rst=PB1, 15,
+// npx=PB5, 28,
+// sw_col_0=PA8, 18,
+// sw_col_1=PA6, 12,
+// sw_col_2=PA4, 10,
+// sw_row_0=PA10, 20,
+// sw_row_1=PA9, 19,
+// sw_row_2=PA7, 13,
+// sw_row_3=PA5, 11,
+// 0=USB,
+// 0.dp=PA12, 22,
+// 0.dm=PA11, 21
+// ]
 
 
 bind_interrupts!(struct Irqs {
@@ -67,6 +93,17 @@ async fn main(spawner: Spawner) {
 
     // note, this interferes with the npx SPI and should not be used
     let _led = Output::new(p.PB4, Level::Low, Speed::Low);
+
+    spawner.spawn(keyboard_scan_task((
+        Input::new(p.PA8, Pull::Up),
+        Input::new(p.PA6, Pull::Up),
+        Input::new(p.PA4, Pull::Up),
+    ), (
+        Output::new(p.PA10, Level::High, Speed::Low),
+        Output::new(p.PA9,  Level::High, Speed::Low),
+        Output::new(p.PA7,  Level::High, Speed::Low),
+        Output::new(p.PA5,  Level::High, Speed::Low),
+    )).expect("display task"));
 
     let mut spi_config = hal::spi::Config::default();
     spi_config.frequency = Hertz::khz(3000);
@@ -167,6 +204,24 @@ async fn echo<'d, T: Instance + 'd>(class: &mut CdcAcmClass<'d, Driver<'d, T>>) 
 }
 
 #[embassy_executor::task]
+async fn keyboard_scan_task(
+    col_pins: (Input<'static>, Input<'static>, Input<'static>),
+    row_pins: (Output<'static>, Output<'static>, Output<'static>, Output<'static>),
+) {
+    let mut matrix = Matrix::new(
+        [col_pins.0, col_pins.1, col_pins.2],
+        [row_pins.0, row_pins.1, row_pins.2, row_pins.3],
+    ).unwrap();
+
+    loop {
+        let keys_state = matrix.get().unwrap();
+        info!("Keys state: {:?}", keys_state);
+
+        Timer::after_millis(1).await; 
+    }
+}
+
+#[embassy_executor::task]
 async fn npx_task(mut spi: Spi<'static, peripherals::SPI1, Async>) {
     use smart_leds::{RGB8};
 
@@ -201,43 +256,43 @@ async fn npx_task(mut spi: Spi<'static, peripherals::SPI1, Async>) {
 
 #[embassy_executor::task]
 async fn display_task(i2c: I2c<'static, peripherals::I2C1, Async>, mut rst: Output<'static>) {
-    info!("Display task start");
+    // info!("Display task start");
 
-    rst.set_low();
-    Timer::after_millis(10).await;
+    // rst.set_low();
+    // Timer::after_millis(10).await;
 
-    rst.set_high();
-    Timer::after_millis(10).await;
-
-
-    let interface = I2CDisplayInterface::new(i2c);
-    let mut display = Ssd1306::new(interface, DisplaySize128x64, DisplayRotation::Rotate0)
-        .into_buffered_graphics_mode();
-    display.init().expect("display init failed");
-
-    let text_style = MonoTextStyleBuilder::new()
-        .font(&FONT_6X10)
-        .text_color(BinaryColor::On)
-        .build();
+    // rst.set_high();
+    // Timer::after_millis(10).await;
 
 
-    let mut count = 0;
+    // let interface = I2CDisplayInterface::new(i2c);
+    // let mut display = Ssd1306::new(interface, DisplaySize128x64, DisplayRotation::Rotate0)
+    //     .into_buffered_graphics_mode();
+    // display.init().expect("display init failed");
 
-    loop {
-        display.clear(BinaryColor::Off).unwrap();
+    // let text_style = MonoTextStyleBuilder::new()
+    //     .font(&FONT_6X10)
+    //     .text_color(BinaryColor::On)
+    //     .build();
+
+
+    // let mut count = 0;
+
+    // loop {
+    //     display.clear(BinaryColor::Off).unwrap();
         
-        Text::with_baseline("Hello world!", Point::zero(), text_style, Baseline::Top)
-            .draw(&mut display)
-            .unwrap();
+    //     Text::with_baseline("Hello world!", Point::zero(), text_style, Baseline::Top)
+    //         .draw(&mut display)
+    //         .unwrap();
 
-        Text::with_baseline("Hello Rust!", Point::new(0, 16), text_style, Baseline::Top)
-            .draw(&mut display)
-            .unwrap();
+    //     Text::with_baseline("Hello Rust!", Point::new(0, 16), text_style, Baseline::Top)
+    //         .draw(&mut display)
+    //         .unwrap();
 
-        display.flush().expect("display flush failed");
-        info!("Display refresh");
+    //     display.flush().expect("display flush failed");
+    //     info!("Display refresh");
 
-        count += 1;
-        Timer::after_millis(500).await;
-    }
+    //     count += 1;
+    //     Timer::after_millis(500).await;
+    // }
 }
