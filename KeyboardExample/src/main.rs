@@ -9,25 +9,23 @@ mod usb_hid_task;
 mod bus;
 use bus::{ROWS, COLS};
 
-use ch32_hal::mode::Async;
 use defmt_rtt as _;
-use embedded_hal::spi::SpiBus;
+
+use embassy_executor::Spawner;
+use embassy_time::Timer;
+use embassy_time::Instant;
 
 use core::panic::PanicInfo;
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     // This will print the panic message, file, and line number via defmt!
     defmt::error!("{}", defmt::Display2Format(info));
-
-    // Halt the CPU
     loop {
         core::hint::spin_loop();
     }
 }
 
-
-use embassy_executor::Spawner;
-use embassy_time::Timer;
+use hal::mode::Async;
 use hal::time::Hertz;
 use hal::usbd::Driver;
 use hal::{bind_interrupts, peripherals};
@@ -281,7 +279,6 @@ async fn display_task(bus: &'static bus::GlobalBus, i2c: I2c<'static, peripheral
     loop {
         let keys_state = bus.btns.try_get().unwrap_or_default();
         let encoder_count = bus.encoder.try_get().unwrap_or_default();
-
         let encoder_sw = bus.encoder_sw.try_get().unwrap_or_default();
 
         display.clear(BinaryColor::Off).unwrap();
@@ -313,6 +310,10 @@ async fn display_task(bus: &'static bus::GlobalBus, i2c: I2c<'static, peripheral
 
                 }
             }
+        }
+
+        if Instant::now().as_millis() % 500 < 2500 {
+            Pixel(Point::new(127, 63), BinaryColor::On).draw(&mut display).unwrap();
         }
 
         display.flush().await.inspect_err(|err| error!("display flush error: {}", defmt::Debug2Format(err))).ok();
