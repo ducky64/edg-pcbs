@@ -4,6 +4,8 @@
 mod prelude;
 use crate::prelude::*;
 
+mod usb_hid_task;
+
 mod bus;
 use bus::{ROWS, COLS};
 
@@ -25,13 +27,9 @@ fn panic(info: &PanicInfo) -> ! {
 
 
 use embassy_executor::Spawner;
-use embassy_futures::join::join;
 use embassy_time::Timer;
-use embassy_usb::class::cdc_acm::{CdcAcmClass, State};
-use embassy_usb::driver::EndpointError;
-use embassy_usb::Builder;
 use hal::time::Hertz;
-use hal::usbd::{Driver, Instance};
+use hal::usbd::Driver;
 use hal::{bind_interrupts, peripherals};
 use {ch32_hal as hal};
 use hal::gpio::{Level, Input, Output, Speed, Pull};
@@ -114,7 +112,7 @@ async fn main(spawner: Spawner) {
     ).unwrap());
 
     let mut spi_config = hal::spi::Config::default();
-    spi_config.frequency = Hertz::khz(2800);
+    spi_config.frequency = Hertz::khz(3400);
     // let spi = Spi::new_blocking_txonly(p.SPI1,p.PB3 , p.PB5, spi_config);
     let spi = Spi::new_txonly(p.SPI1,p.PB3 , p.PB5, p.DMA1_CH3, spi_config);
     spawner.spawn(npx_task(bus, spi).unwrap());
@@ -133,81 +131,8 @@ async fn main(spawner: Spawner) {
     let oled_rst = Output::new(p.PB1, Level::Low, Speed::Low);
     spawner.spawn(display_task(bus, i2c, oled_rst).unwrap());
 
-    let driver = Driver::new(p.USBD, Irqs, p.PA12, p.PA11);
-
-    // Create embassy-usb Config
-    let mut config = embassy_usb::Config::new(0xC0DE, 0xCAFE);
-    config.manufacturer = Some("Embassy");
-    config.product = Some("USB-serial example");
-    config.serial_number = Some("12345678");
-    config.max_power = 100;
-    config.max_packet_size_0 = 64;
-
-    // Windows compatibility requires these; CDC-ACM
-    config.device_class = 0x02;
-    config.device_sub_class = 0x02;
-    config.device_protocol = 0x00;
-    config.composite_with_iads = false;
-
-    // Create embassy-usb DeviceBuilder using the driver and config.
-    // It needs some buffers for building the descriptors.
-    let mut config_descriptor = [0; 256];
-    let mut bos_descriptor = [0; 256];
-    let mut control_buf = [0; 64];
-
-    let mut state = State::new();
-
-    let mut builder = Builder::new(
-        driver,
-        config,
-        &mut config_descriptor,
-        &mut bos_descriptor,
-        &mut [], // no msos descriptors
-        &mut control_buf,
-    );
-
-    // Create classes on the builder.
-    let mut class = CdcAcmClass::new(&mut builder, &mut state, 64);
-
-    // Build the builder.
-    let mut usb = builder.build();
-
-    // Run the USB device.
-    let usb_fut = usb.run();
-
-    // Do stuff with the class!
-    let echo_fut = async {
-        loop {
-            class.wait_connection().await;
-            let _ = echo(&mut class).await;
-        }
-    };
-
-    info!("USB init");
-
-    // Run everything concurrently.
-    // If we had made everything `'static` above instead, we could do this using separate tasks instead.
-    join(usb_fut, echo_fut).await;
-}
-
-struct Disconnected {}
-
-impl From<EndpointError> for Disconnected {
-    fn from(val: EndpointError) -> Self {
-        match val {
-            EndpointError::BufferOverflow => panic!("Buffer overflow"),
-            EndpointError::Disabled => Disconnected {},
-        }
-    }
-}
-
-async fn echo<'d, T: Instance + 'd>(class: &mut CdcAcmClass<'d, Driver<'d, T>>) -> Result<(), Disconnected> {
-    let mut buf = [0; 64];
-    loop {
-        let n = class.read_packet(&mut buf).await?;
-        let data = &buf[..n];
-        class.write_packet(data).await?;
-    }
+    let driver: Driver<'_, peripherals::USBD> = Driver::new(p.USBD, Irqs, p.PA12, p.PA11);
+    spawner.spawn(usb_hid_task::usb_task(bus, driver).unwrap());
 }
 
 
@@ -304,14 +229,14 @@ async fn npx_task(bus: &'static bus::GlobalBus, spi: Spi<'static, peripherals::S
 
     loop {
         let keys_state = btns_rcv.changed().await;
-        let mut colors = [ RGB8 { r: 0, g: 0, b: 0 }; 12 ];
+        let mut colors = [ RGB8 { r: 1, g: 0, b: 1 }; 12 ];
         for row in 0..ROWS {
             for col in 0..COLS {
                 if keys_state[row][col] {
                     if row % 2 != 0 {
-                        colors[row * 3 + (COLS - 1) - col] = RGB8 { r: 2, g: 0, b: 2 };
+                        colors[row * 3 + (COLS - 1) - col] = RGB8 { r: 0, g: 4, b: 4 };
                     } else {
-                        colors[row * 3 + col] = RGB8 { r: 2, g: 2, b: 0 };
+                        colors[row * 3 + col] = RGB8 { r: 4, g: 4, b: 0 };
                     }
                 }
             }
@@ -392,6 +317,6 @@ async fn display_task(bus: &'static bus::GlobalBus, i2c: I2c<'static, peripheral
 
         display.flush().await.inspect_err(|err| error!("display flush error: {}", defmt::Debug2Format(err))).ok();
 
-        Timer::after_millis(33).await;
+        Timer::after_millis(50).await;
     }
 }
