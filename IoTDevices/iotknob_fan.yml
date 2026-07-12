@@ -1,0 +1,188 @@
+substitutions:
+  name: "KnobFan"
+
+esphome:
+  name: ducky-iotknobfan
+  name_add_mac_suffix: true
+
+esp32:
+  board: esp32-c6-devkitc-1
+  framework:
+    type: esp-idf
+
+wifi:
+  <<: !include ../wifi_config.yaml
+
+<<: !include ../common_config.yaml
+
+# NOTE ESP32-S3 GPIOs
+# Subtract 12 from right side pinning to account for removed bottom row
+# [i2c=I2CEXT0, 
+# i2c.scl=GPIO18, 11, 
+# i2c.sda=GPIO8, 12, 
+# i2c2=I2CEXT1, 
+# i2c2.scl=GPIO7, 7, 
+# i2c2.sda=GPIO6, 6, 
+# pd_int=GPIO17, 10, 
+# spk=XTAL_32K_N, 9, 
+# drv=GPIO2, 38, 
+# tach=GPIO1, 39, 
+# pwm=XTAL_32K_P, 8, 
+# npx_en=GPIO5, 5, 
+# enc_a=MTDO, 33, 
+# enc_b=MTCK, 32, 
+# enc_sw=GPIO38, 31, 
+# extra1=MTMS, 35, 
+# npx=GPIO4, 4]
+
+light:
+  - platform: esp32_rmt_led_strip
+    id: led
+    rgb_order: GRB
+    chipset: sk6812
+    pin: GPIO4
+    num_leds: 6
+    name: "${name} Neopixels"
+    effects:
+      - addressable_rainbow:
+          name: Rainbow
+
+output:
+  - platform: gpio
+    id: output_fan_pwr
+    pin: GPIO3
+    inverted: false
+  - platform: ledc
+    id: output_fan_ctl
+    pin: GPIO0
+    inverted: true
+    frequency: 25 kHz
+  - id: output_debug_red
+    platform: gpio
+    pin: GPIO9
+    inverted: true
+
+i2c:
+  scl: GPIO10
+  sda: GPIO11
+  frequency: 400kHz
+  scan: false
+
+fan:
+  - platform: binary
+    id: fan_pwr
+    output: output_fan_pwr
+    name: "${name} Drv"
+  - platform: speed
+    id: fan_ctl
+    output: output_fan_ctl
+    name: "${name} Ctl"
+    on_turn_on:
+    - then:
+      - fan.turn_on: fan_pwr
+    on_turn_off:
+    - then:
+      - fan.turn_off: fan_pwr
+      
+binary_sensor:
+  - platform: gpio
+    name: "${name} Encoder Sw"
+    pin: 
+      number: GPIO21
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    filters:
+      - delayed_on: 10ms
+    on_click:
+    - then:
+        - lambda: |-
+            esphome::fan::Fan* ctl_channels[] = {id(fan_ctl)};
+            bool anyOn = false;
+            for (auto ctl: ctl_channels) {
+              anyOn |= ctl->state;
+            }
+            if (!anyOn) {  // currently off, turn on
+              for (auto ctl: ctl_channels) {
+                ctl->turn_on().perform();
+              }
+            } else {  // any on, turn off all
+              for (auto ctl: ctl_channels) {
+                ctl->turn_off().perform();
+              }
+            }
+
+sensor:
+  - platform: rotary_encoder
+    name: "${name} Encoder"
+    resolution: 2  # so each detent generates one action
+    pin_a:
+      number: GPIO22
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    pin_b:
+      number: GPIO23
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    on_clockwise:
+    - then:
+        - lambda: |-
+            esphome::fan::Fan* ctl_channels[] = {id(fan_ctl)};
+            for (auto ctl: ctl_channels) {
+              auto call = ctl->turn_on();
+              if (ctl->state != false) {  // first turn when off only turns on the fan
+                call.set_speed(ctl->speed + 1);
+              }
+              call.perform();
+            }
+    on_anticlockwise:
+    - then:
+        - lambda: |-
+            esphome::fan::Fan* ctl_channels[] = {id(fan_ctl)};
+            for (auto ctl: ctl_channels) {
+              if (ctl->speed <= 1) {
+                auto call = ctl->turn_off();
+                call.perform();
+              } else {
+                auto call = ctl->turn_on();
+                call.set_speed(ctl->speed - 1);
+                call.perform();
+              }
+            }
+
+  - platform: pulse_counter
+    pin:
+      number: GPIO2
+      mode:
+        input: true
+        pullup: true
+    name: "${name} Tach"
+    update_interval: 5s
+
+  - platform: ina219
+    shunt_resistance: 0.01 ohm
+    bus_voltage:
+      name: "${name} INA219 Voltage"
+    current:
+      name: "${name} INA219 Current"
+    power:
+      name: "${name} INA219 Power"
+    max_voltage: 24.0V
+    max_current: 3.2A
+    update_interval: 5s
+  - platform: vl53l0x
+    name: "${name} VL53L0x"
+    update_interval: 1s
+    long_range: false
+  - platform: bh1750
+    name: "${name} BH1750"
+    update_interval: 60s
+
+  - platform: wifi_signal
+    name: "${name} WiFi Signal"
+    update_interval: 60s

@@ -18,8 +18,10 @@ use embassy_time::Instant;
 use core::panic::PanicInfo;
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
+    // This blows up flash usage
     // This will print the panic message, file, and line number via defmt!
-    defmt::error!("{}", defmt::Display2Format(info));
+    // defmt::error!("{}", defmt::Display2Format(info));
+    defmt::error!("panic");
     loop {
         core::hint::spin_loop();
     }
