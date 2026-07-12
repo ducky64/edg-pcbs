@@ -4,8 +4,12 @@
 mod prelude;
 use crate::prelude::*;
 
-use ch32_hal::mode::{Async, Blocking};
+mod bus;
+use bus::{ROWS, COLS};
+
+use ch32_hal::mode::Async;
 use defmt_rtt as _;
+use embedded_hal::spi::SpiBus;
 
 use core::panic::PanicInfo;
 #[panic_handler]
@@ -40,7 +44,7 @@ use smart_leds::SmartLedsWrite;
 use ws2812_spi::prerendered::Ws2812;
 
 use embedded_graphics::{
-    mono_font::{ascii::FONT_6X10, MonoTextStyleBuilder},
+    mono_font::{ascii::FONT_5X8, MonoTextStyleBuilder},
     pixelcolor::BinaryColor,
     prelude::*,
     text::{Baseline, Text},
@@ -91,10 +95,12 @@ async fn main(spawner: Spawner) {
     });
     info!("Start");
 
+    let bus = bus::init();
+
     // note, this interferes with the npx SPI and should not be used
     let _led = Output::new(p.PB4, Level::Low, Speed::Low);
 
-    spawner.spawn(keyboard_scan_task((
+    spawner.spawn(keyboard_scan_task(bus, (
         Input::new(p.PA8, Pull::Up),
         Input::new(p.PA6, Pull::Up),
         Input::new(p.PA4, Pull::Up),
@@ -103,13 +109,13 @@ async fn main(spawner: Spawner) {
         Output::new(p.PA9,  Level::High, Speed::Low),
         Output::new(p.PA7,  Level::High, Speed::Low),
         Output::new(p.PA5,  Level::High, Speed::Low),
-    )).expect("display task"));
+    )).unwrap());
 
     let mut spi_config = hal::spi::Config::default();
-    spi_config.frequency = Hertz::khz(3000);
+    spi_config.frequency = Hertz::khz(2800);
     // let spi = Spi::new_blocking_txonly(p.SPI1,p.PB3 , p.PB5, spi_config);
     let spi = Spi::new_txonly(p.SPI1,p.PB3 , p.PB5, p.DMA1_CH3, spi_config);
-    spawner.spawn(npx_task(spi).expect("npx task"));
+    spawner.spawn(npx_task(bus, spi).unwrap());
 
     // Initialize I2C1 with PB6 (SCL) and PB7 (SDA) using DMA for async operations
     let i2c = I2c::new(
@@ -123,7 +129,7 @@ async fn main(spawner: Spawner) {
         I2cConfig::default()
     );
     let oled_rst = Output::new(p.PB1, Level::Low, Speed::Low);
-    spawner.spawn(display_task(i2c, oled_rst).expect("display task"));
+    spawner.spawn(display_task(bus, i2c, oled_rst).unwrap());
 
     let driver = Driver::new(p.USBD, Irqs, p.PA12, p.PA11);
 
@@ -145,7 +151,6 @@ async fn main(spawner: Spawner) {
     // It needs some buffers for building the descriptors.
     let mut config_descriptor = [0; 256];
     let mut bos_descriptor = [0; 256];
-    let mut msos_descriptor = [0; 256];
     let mut control_buf = [0; 64];
 
     let mut state = State::new();
@@ -205,94 +210,101 @@ async fn echo<'d, T: Instance + 'd>(class: &mut CdcAcmClass<'d, Driver<'d, T>>) 
 
 #[embassy_executor::task]
 async fn keyboard_scan_task(
+    bus: &'static bus::GlobalBus,
     col_pins: (Input<'static>, Input<'static>, Input<'static>),
     row_pins: (Output<'static>, Output<'static>, Output<'static>, Output<'static>),
 ) {
+    let btns_snd = bus.btns.sender();
+
     let mut matrix = Matrix::new(
         [col_pins.0, col_pins.1, col_pins.2],
         [row_pins.0, row_pins.1, row_pins.2, row_pins.3],
     ).unwrap();
 
+    info!("matrix init'd");
+
     loop {
         let keys_state = matrix.get().unwrap();
-        info!("Keys state: {:?}", keys_state);
+        btns_snd.send(keys_state);
 
-        Timer::after_millis(1).await; 
+        Timer::after_millis(5).await; 
     }
 }
 
 #[embassy_executor::task]
-async fn npx_task(mut spi: Spi<'static, peripherals::SPI1, Async>) {
+async fn npx_task(bus: &'static bus::GlobalBus, spi: Spi<'static, peripherals::SPI1, Async>) {
+    let mut btns_rcv = bus.btns.receiver().unwrap();
+
     use smart_leds::{RGB8};
-
-    let colors = [
-        RGB8 { r: 2, g: 0, b: 0 },
-        RGB8 { r: 0, g: 2, b: 0 },
-        RGB8 { r: 0, g: 0, b: 2 },
-
-        RGB8 { r: 1, g: 1, b: 0 },
-        RGB8 { r: 0, g: 1, b: 1 },
-        RGB8 { r: 1, g: 0, b: 1 },
-
-        RGB8 { r: 1, g: 0, b: 0 },
-        RGB8 { r: 0, g: 1, b: 0 },
-        RGB8 { r: 0, g: 0, b: 1 },
-
-        RGB8 { r: 1, g: 1, b: 1 },
-        RGB8 { r: 2, g: 2, b: 2 },
-        RGB8 { r: 3, g: 3, b: 3 },
-    ];
 
     let mut npx_buf: [u8; 512] = [0; 512];
     let mut npx = Ws2812::new(spi, &mut npx_buf);
 
-    info!("NPX task start");
+    info!("npx init'd");
 
     loop {
+        let keys_state = btns_rcv.changed().await;
+        let mut colors = [ RGB8 { r: 0, g: 0, b: 0 }; 12 ];
+        for row in 0..ROWS {
+            for col in 0..COLS {
+                if keys_state[row][col] {
+                    if row % 2 != 0 {
+                        colors[row * 3 + (COLS - 1) - col] = RGB8 { r: 2, g: 0, b: 2 };
+                    } else {
+                        colors[row * 3 + col] = RGB8 { r: 2, g: 2, b: 0 };
+                    }
+                }
+            }
+        }
+
         npx.write(colors.into_iter()).unwrap();
-        Timer::after_millis(1000).await;
+        // TODO wait on SmartLEDs or SPI instead of guess waiting
+        Timer::after_millis(10).await;
     }
 }
 
 #[embassy_executor::task]
-async fn display_task(i2c: I2c<'static, peripherals::I2C1, Async>, mut rst: Output<'static>) {
-    // info!("Display task start");
-
-    // rst.set_low();
-    // Timer::after_millis(10).await;
-
-    // rst.set_high();
-    // Timer::after_millis(10).await;
+async fn display_task(bus: &'static bus::GlobalBus, i2c: I2c<'static, peripherals::I2C1, Async>, mut rst: Output<'static>) {
+    rst.set_low();
+    Timer::after_millis(1).await;
+    rst.set_high();
 
 
-    // let interface = I2CDisplayInterface::new(i2c);
-    // let mut display = Ssd1306::new(interface, DisplaySize128x64, DisplayRotation::Rotate0)
-    //     .into_buffered_graphics_mode();
-    // display.init().expect("display init failed");
+    let interface = I2CDisplayInterface::new(i2c);
+    let mut display = Ssd1306::new(interface, DisplaySize128x64, DisplayRotation::Rotate0)
+        .into_buffered_graphics_mode();
+    display.init().expect("display init failed");
 
-    // let text_style = MonoTextStyleBuilder::new()
-    //     .font(&FONT_6X10)
-    //     .text_color(BinaryColor::On)
-    //     .build();
+    let text_style = MonoTextStyleBuilder::new()
+        .font(&FONT_5X8)
+        .text_color(BinaryColor::On)
+        .build();
 
+    info!("display init'd");
 
-    // let mut count = 0;
+    loop {
+        let keys_state = bus.btns.try_get().unwrap_or_default();
 
-    // loop {
-    //     display.clear(BinaryColor::Off).unwrap();
+        display.clear(BinaryColor::Off).unwrap();
         
-    //     Text::with_baseline("Hello world!", Point::zero(), text_style, Baseline::Top)
-    //         .draw(&mut display)
-    //         .unwrap();
+        Text::with_baseline("Ducky Mechanical Keyboard", Point { x: 0, y: 0 }, text_style, Baseline::Top)
+            .draw(&mut display)
+            .unwrap();
 
-    //     Text::with_baseline("Hello Rust!", Point::new(0, 16), text_style, Baseline::Top)
-    //         .draw(&mut display)
-    //         .unwrap();
+        let matix_origin = Point { x: 64-7, y: 16 };
+        for row in 0..ROWS {
+            for col in 0..COLS {
+                if keys_state[row][col] {
+                    Text::with_baseline("X", matix_origin + Point { x: (col * 5) as i32, y: (row * 8) as i32 }, text_style, Baseline::Top)
+                        .draw(&mut display)
+                        .unwrap();
 
-    //     display.flush().expect("display flush failed");
-    //     info!("Display refresh");
+                }
+            }
+        }
 
-    //     count += 1;
-    //     Timer::after_millis(500).await;
-    // }
+        display.flush().expect("display flush failed");
+
+        Timer::after_millis(100).await;
+    }
 }
