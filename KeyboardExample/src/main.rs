@@ -35,22 +35,9 @@ use hal::usbd::{Driver, Instance};
 use hal::{bind_interrupts, peripherals};
 use {ch32_hal as hal};
 use hal::gpio::{Level, Input, Output, Speed, Pull};
+use hal::exti::ExtiInput;
 use hal::spi::Spi;
 use hal::i2c::{I2c, Config as I2cConfig};
-
-use keyberon::matrix::Matrix;
-
-use smart_leds::SmartLedsWrite;
-use ws2812_spi::prerendered::Ws2812;
-
-use embedded_graphics::{
-    mono_font::{ascii::FONT_5X8, MonoTextStyleBuilder},
-    pixelcolor::BinaryColor,
-    prelude::*,
-    text::{Baseline, Text},
-};
-use ssd1306::{prelude::*, I2CDisplayInterface, Ssd1306};
-
 
 // pinmaps from edg
 // [
@@ -110,6 +97,21 @@ async fn main(spawner: Spawner) {
         Output::new(p.PA7,  Level::High, Speed::Low),
         Output::new(p.PA5,  Level::High, Speed::Low),
     )).unwrap());
+
+    spawner.spawn(encoder_task(bus,
+        Input::new(p.PA3, Pull::Up),
+        Input::new(p.PA2, Pull::Up),
+    ).unwrap());
+
+    // ExtiInput doesn't also implement Input =()
+    // spawner.spawn(encoder_task(bus,
+    //     ExtiInput::new(p.PA3, p.EXTI3, Pull::Up),
+    //     ExtiInput::new(p.PA2, p.EXTI2, Pull::Up),
+    // ).unwrap());
+
+    spawner.spawn(encoder_sw_task(bus,
+        ExtiInput::new(p.PA1, p.EXTI1, Pull::Up),
+    ).unwrap());
 
     let mut spi_config = hal::spi::Config::default();
     spi_config.frequency = Hertz::khz(2800);
@@ -208,6 +210,9 @@ async fn echo<'d, T: Instance + 'd>(class: &mut CdcAcmClass<'d, Driver<'d, T>>) 
     }
 }
 
+
+use keyberon::matrix::Matrix;
+
 #[embassy_executor::task]
 async fn keyboard_scan_task(
     bus: &'static bus::GlobalBus,
@@ -230,6 +235,61 @@ async fn keyboard_scan_task(
         Timer::after_millis(5).await; 
     }
 }
+
+
+use quadrature_encoder::{HalfStep, RotaryEncoder, RotaryMovement};
+
+#[embassy_executor::task]
+async fn encoder_task(
+    bus: &'static bus::GlobalBus,
+    a: Input<'static>,
+    b: Input<'static>
+) {
+    let encoder_snd = bus.encoder.sender();
+
+    let mut encoder: RotaryEncoder<_, _, HalfStep, i32, quadrature_encoder::Blocking> = RotaryEncoder::new(a, b);
+
+    let mut counts: i32 = 0;
+
+    info!("encoder init'd");
+
+    loop {
+        match encoder.poll().unwrap_or(None) {
+            None => {},
+            Some(RotaryMovement::Clockwise) => {
+                counts += 1;
+                encoder_snd.send(counts);
+            },
+            Some(RotaryMovement::CounterClockwise) => {
+                counts -= 1;
+                encoder_snd.send(counts);
+            },
+        }
+        Timer::after_millis(1).await;
+    }
+}
+
+
+#[embassy_executor::task]
+async fn encoder_sw_task(
+    bus: &'static bus::GlobalBus,
+    mut sw: ExtiInput<'static>
+) {
+    let encoder_sw_snd = bus.encoder_sw.sender();
+
+    info!("encoder sw init'd");
+
+    loop {
+        sw.wait_for_low().await;
+        encoder_sw_snd.send(true);
+        sw.wait_for_high().await;
+        encoder_sw_snd.send(false);
+    }
+}
+
+
+use smart_leds::SmartLedsWrite;
+use ws2812_spi::prerendered::Ws2812;
 
 #[embassy_executor::task]
 async fn npx_task(bus: &'static bus::GlobalBus, spi: Spi<'static, peripherals::SPI1, Async>) {
@@ -263,6 +323,17 @@ async fn npx_task(bus: &'static bus::GlobalBus, spi: Spi<'static, peripherals::S
     }
 }
 
+use embedded_graphics::{
+    mono_font::{ascii::FONT_5X8, MonoTextStyleBuilder},
+    pixelcolor::BinaryColor,
+    prelude::*,
+    text::{Baseline, Text},
+};
+use ssd1306::{prelude::*, I2CDisplayInterface, Ssd1306Async};
+
+use heapless::String;
+use ufmt::uwrite;
+
 #[embassy_executor::task]
 async fn display_task(bus: &'static bus::GlobalBus, i2c: I2c<'static, peripherals::I2C1, Async>, mut rst: Output<'static>) {
     rst.set_low();
@@ -271,9 +342,9 @@ async fn display_task(bus: &'static bus::GlobalBus, i2c: I2c<'static, peripheral
 
 
     let interface = I2CDisplayInterface::new(i2c);
-    let mut display = Ssd1306::new(interface, DisplaySize128x64, DisplayRotation::Rotate0)
+    let mut display = Ssd1306Async::new(interface, DisplaySize128x64, DisplayRotation::Rotate0)
         .into_buffered_graphics_mode();
-    display.init().expect("display init failed");
+    display.init().await.expect("display init failed");
 
     let text_style = MonoTextStyleBuilder::new()
         .font(&FONT_5X8)
@@ -284,12 +355,28 @@ async fn display_task(bus: &'static bus::GlobalBus, i2c: I2c<'static, peripheral
 
     loop {
         let keys_state = bus.btns.try_get().unwrap_or_default();
+        let encoder_count = bus.encoder.try_get().unwrap_or_default();
+
+        let encoder_sw = bus.encoder_sw.try_get().unwrap_or_default();
 
         display.clear(BinaryColor::Off).unwrap();
         
         Text::with_baseline("Ducky Mechanical Keyboard", Point { x: 0, y: 0 }, text_style, Baseline::Top)
             .draw(&mut display)
             .unwrap();
+
+        let mut s: String<32> = String::new();
+        uwrite!(s, "Enc: {}", encoder_count).unwrap();
+        Text::with_baseline(&s, Point { x: 0, y: 8 }, text_style, Baseline::Top)
+            .draw(&mut display)
+            .unwrap();
+
+        if encoder_sw {
+            Text::with_baseline("SW", Point { x: 64, y: 8 }, text_style, Baseline::Top)
+                .draw(&mut display)
+                .unwrap();
+        }
+
 
         let matix_origin = Point { x: 64-7, y: 16 };
         for row in 0..ROWS {
@@ -303,8 +390,8 @@ async fn display_task(bus: &'static bus::GlobalBus, i2c: I2c<'static, peripheral
             }
         }
 
-        display.flush().expect("display flush failed");
+        display.flush().await.inspect_err(|err| error!("display flush error: {}", defmt::Debug2Format(err))).ok();
 
-        Timer::after_millis(100).await;
+        Timer::after_millis(33).await;
     }
 }

@@ -23,6 +23,7 @@ ch32-hal = { git = "https://github.com/ch32-rs/ch32-hal.git", features = [
     "embassy",
     "rt",
     "time-driver-tim2",
+    "exti",
 ], default-features = false }
 qingke-rt = "0.7"
 # qingke = "0.7"
@@ -45,13 +46,16 @@ embassy-sync = "0.8"
 # latest published is 0.1.1 which uses older embedded-hal
 keyberon = { git = "https://github.com/TeXitoi/keyberon.git" }
 
+quadrature-encoder = "0.2.1"
+
 smart-leds = "0.4.0"
 ws2812-spi = { version = "0.5.1", features=["mosi_idle_high", "reset_single_transaction"] }
 
 embedded-hal = "1.0.0"
-embedded-graphics = "0.8.1"
-ssd1306 = "0.8.4"
-heapless = "0.8.0"
+embedded-graphics = { version = "0.8.1", features = ["defmt"] }
+ssd1306 = { version = "0.10", features = ["async"] }
+heapless = { version = "0.9", features = ["ufmt"] }
+ufmt = "0.2.0"
 
 [profile.release]
 strip = false   # symbols are not flashed to the microcontroller, so don't strip them.

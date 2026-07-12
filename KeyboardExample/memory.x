@@ -3,8 +3,8 @@ MEMORY
 {
 	FLASH : ORIGIN = 0x00000000, LENGTH = 64k
 	RAM : ORIGIN = 0x20000000, LENGTH = 10k
-	/* Non Zero Wait Flash, 224K - 32K = 192K */
-	FLASH1 : ORIGIN = 0x00010000, LENGTH = 192K
+	/* Non Zero Wait Flash, 224K total excluding FLASH */
+	FLASH1 : ORIGIN = 0x00010000, LENGTH = 160K
 }
 
 SECTIONS
@@ -22,10 +22,17 @@ SECTIONS
 		KEEP(*(SORT_NONE(.coldrodata .coldrodata.*)))
 		. = ALIGN(4);
 	} >FLASH1 AT>FLASH1
+
+	/* move all rodata into the larger and slower flash1 */
+	.rodata : ALIGN(4)
+	{
+		*(.rodata .rodata.*)
+		. = ALIGN(4);
+	} >FLASH1
 }
 
 REGION_ALIAS("REGION_TEXT", FLASH);
-REGION_ALIAS("REGION_RODATA", FLASH);
+REGION_ALIAS("REGION_RODATA", FLASH1);
 REGION_ALIAS("REGION_DATA", RAM);
 REGION_ALIAS("REGION_BSS", RAM);
 REGION_ALIAS("REGION_HEAP", RAM);
