@@ -144,6 +144,8 @@ async fn keyboard_scan_task(
 ) {
     let btns_snd = bus.btns.sender();
 
+    let mut last = [[false; COLS]; ROWS];
+
     let mut matrix = Matrix::new(
         [col_pins.0, col_pins.1, col_pins.2],
         [row_pins.0, row_pins.1, row_pins.2, row_pins.3],
@@ -153,8 +155,11 @@ async fn keyboard_scan_task(
 
     loop {
         let keys_state = matrix.get().unwrap();
-        btns_snd.send(keys_state);
-
+        if keys_state != last {
+            btns_snd.send(keys_state);
+            last = keys_state;
+        }
+        
         Timer::after_millis(5).await; 
     }
 }
