@@ -1,6 +1,6 @@
 use core::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 
-use crate::bus;
+use crate::bus::{self, COLS, ROWS};
 
 use hal::usbd::{Driver};
 use hal::peripherals;
@@ -97,26 +97,41 @@ pub async fn usb_task(
     let in_fut = async {
         let mut btns_rcv = bus.btns.receiver().unwrap();
 
+        // TODO: actual config object
+        const KEYCODE_MAP: [[u8; 3]; 4] = [
+            [0x24, 0x25, 0x26],
+            [0x21, 0x22, 0x23],
+            [0x1e, 0x1f, 0x20],
+            [0x27, 0x37, 0x28],
+        ];
+
         loop {
-            loop {
-                let keys_state = btns_rcv.changed().await;
-                if keys_state[0][0] {
-                    break;
+            let keys_state = btns_rcv.changed().await;
+
+            let mut keycodes = [0; 6];
+            let mut keys_down: usize = 0;
+            for row in 0..ROWS {
+                for col in 0..COLS {
+                    if keys_state[row][col] {
+                        if keys_down < 6 {
+                            keycodes[keys_down] = KEYCODE_MAP[row][col];
+                            keys_down += 1;
+                        }
+                    }
                 }
             }
-            info!("PRESSED");
 
             if SUSPENDED.load(Ordering::Acquire) {
                 info!("Triggering remote wakeup");
                 remote_wakeup.signal(());
             } else if HID_PROTOCOL_MODE.load(Ordering::Relaxed) == HidProtocolMode::Boot as u8 {
-                match writer.write(&[0, 0, 4, 0, 0, 0, 0, 0]).await {
+                match writer.write(&[0, 0, keycodes[0], keycodes[1], keycodes[2], keycodes[3], keycodes[4], keycodes[5]]).await {
                     Ok(()) => {}
                     Err(e) => warn!("Failed to send boot report: {:?}", e),
                 };
             } else {
                 let report = KeyboardReport {
-                    keycodes: [4, 0, 0, 0, 0, 0],
+                    keycodes: keycodes,
                     leds: 0,
                     modifier: 0,
                     reserved: 0,
@@ -127,30 +142,6 @@ pub async fn usb_task(
                 };
             }
 
-            loop {
-                let keys_state = btns_rcv.changed().await;
-                if !keys_state[0][0] {
-                    break;
-                }
-            }
-            info!("RELEASED");
-            if HID_PROTOCOL_MODE.load(Ordering::Relaxed) == HidProtocolMode::Boot as u8 {
-                match writer.write(&[0, 0, 0, 0, 0, 0, 0, 0]).await {
-                    Ok(()) => {}
-                    Err(e) => warn!("Failed to send boot report: {:?}", e),
-                };
-            } else {
-                let report = KeyboardReport {
-                    keycodes: [0, 0, 0, 0, 0, 0],
-                    leds: 0,
-                    modifier: 0,
-                    reserved: 0,
-                };
-                match writer.write_serialize(&report).await {
-                    Ok(()) => {}
-                    Err(e) => warn!("Failed to send report: {:?}", e),
-                };
-            }
         }
     };
 
