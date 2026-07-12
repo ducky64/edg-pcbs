@@ -4,11 +4,22 @@ substitutions:
 esphome:
   name: ducky-iotknobfan
   name_add_mac_suffix: true
+  on_boot:
+    - delay: 500ms  # required otherwise it boot loops, possibly inrush related
+    - fusb302.start_power_negotiation:
+        id: fusb302_id
 
 esp32:
   board: esp32-c6-devkitc-1
   framework:
     type: esp-idf
+
+external_components:
+  - source:
+      type: git
+      url: https://github.com/rbaron/esphome
+      ref: df3f411504841f7e3cf698bd63734c3a656504c6  # fusb302 branch, pinned at 2026-07-12
+    components: [fusb302]
 
 wifi:
   <<: !include ../wifi_config.yaml
@@ -46,6 +57,13 @@ light:
     effects:
       - addressable_rainbow:
           name: Rainbow
+  - platform: status_led
+    name: "${name} Dbg"
+    id: debug_led
+    internal: true
+    pin:
+      number: GPIO9
+      inverted: true
 
 output:
   - platform: gpio
@@ -57,10 +75,6 @@ output:
     pin: GPIO0
     inverted: true
     frequency: 25 kHz
-  - id: output_debug_red
-    platform: gpio
-    pin: GPIO9
-    inverted: true
 
 i2c:
   scl: GPIO10
@@ -186,3 +200,17 @@ sensor:
   - platform: wifi_signal
     name: "${name} WiFi Signal"
     update_interval: 60s
+
+fusb302:
+  id: fusb302_id
+  interrupt_pin: GPIO8
+  voltage: 12000 mV
+  current: 3000 mA
+  start_power_negotiation_on_boot: false
+  on_pd_negotiation_success:
+    - lambda: |-
+        ESP_LOGW("fusb302_trigger", "PD negotiation success outcome: %d", success);
+  on_pd_negotiation_failure:
+    then:
+      - lambda: |-
+          ESP_LOGW("fusb302_trigger", "PD negotiation failure outcome: %d", success);
