@@ -10,15 +10,23 @@
 /// i2c.sda=PC1, 11
 /// ]
 
+use defmt::{debug, error, info, warn};
+
+use defmt_rtt as _;
+
+use core::panic::PanicInfo;
+#[panic_handler]
+fn panic(info: &PanicInfo) -> ! {
+    // This blows up flash usage
+    // This will print the panic message, file, and line number via defmt!
+    // defmt::error!("{}", defmt::Display2Format(info));
+    defmt::error!("panic");
+    loop {
+        core::hint::spin_loop();
+    }
+}
 
 use {ch32_hal as hal};
-
-#[panic_handler]
-fn panic(info: &core::panic::PanicInfo) -> ! {
-    let _ = hal::println!("\n\n\n{}", info);
-
-    loop {}
-}
 
 
 // use hal::Peri;
@@ -68,7 +76,10 @@ use hal::gpio::{Level, Output};
 
 #[qingke_rt::entry]
 fn main() -> ! {
-    hal::debug::SDIPrint::enable();
+    // hal::debug::SDIPrint::enable();
+
+    info!("start");
+
     let mut config = hal::Config::default();
     config.rcc = hal::rcc::Config::SYSCLK_FREQ_48MHZ_HSI;
     let p = hal::init(config);
@@ -83,8 +94,7 @@ fn main() -> ! {
         led2.toggle();
 
         delay.delay_ms(50);
-        hal::println!("toggle!");
-        let val = hal::pac::SYSTICK.cnt().read();
-        hal::println!("systick: {}", val);
+
+        info!("loop {}", hal::pac::SYSTICK.cnt().read());
     }
 }

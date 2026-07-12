@@ -23,14 +23,14 @@ embassy-time = "0.5.1"
 
 # This is okay because we should automatically use whatever ch32-hal uses
 qingke = "0.7"
-qingke-rt = { version = "0.7", features=["highcode"] }
+qingke-rt = "0.7"
 
+defmt = "1.1.1"
+defmt-rtt = "1.3.0"
 panic-halt = "1.0"
 
 embedded-hal = "1.0.0"
 
-display-interface-spi = "0.5.0"
-embedded-graphics = "0.8.1"
 micromath = { version = "2.1.0", features = ["num-traits"] }
 embedded-hal-async = "1.0.0"
 
