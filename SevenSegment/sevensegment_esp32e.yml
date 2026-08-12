@@ -34,16 +34,15 @@ api:
 ota:
   - platform: esphome
 
-bluetooth_proxy:
-
 time:
   - platform: sntp
     id: sntp_time
 
 light:
-  - platform: neopixelbus
+  - platform: esp32_rmt_led_strip
     id: led
-    variant: sk6812
+    rgb_order: GRB
+    chipset: sk6812
     pin: GPIO27
     num_leds: 60
     name: "${name} Clock"
@@ -86,12 +85,10 @@ light:
           id: led
           effect: "Time"
         
-bme680_bsec:
+bme68x_bsec2_i2c:
     address: 0x76
-    temperature_offset: 0
-    iaq_mode: static
+    model: bme680
     sample_rate: lp
-    state_save_interval: 6h
   
 i2c:
   sda: GPIO32
@@ -172,7 +169,7 @@ sensor:
               call.perform();
             }
 
-  - platform: bme680_bsec
+  - platform: bme68x_bsec2
     temperature:
       name: "${name} BME680 Temperature"
       filters:
@@ -211,10 +208,8 @@ output:
 
 rtttl:
   output: rtttl_out
-  on_finished_playback:
-    - logger.log: 'Song ended!'
 
 text_sensor:
-  - platform: bme680_bsec
+  - platform: bme68x_bsec2
     iaq_accuracy:
       name: "${name} BME680 IAQ Accuracy"
