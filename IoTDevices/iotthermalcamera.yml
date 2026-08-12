@@ -1,0 +1,65 @@
+substitutions:
+  name: "IotThermalCamera"
+
+esphome:
+  name: ducky-iotthermalcamera
+  name_add_mac_suffix: true
+
+esp32:
+  board: esp32-s3-devkitc-1  # 8MB flash without PSRAM
+
+psram:
+  mode: octal
+  speed: 80MHz
+
+#wifi:
+#  <<: !include ../wifi_config.yaml
+
+# HASS API
+api:
+
+# Allow API
+ota:
+  - platform: esphome
+
+# WebServer component, displays some information
+web_server:
+    port: 80
+
+light:
+  - platform: status_led
+    name: "${name} Dbg"
+    id: debug_led
+    internal: true
+    pin:
+      number: GPIO0
+
+i2c:
+  id: i2c_bus
+  scl: GPIO40
+  sda: GPIO39
+  frequency: 400kHz
+
+ethernet:
+  type: W5500
+  clk_pin: GPIO16
+  mosi_pin: GPIO15
+  miso_pin: GPIO7
+  cs_pin: GPIO42
+  interrupt_pin: GPIO38
+#  reset_pin: GPIO48
+
+esp32_camera:
+  name: "${name} Camera"
+  external_clock:
+    pin: GPIO13
+    frequency: 20MHz
+  i2c_id: i2c_bus
+  data_pins: [GPIO10, GPIO9, GPIO8, GPIO18, GPIO17, GPIO3, GPIO12, GPIO14]
+  vsync_pin: GPIO47
+  href_pin: GPIO21
+  pixel_clock_pin: GPIO11
+  resolution: 1280x1024
+  jpeg_quality: 10
+  vertical_flip: true
+  horizontal_mirror: true
