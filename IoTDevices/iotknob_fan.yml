@@ -203,7 +203,7 @@ sensor:
 
 fusb302:
   id: fusb302_id
-  # interrupt_pin: GPIO8
+  interrupt_pin: GPIO8
   voltage: 12 V
   current: 3 A
   start_power_negotiation_on_boot: false
