@@ -18,7 +18,7 @@ external_components:
   - source:
       type: git
       url: https://github.com/rbaron/esphome
-      ref: 666fb739dbad7e35bb944de86bb6cbebc1b6dcfd  # fusb302 branch, pinned at 2026-05-24
+      ref: 666fb739dbad7e35bb944de86bb6cbebc1b6dcfd
     components: [fusb302]
 
 wifi:
@@ -203,9 +203,9 @@ sensor:
 
 fusb302:
   id: fusb302_id
-  interrupt_pin: GPIO8
-  voltage: 12000 mV
-  current: 3000 mA
+  # interrupt_pin: GPIO8
+  voltage: 12 V
+  current: 3 A
   start_power_negotiation_on_boot: false
   on_pd_negotiation_success:
     - lambda: |-
