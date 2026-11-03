@@ -5,7 +5,7 @@ esphome:
   name: ducky-iotknobfan
   name_add_mac_suffix: true
   on_boot:
-    - delay: 500ms  # required otherwise it boot loops, possibly inrush related
+    - delay: 1 s  # required otherwise it boot loops
     - fusb302.start_power_negotiation:
         id: fusb302_id
 
@@ -46,17 +46,79 @@ wifi:
 # extra1=MTMS, 35, 
 # npx=GPIO4, 4]
 
+# User Calibrations
+number:
+  - platform: template
+    name: "${name} OVP"   # OVP threshold
+    id: ovp_limit
+    mode: box
+    restore_value: true
+    step: 1
+    min_value: 1
+    max_value: 20
+    initial_value: 14
+    set_action:
+      - then:
+        - lambda: id(ovp_limit).publish_state(x);
+
+switch:
+  - platform: template
+    name: "${name} Fault"  # latching
+    id: fault
+    optimistic: true
+    on_turn_on: 
+      then:
+        - lambda: |-
+            id(output_fan_pwr).turn_off();
+            
+
+interval:
+  - interval: 100ms
+    then:
+      lambda: |-
+        if (id(fault).state) {
+          id(output_fan_pwr).turn_off();
+        }
+
 light:
   - platform: esp32_rmt_led_strip
-    id: led
+    id: ring
     rgb_order: GRB
     chipset: sk6812
     pin: GPIO4
     num_leds: 6
     name: "${name} Neopixels"
+    initial_state:
+      state: ON
+    restore_mode: RESTORE_AND_ON  # persistent brightness settings
     effects:
+      - addressable_lambda:
+          name: "Control"
+          update_interval: 100ms
+          lambda: |-
+              it.all() = Color(0, 0, 0, 0);
+              if (id(ina219_voltage).state > id(ovp_limit).state) {
+                it[1] = Color(255, 0, 0, 255);
+              } else if (id(ina219_voltage).state > 11.0) {
+                it[1] = Color(0, 255, 0, 255);
+              } else {
+                it[1] = Color(255, 0, 255, 255);
+              }
+
+              uint8_t ringIndices[] = {2, 3, 4, 5, 0};
+              for (int i = 0; i < 5; i++) {
+                if (id(fan_ctl).state && (id(fan_ctl).speed >= ((i * 100 + 50) / 5))) {
+                  it[ringIndices[i]] = Color(191, 191, 0, 255);
+                } else {
+                  it[ringIndices[i]] = Color(0, 0, 0, 0);
+                }
+              }
       - addressable_rainbow:
           name: Rainbow
+    on_turn_on:
+      - light.turn_on:
+          id: ring
+          effect: "Control"
   - platform: status_led
     name: "${name} Dbg"
     id: debug_led
@@ -132,13 +194,13 @@ sensor:
     name: "${name} Encoder"
     resolution: 2  # so each detent generates one action
     pin_a:
-      number: GPIO22
+      number: GPIO23
       inverted: true
       mode:
         input: true
         pullup: true
     pin_b:
-      number: GPIO23
+      number: GPIO22
       inverted: true
       mode:
         input: true
@@ -182,6 +244,13 @@ sensor:
     shunt_resistance: 0.01 ohm
     bus_voltage:
       name: "${name} INA219 Voltage"
+      id: ina219_voltage
+      on_raw_value:
+        then:
+          - lambda: |-
+              if (x > id(ovp_limit).state) {
+                id(fault).publish_state(true);
+              }
     current:
       name: "${name} INA219 Current"
     power:
@@ -205,7 +274,7 @@ fusb302:
   id: fusb302_id
   interrupt_pin: GPIO8
   voltage: 12 V
-  current: 3 A
+  current: 2 A
   start_power_negotiation_on_boot: false
   on_pd_negotiation_success:
     - lambda: |-
