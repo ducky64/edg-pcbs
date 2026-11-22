@@ -99,7 +99,7 @@ switch:
 sensor:
   - platform: adc
     name: "${name} Vin"
-    pin: GPIO4  # GPIO3 as designed is unusable with WiFi
+    pin: GPIO4  # GPIO5 (ADC2) as designed is unusable with WiFi, reworked to GPIO4
     accuracy_decimals: 2
     update_interval: 60s
     attenuation: 12dB
