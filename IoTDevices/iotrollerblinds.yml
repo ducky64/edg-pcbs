@@ -60,6 +60,7 @@ number:
     mode: box
     restore_value: true
     step: 1
+    initial_value: 0
     min_value: -10000
     max_value: 10000
     set_action:
@@ -72,6 +73,7 @@ number:
     mode: box
     restore_value: true
     step: 1
+    initial_value: -1800
     min_value: -10000
     max_value: 10000
     set_action:
@@ -127,7 +129,7 @@ output:
     id: output_motor1
     frequency: 25 Hz
   - platform: ledc
-    pin: GPIO19
+    pin: GPIO1  # reworked: GPIO19 as designed is a USB pin and defaults high and glitches on startup
     id: output_motor2
     frequency: 25 Hz
 
