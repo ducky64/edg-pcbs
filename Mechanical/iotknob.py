@@ -10,9 +10,11 @@ Screw holes use the bd_warehouse clearance-hole fits.
 """
 from pathlib import Path
 
-from build123d import Align, BuildPart, Cylinder, Locations, Part, Pos, RectangleRounded, Rot, export_stl, extrude, insert
+from build123d import (Align, BuildPart, Cylinder, Hole, Locations, Part, PolarLocations, Pos, RectangleRounded, Rot,
+                       export_stl, extrude, insert)
 from bd_warehouse.fastener import ClearanceHole, CounterSunkScrew, HexNut, PanHeadScrew
 
+from bd_util.connector import MolexKK254Hole, UsbCReceptacleHole
 from bd_util.fastener import KeyholeHole, PrintableCaptiveNutHole
 
 
@@ -22,11 +24,14 @@ PCB_LENGTH = 70.0  # mm, Y
 PCB_RADIUS = 5.0  # mm, corner radius
 # (x, y, nut angle): mm, 3mm from the PCB rectangle edges; degrees, so a nut hexagon flat faces the PCB corner
 MOUNT_HOLES = [(-9.0, -32.0, 15.0), (-9.0, 32.0, -15.0), (9.0, -32.0, -15.0), (9.0, 32.0, 15.0)]
+USB_X = 0.0  # mm, USB-C receptacle center on the -Y edge, on the board top
+FAN_HEADER_X = 0.0  # mm, fan header (Molex KK 254) pin row center on the +Y edge, pins resting on the board top
 
 # Enclosure definition
 TOLERANCE = 0.2  # mm, clearance gap per side between mating surfaces
 WALL_THICKNESS = 1.0  # mm, side walls, floor, and top face
 BOTTOM_BOSS_POS = 3.0  # mm, z of the bottom boss top surface, where the PCB bottom rests; also the part split
+BOARD_TOP_POS = BOTTOM_BOSS_POS + 1.0  # mm, z of the PCB top surface (1mm board)
 TOP_BOSS_POS = BOTTOM_BOSS_POS + 8.0  # mm, z of the top boss bottom surface
 ENCLOSURE_HEIGHT = BOTTOM_BOSS_POS + 12 + WALL_THICKNESS  # mm, z of the top face outer surface
 
@@ -47,6 +52,19 @@ INNER_OFFSET = TOLERANCE  # enclosure cavity, relative to the PCB outline
 def outline(offset: float) -> RectangleRounded:
   """PCB outline grown outward by offset."""
   return RectangleRounded(PCB_WIDTH + 2 * offset, PCB_LENGTH + 2 * offset, PCB_RADIUS + offset)
+
+
+def cut_connectors() -> None:
+  """Cut the connector openings through the end walls, in the active BuildPart. Shared by both parts, since
+  openings may span the part split."""
+  wall_y = PCB_LENGTH / 2 + OUTER_OFFSET + _EPS  # just outside the end wall outer surfaces
+  depth = WALL_THICKNESS + 2 * _EPS  # through the end wall only
+  # -Y wall: local -Z points into the enclosure (+Y), local Y up
+  with Locations(Pos(USB_X, -wall_y, BOARD_TOP_POS) * Rot(90, 0, 0)):
+    UsbCReceptacleHole(clearance=TOLERANCE, depth=depth)
+  # +Y wall: local -Z points into the enclosure (-Y), local Y up
+  with Locations(Pos(FAN_HEADER_X, wall_y, BOARD_TOP_POS) * Rot(0, 0, 180) * Rot(90, 0, 0)):
+    MolexKK254Hole(4, clearance=TOLERANCE, depth=depth)
 
 
 def make_bottom() -> Part:
@@ -74,6 +92,7 @@ def make_bottom() -> Part:
     # keyholes cut into the bottom face; slot angles are in the flipped frame (as seen from below)
     with Locations(*[Pos(x, y, 0) * Rot(180, 0, 0) for x, y in KEYHOLES]):
       KeyholeHole(KEYHOLE_SCREW, fit=FASTENER_FIT, angles=KEYHOLE_ANGLES)
+    cut_connectors()
   return builder.part
 
 
@@ -81,6 +100,10 @@ def make_top() -> Part:
   KNOB_HOLE_FROM_BOTTOM = 24.0  # mm, from the PCB bottom edge (-Y), on the X centerline
   KNOB_HOLE_DIAMETER = 6.0  # mm, nominal (shaft) diameter
   SCREW = CounterSunkScrew(size=FASTENER_SIZE, length=16, fastener_type="iso7046")  # length doesn't affect holes
+  LED_COUNT = 6  # evenly spaced around the knob
+  LED_RADIUS = 8.0  # mm, from the knob center
+  LED_START_ANGLE = 0.0  # degrees from +X, first LED
+  LED_HOLE_DIAMETER = 2.0  # mm
 
   interior_top = ENCLOSURE_HEIGHT - WALL_THICKNESS  # underside of the top face
 
@@ -103,6 +126,11 @@ def make_top() -> Part:
     # countersunk screw hole cut into the top face
     with Locations(*[Pos(x, y, ENCLOSURE_HEIGHT) for x, y, _ in MOUNT_HOLES]):
       ClearanceHole(SCREW, fit=FASTENER_FIT, counter_sunk=True)
+    # LED light holes through the top face
+    with Locations(Pos(0, knob_y, ENCLOSURE_HEIGHT + _EPS)):
+      with PolarLocations(LED_RADIUS, LED_COUNT, start_angle=LED_START_ANGLE, rotate=False):
+        Hole(LED_HOLE_DIAMETER / 2, depth=WALL_THICKNESS + 2 * _EPS)
+    cut_connectors()
   return builder.part
 
 

@@ -19,23 +19,13 @@ from typing import Iterable, Literal
 from build123d.build_common import validate_inputs
 from build123d.build_enums import Kind, Mode
 from build123d.build_part import BuildPart
-from build123d.geometry import Plane, Pos, Rot, RotationLike, Vector
+from build123d.geometry import Pos, Rot, RotationLike, Vector
 from build123d.objects_part import BasePartObject
 from build123d.objects_sketch import Rectangle, SlotCenterToCenter
 from build123d.topology import Face, Solid
 from bd_warehouse.fastener import Nut, Screw
 
-_BORE_PLANE = Plane((0, 0, 0), z_dir=(0, 0, -1))
-
-
-def _hole_depth(context: BuildPart | None, depth: float | None) -> float:
-  """Hole depth, defaulting to through the part in BuildPart mode, as in bd_warehouse."""
-  if depth is not None:
-    return depth
-  elif context is not None:
-    return 2 * context.max_dimension
-  else:
-    raise ValueError("No depth provided")
+from bd_util._common import BORE_PLANE, hole_depth
 
 
 class CaptiveNutHole(BasePartObject):
@@ -176,13 +166,13 @@ class KeyholeHole(BasePartObject):
     context: BuildPart | None = BuildPart._get_context(self)
     validate_inputs(context, self)
 
-    self.hole_depth = _hole_depth(context, depth)
+    self.hole_depth = hole_depth(context, depth)
     # nominal head diameter; Screw.head_diameter is measured from the model and can be smaller (e.g. countersunk)
     head_diameter = fastener.screw_data.get("dk", fastener.head_diameter)
     slot_width = fastener.clearance_hole_diameters[fit]
     self.slot_length = head_diameter / 2 + slot_width / 2  # origin to slot end center
 
-    hole_part = Solid.make_cylinder(head_diameter / 2, self.hole_depth, plane=_BORE_PLANE)
+    hole_part = Solid.make_cylinder(head_diameter / 2, self.hole_depth, plane=BORE_PLANE)
     slot_plan = Pos(self.slot_length / 2, 0) * SlotCenterToCenter(self.slot_length, slot_width).face()
     slot = Solid.extrude(slot_plan, Vector(0, 0, -self.hole_depth))
     for angle in angles:
