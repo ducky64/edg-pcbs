@@ -14,7 +14,7 @@ from build123d import (Align, BuildPart, Cylinder, Hole, Locations, Part, PolarL
                        export_stl, extrude, insert)
 from bd_warehouse.fastener import ClearanceHole, CounterSunkScrew, HexNut, PanHeadScrew
 
-from bd_util.connector import MolexKK254Hole, UsbCReceptacleHole
+from bd_util.connector import MolexKK254Hole, UsbCReceptacleHole, JstShSideEntryHole
 from bd_util.fastener import KeyholeHole, PrintableCaptiveNutHole
 
 
@@ -24,15 +24,17 @@ PCB_LENGTH = 70.0  # mm, Y
 PCB_RADIUS = 5.0  # mm, corner radius
 # (x, y, nut angle): mm, 3mm from the PCB rectangle edges; degrees, so a nut hexagon flat faces the PCB corner
 MOUNT_HOLES = [(-9.0, -32.0, 15.0), (-9.0, 32.0, -15.0), (9.0, -32.0, -15.0), (9.0, 32.0, 15.0)]
-USB_X = 0.0  # mm, USB-C receptacle center on the -Y edge, on the board top
-FAN_HEADER_X = 0.0  # mm, fan header (Molex KK 254) pin row center on the +Y edge, pins resting on the board top
+USB_X = 0.0  # mm, on -Y edge
+FAN_HEADER_X = 0.0  # mm, on +Y edge
+QWIIC_Y = -17  # mm, on +/-X edge
+OPTICAL_SENSOR_HOLES = [(-8, -27), (8, -27)]  # mm, (x, y)
 
 # Enclosure definition
 TOLERANCE = 0.2  # mm, clearance gap per side between mating surfaces
 WALL_THICKNESS = 1.0  # mm, side walls, floor, and top face
 BOTTOM_BOSS_POS = 3.0  # mm, z of the bottom boss top surface, where the PCB bottom rests; also the part split
 BOARD_TOP_POS = BOTTOM_BOSS_POS + 1.0  # mm, z of the PCB top surface (1mm board)
-TOP_BOSS_POS = BOTTOM_BOSS_POS + 8.0  # mm, z of the top boss bottom surface
+TOP_BOSS_POS = BOTTOM_BOSS_POS + 8.0  # mm, z of the top boss bottom surface and top PCB top surface
 ENCLOSURE_HEIGHT = BOTTOM_BOSS_POS + 12 + WALL_THICKNESS  # mm, z of the top face outer surface
 
 # Mounting screws, top cover to captive nuts in the bottom
@@ -57,7 +59,8 @@ def outline(offset: float) -> RectangleRounded:
 def cut_connectors() -> None:
   """Cut the connector openings through the end walls, in the active BuildPart. Shared by both parts, since
   openings may span the part split."""
-  wall_y = PCB_LENGTH / 2 + OUTER_OFFSET + _EPS  # just outside the end wall outer surfaces
+  wall_x = PCB_WIDTH / 2 + OUTER_OFFSET + _EPS  # just outside the end wall outer surfaces
+  wall_y = PCB_LENGTH / 2 + OUTER_OFFSET + _EPS
   depth = WALL_THICKNESS + 2 * _EPS  # through the end wall only
   # -Y wall: local -Z points into the enclosure (+Y), local Y up
   with Locations(Pos(USB_X, -wall_y, BOARD_TOP_POS) * Rot(90, 0, 0)):
@@ -65,6 +68,13 @@ def cut_connectors() -> None:
   # +Y wall: local -Z points into the enclosure (-Y), local Y up
   with Locations(Pos(FAN_HEADER_X, wall_y, BOARD_TOP_POS) * Rot(0, 0, 180) * Rot(90, 0, 0)):
     MolexKK254Hole(4, clearance=TOLERANCE, depth=depth)
+  with Locations(Pos(USB_X, -wall_y, BOARD_TOP_POS) * Rot(90, 0, 0)):
+    UsbCReceptacleHole(clearance=TOLERANCE, depth=depth)
+
+  for x, rot in [(wall_x, 90), (-wall_x, -90)]:
+    # +/-X walls: local -Z points into the enclosure (-X/+X)
+    with Locations(Pos(x, QWIIC_Y, TOP_BOSS_POS) * Rot(0, 0, rot) * Rot(90, 0, 0)):
+      JstShSideEntryHole(4, clearance=TOLERANCE, depth=depth)
 
 
 def make_bottom() -> Part:
@@ -129,6 +139,10 @@ def make_top() -> Part:
     # LED light holes through the top face
     with Locations(Pos(0, knob_y, ENCLOSURE_HEIGHT + _EPS)):
       with PolarLocations(LED_RADIUS, LED_COUNT, start_angle=LED_START_ANGLE, rotate=False):
+        Hole(LED_HOLE_DIAMETER / 2, depth=WALL_THICKNESS + 2 * _EPS)
+    # optical sensor holes through the top face
+    for x, y in OPTICAL_SENSOR_HOLES:
+      with Locations(Pos(x, y, ENCLOSURE_HEIGHT + _EPS)):
         Hole(LED_HOLE_DIAMETER / 2, depth=WALL_THICKNESS + 2 * _EPS)
     cut_connectors()
   return builder.part

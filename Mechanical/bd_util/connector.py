@@ -112,7 +112,7 @@ class MolexKK254Hole(_ProfileHole):
     super().__init__(profile, depth, rotation, mode)
 
 
-class JstShSideEntry(_ProfileHole):
+class JstShSideEntryHole(_ProfileHole):
   """
   A panel cutout for JST SH side-entry surface-mounted connector, SMxxB-SRSS-TB.
   4-pin variation used for qwiic.
