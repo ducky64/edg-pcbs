@@ -11,12 +11,13 @@ Screw holes use the bd_warehouse clearance-hole fits.
 from math import degrees
 from pathlib import Path
 
-from build123d import (Align, BuildPart, BuildSketch, Cylinder, Edge, Hole, Locations, Mode, Part, Plane, Pos,
-                       RectangleRounded, SlotArc, export_stl, extrude, insert)
+from build123d import (Align, BuildPart, Compound, Cylinder, Edge, Hole, Locations, Part, Plane, PolarLocations, Pos,
+                       Rectangle, RectangleRounded, Rot, SlotArc, SlotOverall, export_stl, extrude, insert)
 from bd_warehouse.fastener import ClearanceHole, CounterSunkScrew, HexNut, PanHeadScrew
 
 from bd_util.connector import MolexKK254Hole, UsbCReceptacleHole, JstShSideEntryHole
 from bd_util.fastener import KeyholeHole, PrintableCaptiveNutHole
+from bd_util.light_pipe import LightPipe, LightPipeHole
 
 
 # PCB definition
@@ -29,6 +30,10 @@ USB_X = 0.0  # mm, on -Y edge
 FAN_HEADER_X = 0.0  # mm, on +Y edge
 QWIIC_Y = -17  # mm, on +/-X edge
 OPTICAL_SENSOR_HOLES = [(-8, -27), (8, -27)]  # mm, (x, y)
+KNOB_Y = -11.0  # mm, knob (encoder shaft) center
+LED_COUNT = 6  # evenly spaced around the knob
+LED_RADIUS = 8.0  # mm, from the knob center
+LED_START_ANGLE = 0.0  # degrees from +X, first LED
 
 # Enclosure definition
 TOLERANCE = 0.2  # mm, clearance gap per side between mating surfaces
@@ -55,6 +60,32 @@ INNER_OFFSET = TOLERANCE  # enclosure cavity, relative to the PCB outline
 def outline(offset: float) -> RectangleRounded:
   """PCB outline grown outward by offset."""
   return RectangleRounded(PCB_WIDTH + 2 * offset, PCB_LENGTH + 2 * offset, PCB_RADIUS + offset)
+
+
+def make_light_pipe() -> LightPipe:
+  """A single light pipe, in its local frame (origin at the LED on the board top, +X radially outward)."""
+  LED_SLOT_LENGTH = 4.0  # mm, pipe top, overall end-to-end length along the LED_RADIUS circumference, incl. end rounds
+  LED_SLOT_WIDTH = 2.0  # mm, pipe top, radial width
+  LIGHT_PIPE_BOARD_LENGTH = 5.0  # mm, pipe at the board, overall length, tangential to the LED circle
+  LIGHT_PIPE_BOARD_WIDTH = 3.0  # mm, pipe at the board, radial width
+  LED_CAVITY = 2.0  # mm, square, LED clearance cut into the pipe from the board face
+  LED_CAVITY_HEIGHT = 1.4  # mm, from the board top, including an air gap above the LED
+
+  # pipe top: a slot curved along the LED circle, which is centered on the knob at -LED_RADIUS along local X
+  slot_arc_angle = degrees((LED_SLOT_LENGTH - LED_SLOT_WIDTH) / LED_RADIUS)  # centerline arc, excluding end rounds
+  slot_arc = Edge.make_circle(LED_RADIUS, Plane((-LED_RADIUS, 0, 0)),
+                              start_angle=-slot_arc_angle / 2, end_angle=slot_arc_angle / 2)
+  return LightPipe(
+    top_profile=SlotArc(slot_arc, LED_SLOT_WIDTH),
+    board_profile=Rot(0, 0, 90) * SlotOverall(LIGHT_PIPE_BOARD_LENGTH, LIGHT_PIPE_BOARD_WIDTH),
+    height=ENCLOSURE_HEIGHT - TOP_BOSS_POS,  # pipe top flush with the top face
+    wall_thickness=WALL_THICKNESS,
+    led_profile=Rectangle(LED_CAVITY, LED_CAVITY),
+    led_height=LED_CAVITY_HEIGHT,
+  )
+
+
+LIGHT_PIPE = make_light_pipe()  # created outside any builder, like a bd_warehouse Screw
 
 
 def cut_connectors() -> None:
@@ -108,14 +139,8 @@ def make_bottom() -> Part:
 
 
 def make_top() -> Part:
-  KNOB_Y = -11.0  # mm
   KNOB_HOLE_DIAMETER = 6.0  # mm, nominal (shaft) diameter
   SCREW = CounterSunkScrew(size=FASTENER_SIZE, length=16, fastener_type="iso7046")  # length doesn't affect holes
-  LED_COUNT = 6  # evenly spaced around the knob
-  LED_RADIUS = 8.0  # mm, from the knob center
-  LED_START_ANGLE = 0.0  # degrees from +X, first LED
-  LED_SLOT_LENGTH = 4.0  # mm, overall end-to-end length along the LED_RADIUS circumference, including end rounds
-  LED_SLOT_WIDTH = 2.0  # mm, radial width
   OPTICAL_HOLE_DIAMETER = 2.0  # mm
 
   interior_top = ENCLOSURE_HEIGHT - WALL_THICKNESS  # underside of the top face
@@ -139,16 +164,10 @@ def make_top() -> Part:
     # countersunk screw hole cut into the top face
     with Locations(*[Pos(x, y, ENCLOSURE_HEIGHT) for x, y, _ in MOUNT_HOLES]):
       ClearanceHole(SCREW, fit=FASTENER_FIT, counter_sunk=True)
-    # LED light slots through the top face, curved along the LED circle and centered on each LED
-    slot_arc_angle = degrees((LED_SLOT_LENGTH - LED_SLOT_WIDTH) / LED_RADIUS)  # centerline arc, excluding end rounds
-    led_angles = [LED_START_ANGLE + i * 360 / LED_COUNT for i in range(LED_COUNT)]
-    slot_arcs = [Edge.make_circle(LED_RADIUS, Plane((0, KNOB_Y, 0)),
-                                  start_angle=angle - slot_arc_angle / 2, end_angle=angle + slot_arc_angle / 2)
-                 for angle in led_angles]
-    with BuildSketch(Plane.XY.offset(ENCLOSURE_HEIGHT + _EPS)):
-      for arc in slot_arcs:
-        SlotArc(arc, LED_SLOT_WIDTH)
-    extrude(amount=-(WALL_THICKNESS + 2 * _EPS), mode=Mode.SUBTRACT)
+    # light pipe cutouts through the top face, local +X radially outward from the knob
+    with Locations(Pos(0, KNOB_Y, ENCLOSURE_HEIGHT)):
+      with PolarLocations(LED_RADIUS, LED_COUNT, start_angle=LED_START_ANGLE, rotate=True):
+        LightPipeHole(LIGHT_PIPE, clearance=TOLERANCE)
     # optical sensor holes through the top face
     for x, y in OPTICAL_SENSOR_HOLES:
       with Locations(Pos(x, y, ENCLOSURE_HEIGHT + _EPS)):
@@ -159,7 +178,10 @@ def make_top() -> Part:
 
 if __name__ == "__main__":
   OUTPUT_DIR.mkdir(exist_ok=True)
-  for name, part in [("iotknob_bottom", make_bottom()), ("iotknob_top", make_top())]:
+  top = make_top()  # also records the global light pipe locations
+  light_pipes = Compound([loc * LIGHT_PIPE for loc in LIGHT_PIPE.hole_locations])
+  for name, part in [("iotknob_bottom", make_bottom()), ("iotknob_top", top),
+                     ("iotknob_lightpipes_assembly", light_pipes)]:
     path = OUTPUT_DIR / f"{name}.stl"
     export_stl(part, str(path))
     bbox = part.bounding_box()
