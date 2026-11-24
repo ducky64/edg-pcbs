@@ -8,7 +8,6 @@ Tolerance convention: TOLERANCE is the clearance gap between mating surfaces, pe
 receiving (hole / cavity) features, which are enlarged, while the part features (PCB, shaft) are nominal.
 Screw holes use the bd_warehouse clearance-hole fits.
 """
-import math
 from pathlib import Path
 
 from build123d import (Align, BuildPart, Cylinder, Hole, Locations, Part, Plane, PolarLocations, Pos, RectangleRounded,
@@ -93,11 +92,13 @@ def make_bottom() -> Part:
 
   with BuildPart() as builder:
     insert(tray)
-    # nut pocket and screw hole cut into the bottom face (normal -Z), with the nut plan local X at the nut angle
-    with Locations(*[Plane((x, y, 0), x_dir=(math.cos(math.radians(angle)), math.sin(math.radians(angle)), 0),
-                           z_dir=(0, 0, -1)) for x, y, angle in MOUNT_HOLES]):
-      PrintableCaptiveNutHole(NUT, fit=FASTENER_FIT, nut_clearance=NUT_CLEARANCE, bridge_depth=NUT_BRIDGE_DEPTH)
-      ClearanceHole(NUT, fit=FASTENER_FIT, counter_sunk=False)
+    # nut pocket and screw hole cut into the bottom face (normal -Z); the plane is flipped, so the nut pocket
+    # rotation about local Z is negated to give the nut angle as seen from above
+    for x, y, angle in MOUNT_HOLES:
+      with Locations(Plane((x, y, 0), x_dir=(1, 0, 0), z_dir=(0, 0, -1))):
+        PrintableCaptiveNutHole(NUT, fit=FASTENER_FIT, nut_clearance=NUT_CLEARANCE, bridge_depth=NUT_BRIDGE_DEPTH,
+                                rotation=(0, 0, -angle))
+        ClearanceHole(NUT, fit=FASTENER_FIT, counter_sunk=False)
     # keyholes cut into the bottom face; slot angles are in the flipped frame (as seen from below)
     with Locations(*[Plane((x, y, 0), x_dir=(1, 0, 0), z_dir=(0, 0, -1)) for x, y in KEYHOLES]):
       KeyholeHole(KEYHOLE_SCREW, fit=FASTENER_FIT, angles=KEYHOLE_ANGLES)
@@ -106,7 +107,7 @@ def make_bottom() -> Part:
 
 
 def make_top() -> Part:
-  KNOB_HOLE_FROM_BOTTOM = 24.0  # mm, from the PCB bottom edge (-Y), on the X centerline
+  KNOB_Y = -11.0  # mm
   KNOB_HOLE_DIAMETER = 6.0  # mm, nominal (shaft) diameter
   SCREW = CounterSunkScrew(size=FASTENER_SIZE, length=16, fastener_type="iso7046")  # length doesn't affect holes
   LED_COUNT = 6  # evenly spaced around the knob
@@ -126,17 +127,17 @@ def make_top() -> Part:
   for x, y, _ in MOUNT_HOLES:
     cover += (Pos(x, y, 0) * boss) & footprint
 
-  knob_y = -PCB_LENGTH / 2 + KNOB_HOLE_FROM_BOTTOM
-  cover -= Pos(0, knob_y, 0) * Cylinder(KNOB_HOLE_DIAMETER / 2 + TOLERANCE, 2 * ENCLOSURE_HEIGHT,
-                                        align=(Align.CENTER, Align.CENTER, Align.MIN))
-
   with BuildPart() as builder:
     insert(cover)
+
+    with Locations(Pos(0, KNOB_Y, ENCLOSURE_HEIGHT + _EPS)):
+      Hole(KNOB_HOLE_DIAMETER / 2 + TOLERANCE)
+
     # countersunk screw hole cut into the top face
     with Locations(*[Pos(x, y, ENCLOSURE_HEIGHT) for x, y, _ in MOUNT_HOLES]):
       ClearanceHole(SCREW, fit=FASTENER_FIT, counter_sunk=True)
     # LED light holes through the top face
-    with Locations(Pos(0, knob_y, ENCLOSURE_HEIGHT + _EPS)):
+    with Locations(Pos(0, KNOB_Y, ENCLOSURE_HEIGHT + _EPS)):
       with PolarLocations(LED_RADIUS, LED_COUNT, start_angle=LED_START_ANGLE, rotate=False):
         Hole(LED_HOLE_DIAMETER / 2)
     # optical sensor holes through the top face
