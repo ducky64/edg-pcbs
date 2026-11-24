@@ -59,22 +59,21 @@ def outline(offset: float) -> RectangleRounded:
 def cut_connectors() -> None:
   """Cut the connector openings through the end walls, in the active BuildPart. Shared by both parts, since
   openings may span the part split."""
-  wall_x = PCB_WIDTH / 2 + OUTER_OFFSET + _EPS  # just outside the end wall outer surfaces
-  wall_y = PCB_LENGTH / 2 + OUTER_OFFSET + _EPS
-  depth = WALL_THICKNESS + 2 * _EPS  # through the end wall only
+  wall_x = PCB_WIDTH / 2  # approx inner wall surface
+  wall_y = PCB_LENGTH / 2
   # -Y wall: local -Z points into the enclosure (+Y), local Y up
-  with Locations(Pos(USB_X, -wall_y, BOARD_TOP_POS) * Rot(90, 0, 0)):
-    UsbCReceptacleHole(clearance=TOLERANCE, depth=depth)
+  with Locations(Pos(USB_X, -wall_y, BOARD_TOP_POS) * Rot(0, 0, 180) * Rot(90, 0, 0)):
+    UsbCReceptacleHole(clearance=TOLERANCE)
   # +Y wall: local -Z points into the enclosure (-Y), local Y up
-  with Locations(Pos(FAN_HEADER_X, wall_y, BOARD_TOP_POS) * Rot(0, 0, 180) * Rot(90, 0, 0)):
-    MolexKK254Hole(4, clearance=TOLERANCE, depth=depth)
+  with Locations(Pos(FAN_HEADER_X, wall_y, BOARD_TOP_POS) * Rot(90, 0, 0)):
+    MolexKK254Hole(4, clearance=TOLERANCE)
   with Locations(Pos(USB_X, -wall_y, BOARD_TOP_POS) * Rot(90, 0, 0)):
-    UsbCReceptacleHole(clearance=TOLERANCE, depth=depth)
+    UsbCReceptacleHole(clearance=TOLERANCE)
 
-  for x, rot in [(wall_x, 90), (-wall_x, -90)]:
+  for x, rot in [(wall_x, -90), (-wall_x, 90)]:
     # +/-X walls: local -Z points into the enclosure (-X/+X)
     with Locations(Pos(x, QWIIC_Y, TOP_BOSS_POS) * Rot(0, 0, rot) * Rot(90, 0, 0)):
-      JstShSideEntryHole(4, clearance=TOLERANCE, depth=depth)
+      JstShSideEntryHole(4, clearance=TOLERANCE)
 
 
 def make_bottom() -> Part:
@@ -139,11 +138,11 @@ def make_top() -> Part:
     # LED light holes through the top face
     with Locations(Pos(0, knob_y, ENCLOSURE_HEIGHT + _EPS)):
       with PolarLocations(LED_RADIUS, LED_COUNT, start_angle=LED_START_ANGLE, rotate=False):
-        Hole(LED_HOLE_DIAMETER / 2, depth=WALL_THICKNESS + 2 * _EPS)
+        Hole(LED_HOLE_DIAMETER / 2)
     # optical sensor holes through the top face
     for x, y in OPTICAL_SENSOR_HOLES:
       with Locations(Pos(x, y, ENCLOSURE_HEIGHT + _EPS)):
-        Hole(LED_HOLE_DIAMETER / 2, depth=WALL_THICKNESS + 2 * _EPS)
+        Hole(LED_HOLE_DIAMETER / 2)
     cut_connectors()
   return builder.part
 
