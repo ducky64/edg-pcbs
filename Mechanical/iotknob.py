@@ -8,9 +8,10 @@ Tolerance convention: TOLERANCE is the clearance gap between mating surfaces, pe
 receiving (hole / cavity) features, which are enlarged, while the part features (PCB, shaft) are nominal.
 Screw holes use the bd_warehouse clearance-hole fits.
 """
+import math
 from pathlib import Path
 
-from build123d import (Align, BuildPart, Cylinder, Hole, Locations, Part, PolarLocations, Pos, RectangleRounded, Rot,
+from build123d import (Align, BuildPart, Cylinder, Hole, Locations, Part, Plane, PolarLocations, Pos, RectangleRounded,
                        export_stl, extrude, insert)
 from bd_warehouse.fastener import ClearanceHole, CounterSunkScrew, HexNut, PanHeadScrew
 
@@ -61,18 +62,16 @@ def cut_connectors() -> None:
   openings may span the part split."""
   wall_x = PCB_WIDTH / 2  # approx inner wall surface
   wall_y = PCB_LENGTH / 2
-  # -Y wall: local -Z points into the enclosure (+Y), local Y up
-  with Locations(Pos(USB_X, -wall_y, BOARD_TOP_POS) * Rot(0, 0, 180) * Rot(90, 0, 0)):
+  # -Y wall, cutting toward -Y
+  with Locations(Plane((USB_X, -wall_y, BOARD_TOP_POS), x_dir=(-1, 0, 0), z_dir=(0, 1, 0))):
     UsbCReceptacleHole(clearance=TOLERANCE)
-  # +Y wall: local -Z points into the enclosure (-Y), local Y up
-  with Locations(Pos(FAN_HEADER_X, wall_y, BOARD_TOP_POS) * Rot(90, 0, 0)):
+  # +Y wall, cutting toward +Y
+  with Locations(Plane((FAN_HEADER_X, wall_y, BOARD_TOP_POS), x_dir=(1, 0, 0), z_dir=(0, -1, 0))):
     MolexKK254Hole(4, clearance=TOLERANCE)
-  with Locations(Pos(USB_X, -wall_y, BOARD_TOP_POS) * Rot(90, 0, 0)):
-    UsbCReceptacleHole(clearance=TOLERANCE)
 
-  for x, rot in [(wall_x, -90), (-wall_x, 90)]:
-    # +/-X walls: local -Z points into the enclosure (-X/+X)
-    with Locations(Pos(x, QWIIC_Y, TOP_BOSS_POS) * Rot(0, 0, rot) * Rot(90, 0, 0)):
+  # +/-X walls, cutting toward +/-X
+  for x, x_dir, z_dir in [(wall_x, (0, -1, 0), (-1, 0, 0)), (-wall_x, (0, 1, 0), (1, 0, 0))]:
+    with Locations(Plane((x, QWIIC_Y, TOP_BOSS_POS), x_dir=x_dir, z_dir=z_dir)):
       JstShSideEntryHole(4, clearance=TOLERANCE)
 
 
@@ -94,12 +93,13 @@ def make_bottom() -> Part:
 
   with BuildPart() as builder:
     insert(tray)
-    # nut pocket and screw hole cut into the bottom face (flipped about X, which keeps the nut plan corners on X)
-    with Locations(*[Pos(x, y, 0) * Rot(0, 0, angle) * Rot(180, 0, 0) for x, y, angle in MOUNT_HOLES]):
+    # nut pocket and screw hole cut into the bottom face (normal -Z), with the nut plan local X at the nut angle
+    with Locations(*[Plane((x, y, 0), x_dir=(math.cos(math.radians(angle)), math.sin(math.radians(angle)), 0),
+                           z_dir=(0, 0, -1)) for x, y, angle in MOUNT_HOLES]):
       PrintableCaptiveNutHole(NUT, fit=FASTENER_FIT, nut_clearance=NUT_CLEARANCE, bridge_depth=NUT_BRIDGE_DEPTH)
       ClearanceHole(NUT, fit=FASTENER_FIT, counter_sunk=False)
     # keyholes cut into the bottom face; slot angles are in the flipped frame (as seen from below)
-    with Locations(*[Pos(x, y, 0) * Rot(180, 0, 0) for x, y in KEYHOLES]):
+    with Locations(*[Plane((x, y, 0), x_dir=(1, 0, 0), z_dir=(0, 0, -1)) for x, y in KEYHOLES]):
       KeyholeHole(KEYHOLE_SCREW, fit=FASTENER_FIT, angles=KEYHOLE_ANGLES)
     cut_connectors()
   return builder.part
