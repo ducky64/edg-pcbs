@@ -105,10 +105,44 @@ class MolexKK254Hole(_ProfileHole):
       rotation: RotationLike = (0, 0, 0),
       mode: Mode = Mode.SUBTRACT,
   ):
-    if pins < 2:
-      raise ValueError(f"pins={pins}, must be at least 2")
-    self.pins = pins
+    assert pins >= 2
     housing_length = self._HOUSING_LENGTH_2PIN + (pins - 2) * self._PITCH
     profile = Pos(0, self._PIN_SIZE / 2) * Rectangle(housing_length + 2 * clearance,
                                                      self._HOUSING_WIDTH + 2 * clearance).face()
+    super().__init__(profile, depth, rotation, mode)
+
+
+class JstShSideEntry(_ProfileHole):
+  """
+  A panel cutout for JST SH side-entry surface-mounted connector, SMxxB-SRSS-TB.
+  4-pin variation used for qwiic.
+
+  Args:
+      pins (int): number of circuits
+      clearance (float, optional): clearance added to each side of the housing profile. Defaults to 0.0.
+      depth (float, optional): cutout depth - None implies through part. Defaults to None.
+      rotation (RotationLike, optional): object rotation. Defaults to (0, 0, 0).
+      mode (Mode, optional): combination mode. Defaults to Mode.SUBTRACT.
+
+  Raises:
+      ValueError: No depth provided
+      ValueError: fewer than 2 pins
+  """
+
+  _PITCH = 1.00  # mm
+  _HOUSING_HEIGHT = 2.9  # mm
+  _HOUSING_LENGTH_2PIN = 4.00  # mm
+
+  def __init__(
+      self,
+      pins: int,
+      clearance: float = 0.0,
+      depth: float | None = None,
+      rotation: RotationLike = (0, 0, 0),
+      mode: Mode = Mode.SUBTRACT,
+  ):
+    assert pins >= 2
+    housing_length = self._HOUSING_LENGTH_2PIN + (pins - 2) * self._PITCH
+    profile = Pos(0, self._HOUSING_HEIGHT / 2) * Rectangle(housing_length + 2 * clearance,
+                                                     self._HOUSING_HEIGHT + 2 * clearance).face()
     super().__init__(profile, depth, rotation, mode)
