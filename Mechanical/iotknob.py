@@ -8,10 +8,11 @@ Tolerance convention: TOLERANCE is the clearance gap between mating surfaces, pe
 receiving (hole / cavity) features, which are enlarged, while the part features (PCB, shaft) are nominal.
 Screw holes use the bd_warehouse clearance-hole fits.
 """
+from math import degrees
 from pathlib import Path
 
-from build123d import (Align, BuildPart, Cylinder, Hole, Locations, Part, Plane, PolarLocations, Pos, RectangleRounded,
-                       export_stl, extrude, insert)
+from build123d import (Align, BuildPart, BuildSketch, Cylinder, Edge, Hole, Locations, Mode, Part, Plane, Pos,
+                       RectangleRounded, SlotArc, export_stl, extrude, insert)
 from bd_warehouse.fastener import ClearanceHole, CounterSunkScrew, HexNut, PanHeadScrew
 
 from bd_util.connector import MolexKK254Hole, UsbCReceptacleHole, JstShSideEntryHole
@@ -113,7 +114,9 @@ def make_top() -> Part:
   LED_COUNT = 6  # evenly spaced around the knob
   LED_RADIUS = 8.0  # mm, from the knob center
   LED_START_ANGLE = 0.0  # degrees from +X, first LED
-  LED_HOLE_DIAMETER = 2.0  # mm
+  LED_SLOT_LENGTH = 4.0  # mm, overall end-to-end length along the LED_RADIUS circumference, including end rounds
+  LED_SLOT_WIDTH = 2.0  # mm, radial width
+  OPTICAL_HOLE_DIAMETER = 2.0  # mm
 
   interior_top = ENCLOSURE_HEIGHT - WALL_THICKNESS  # underside of the top face
 
@@ -136,14 +139,20 @@ def make_top() -> Part:
     # countersunk screw hole cut into the top face
     with Locations(*[Pos(x, y, ENCLOSURE_HEIGHT) for x, y, _ in MOUNT_HOLES]):
       ClearanceHole(SCREW, fit=FASTENER_FIT, counter_sunk=True)
-    # LED light holes through the top face
-    with Locations(Pos(0, KNOB_Y, ENCLOSURE_HEIGHT + _EPS)):
-      with PolarLocations(LED_RADIUS, LED_COUNT, start_angle=LED_START_ANGLE, rotate=False):
-        Hole(LED_HOLE_DIAMETER / 2)
+    # LED light slots through the top face, curved along the LED circle and centered on each LED
+    slot_arc_angle = degrees((LED_SLOT_LENGTH - LED_SLOT_WIDTH) / LED_RADIUS)  # centerline arc, excluding end rounds
+    led_angles = [LED_START_ANGLE + i * 360 / LED_COUNT for i in range(LED_COUNT)]
+    slot_arcs = [Edge.make_circle(LED_RADIUS, Plane((0, KNOB_Y, 0)),
+                                  start_angle=angle - slot_arc_angle / 2, end_angle=angle + slot_arc_angle / 2)
+                 for angle in led_angles]
+    with BuildSketch(Plane.XY.offset(ENCLOSURE_HEIGHT + _EPS)):
+      for arc in slot_arcs:
+        SlotArc(arc, LED_SLOT_WIDTH)
+    extrude(amount=-(WALL_THICKNESS + 2 * _EPS), mode=Mode.SUBTRACT)
     # optical sensor holes through the top face
     for x, y in OPTICAL_SENSOR_HOLES:
       with Locations(Pos(x, y, ENCLOSURE_HEIGHT + _EPS)):
-        Hole(LED_HOLE_DIAMETER / 2)
+        Hole(OPTICAL_HOLE_DIAMETER / 2)
     cut_connectors()
   return builder.part
 
