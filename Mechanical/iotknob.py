@@ -11,8 +11,9 @@ Screw holes use the bd_warehouse clearance-hole fits.
 from math import degrees
 from pathlib import Path
 
-from build123d import (Align, BuildPart, Compound, Cylinder, Edge, Hole, Locations, Part, Plane, PolarLocations, Pos,
-                       Rectangle, RectangleRounded, Rot, SlotArc, SlotOverall, export_stl, extrude, insert)
+from build123d import (Align, BuildPart, Color, Compound, Cylinder, Edge, Hole, Location, Locations, Part, Plane,
+                       PolarLocations, Pos, Rectangle, RectangleRounded, Rot, Shape, SlotArc, SlotOverall, export_step,
+                       export_stl, extrude, insert)
 from bd_warehouse.fastener import ClearanceHole, CounterSunkScrew, HexNut, PanHeadScrew
 
 from bd_util.connector import MolexKK254Hole, UsbCReceptacleHole, JstShSideEntryHole
@@ -178,11 +179,34 @@ def make_top() -> Part:
 
 if __name__ == "__main__":
   OUTPUT_DIR.mkdir(exist_ok=True)
+  bottom = make_bottom()
   top = make_top()  # also records the global light pipe locations
-  light_pipes = Compound([loc * LIGHT_PIPE for loc in LIGHT_PIPE.hole_locations])
-  for name, part in [("iotknob_bottom", make_bottom()), ("iotknob_top", top),
-                     ("iotknob_lightpipes_assembly", light_pipes)]:
+  light_pipes = [loc * LIGHT_PIPE for loc in LIGHT_PIPE.hole_locations]
+
+  # (name, part in global coordinates, print rotation, assembly color)
+  parts = [
+    ("iotknob_bottom", bottom, Rot(0, 0, 0), Color(0.3, 0.3, 0.3)),  # dark grey
+    ("iotknob_top", top, Rot(180, 0, 0), Color(0.7, 0.7, 0.7)),  # light grey
+    ("iotknob_lightpipes", Compound(light_pipes), Rot(180, 0, 0), Color(0.1, 0.4, 1.0, 0.5)),  # blue
+  ]
+
+  # individual STLs, in printing orientation
+  for name, part, rotation, _ in parts:
     path = OUTPUT_DIR / f"{name}.stl"
-    export_stl(part, str(path))
-    bbox = part.bounding_box()
-    print(f"{path}: z {bbox.min.Z:.2f} to {bbox.max.Z:.2f} mm, volume {part.volume:.1f} mm^3")
+    printable = rotation * part
+    export_stl(printable, str(path))
+    bbox = printable.bounding_box()
+    print(f"{path}: {bbox.size.X:.2f} x {bbox.size.Y:.2f} x {bbox.size.Z:.2f} mm, volume {part.volume:.1f} mm^3")
+
+  # composite assembly, all parts in global coordinates, colored per part; light pipes stay individual solids
+  assembly_children = []
+  for name, part, _, color in parts:
+    for i, solid in enumerate(part.solids()):
+      child = Compound([solid])
+      child.label = name if len(part.solids()) == 1 else f"{name}_{i}"
+      child.color = color
+      assembly_children.append(child)
+  assembly = Compound(label="iotknob_assembly", children=assembly_children)
+  path = OUTPUT_DIR / "iotknob_assembly.step"
+  export_step(assembly, str(path))
+  print(f"{path}: {len(assembly_children)} parts")
