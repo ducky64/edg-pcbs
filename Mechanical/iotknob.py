@@ -4,9 +4,10 @@ Enclosure generator for the IoT knob PCB.
 Coordinates: origin at the PCB center, X across the PCB width, Y along the PCB length (+Y is "top"),
 Z up from the bottom face of the enclosure.
 
-Tolerance convention: TOLERANCE is the clearance gap between mating surfaces, per side. It is applied to the
-receiving (hole / cavity) features, which are enlarged, while the part features (PCB, shaft) are nominal.
-Screw holes use the bd_warehouse clearance-hole fits.
+All dimensions in mm, angles in degrees.
+
+Tolerancing applied to receiving (hole / cavity) features, which are enlarged.
+Part features are nominal.
 """
 from math import atan2, degrees
 from pathlib import Path
@@ -22,39 +23,39 @@ from bd_util.light_pipe import CrushRibs, DiffusionCone, Flange, LightPipe, Ligh
 
 
 # PCB definition
-PCB_WIDTH = 24.0  # mm, X
-PCB_LENGTH = 70.0  # mm, Y
-PCB_RADIUS = 5.0  # mm, corner radius
-# (x, y, nut angle): mm, 3mm from the PCB rectangle edges; degrees, so a nut hexagon flat faces the PCB corner
+PCB_WIDTH = 24.0  # X
+PCB_LENGTH = 70.0  # Y
+PCB_RADIUS = 5.0
+# (x, y, nut angle), angled so a nut hexagon flat faces the PCB corner
 MOUNT_HOLES = [(-9.0, -32.0, 15.0), (-9.0, 32.0, -15.0), (9.0, -32.0, -15.0), (9.0, 32.0, 15.0)]
-USB_X = 0.0  # mm, on -Y edge
-FAN_HEADER_X = 0.0  # mm, on +Y edge
-QWIIC_Y = -17  # mm, on +/-X edge
-OPTICAL_SENSOR_HOLES = [(-8, -27), (8, -27)]  # mm, (x, y)
-KNOB_Y = -11.0  # mm, knob (encoder shaft) center
+USB_X = 0.0  # on -Y edge
+FAN_HEADER_X = 0.0  # on +Y edge
+QWIIC_Y = -17  # on +/-X edge
+OPTICAL_SENSOR_HOLES = [(-8, -27), (8, -27)]  # (x, y)
+KNOB_Y = -11.0  # knob (encoder shaft) center, on centerline
 LED_COUNT = 6  # evenly spaced around the knob
-LED_RADIUS = 8.0  # mm, from the knob center
-LED_START_ANGLE = 0.0  # degrees from +X, first LED
+LED_RADIUS = 8.0  # from the knob center
+LED_START_ANGLE = 0.0  # rotational offset of first LED
 
 # Enclosure definition
-WALL_THICKNESS = 1.5  # mm, side walls, floor, and top face
+WALL_THICKNESS = 1.5  # side walls, floor, and top face
 
 # these heights in absolute Z coordinates
-BOTTOM_BOSS_POS = 3.0  # mm, bottom boss top surface / PCB bottom surface / part split
-BOARD_TOP_POS = BOTTOM_BOSS_POS + 1.0  # mm, PCB top surface
-TOP_BOSS_POS = BOTTOM_BOSS_POS + 8.0  # mm, top boss bottom surface / top PCB top surface
-ENCLOSURE_HEIGHT = BOTTOM_BOSS_POS + 12 + WALL_THICKNESS  # mm, top face outer surface
+BOTTOM_BOSS_POS = 3.0  # bottom boss top surface / PCB bottom surface / part split
+BOARD_TOP_POS = BOTTOM_BOSS_POS + 1.0  # PCB top surface
+TOP_BOSS_POS = BOTTOM_BOSS_POS + 8.0  # top boss bottom surface / top PCB top surface
+ENCLOSURE_HEIGHT = BOTTOM_BOSS_POS + 12 + WALL_THICKNESS  # top face outer surface
 
 # Mounting screws, top cover to captive nuts in the bottom
 FASTENER_SIZE = "M2.5-0.45"
-FASTENER_FIT = "Normal"  # bd_warehouse clearance fit, for screw holes: Close, Normal, Loose
-BOSS_DIAMETER = 8.0  # mm, nut shelves (bottom) and screw bosses (top); >1mm wall around the nut pocket corners
-                     # (5.5mm) and countersunk head (4.7mm), clipped to the enclosure outline
+FASTENER_FIT = "Normal"
+BOSS_DIAMETER = 8.0  # clipped to the enclosure outline
 
 # Manufacturability constants
-TOLERANCE = 0.2  # mm, clearance gap per side between mating surfaces
+TOLERANCE = 0.2  # clearance gap per side between mating surfaces
+NUT_HOLDER_INTERFERENCE = -0.1
 OVERHANG_ANGLE = 60.0
-_EPS = 0.01  # mm, overlap to avoid coplanar boolean faces
+_EPS = 0.01  # overlap to avoid coplanar boolean faces
 
 
 OUTER_OFFSET = TOLERANCE + WALL_THICKNESS  # enclosure outer outline, relative to the PCB outline
@@ -68,16 +69,16 @@ def outline(offset: float) -> RectangleRounded:
 
 def make_light_pipe() -> LightPipe:
   """A single light pipe, in its local frame (origin at the LED on the board top, +X radially outward)."""
-  LED_SLOT_LENGTH = 4.0  # mm, pipe top, overall end-to-end length along the LED_RADIUS circumference, incl. end rounds
-  LED_SLOT_WIDTH = 2.0  # mm, pipe top, radial width
-  LIGHT_PIPE_BOARD_LENGTH = 5.0  # mm, pipe at the board, overall length, tangential to the LED circle
-  LIGHT_PIPE_BOARD_WIDTH = 3.0  # mm, pipe at the board, radial width
-  LED_CAVITY = 2.0  # mm, square, LED clearance cut into the pipe from the board face
-  LED_CAVITY_HEIGHT = 1.4  # mm, from the board top, including an air gap above the LED
-  FLANGE_EXTENSION = 1.0  # mm, per side beyond the pipe top profile, retaining the pipe below the top face
-  DIFFUSION_CONE_DIAMETER = 1.5  # mm, LED (SK6812-EC15) size; leaves ~0.4mm pipe wall beside the void
+  LED_SLOT_LENGTH = 4.0  # circumferential length, including rounds
+  LED_SLOT_WIDTH = 2.0
+  LIGHT_PIPE_BOARD_LENGTH = 5.0
+  LIGHT_PIPE_BOARD_WIDTH = 3.0
+  LED_CAVITY = 2.0
+  LED_CAVITY_HEIGHT = 1.4
+  FLANGE_EXTENSION = 1.0
+  DIFFUSION_CONE_DIAMETER = 1.5
 
-  # pipe top: a slot curved along the LED circle, which is centered on the knob at -LED_RADIUS along local X
+  # pipe top: a slot curved along the LED placement circle
   slot_arc_angle = degrees((LED_SLOT_LENGTH - LED_SLOT_WIDTH) / LED_RADIUS)  # centerline arc, excluding end rounds
   slot_arc = Edge.make_circle(LED_RADIUS, Plane((-LED_RADIUS, 0, 0)),
                               start_angle=-slot_arc_angle / 2, end_angle=slot_arc_angle / 2)
@@ -96,13 +97,13 @@ def make_light_pipe() -> LightPipe:
   )
 
 
-LIGHT_PIPE = make_light_pipe()  # created outside any builder, like a bd_warehouse Screw
+LIGHT_PIPE = make_light_pipe()
 
 
 def make_light_pipe_tree(light_pipe: LightPipe, locations: list[Location]) -> Part:
   """Join light pipes into a single piece with bridging bars between them."""
-  BRIDGE_WIDTH = 1.0  # mm, narrow, to limit light crosstalk between pipes
-  BRIDGE_THICKNESS = 0.6  # mm, 3 layers at 0.2mm
+  BRIDGE_WIDTH = 1.0  # narrow, to limit light crosstalk between pipes
+  BRIDGE_THICKNESS = 0.6
 
   pipes = [loc * light_pipe for loc in locations]
   bars = []
@@ -134,10 +135,9 @@ def cut_connectors() -> None:
 
 def make_bottom() -> Part:
   NUT = HexNut(size=FASTENER_SIZE, fastener_type="iso4032")
-  NUT_CLEARANCE = -0.1  # mm per flat, positive = clearance, negative = interference (press fit)
   NUT_BRIDGE_DEPTH = 0.4  # mm, bridging strip depth above the nut pocket roof, for support-free printing
 
-  KEYHOLES = [(0.0, -12.0), (0.0, 12.0)]  # mm
+  KEYHOLES = [(0.0, -12.0), (0.0, 12.0)]
   KEYHOLE_ANGLES = [-90, 90]  # degrees from +X as seen from below, slot directions from the head hole
   KEYHOLE_SCREW = PanHeadScrew(size="M2.5-0.45", length=10, fastener_type="iso1580")  # length doesn't affect holes
 
@@ -154,7 +154,7 @@ def make_bottom() -> Part:
     # rotation about local Z is negated to give the nut angle as seen from above
     for x, y, angle in MOUNT_HOLES:
       with Locations(Plane((x, y, 0), x_dir=(1, 0, 0), z_dir=(0, 0, -1))):
-        PrintableCaptiveNutHole(NUT, fit=FASTENER_FIT, nut_clearance=NUT_CLEARANCE, bridge_depth=NUT_BRIDGE_DEPTH,
+        PrintableCaptiveNutHole(NUT, fit=FASTENER_FIT, nut_clearance=NUT_HOLDER_INTERFERENCE, bridge_depth=NUT_BRIDGE_DEPTH,
                                 rotation=(0, 0, -angle))
         ClearanceHole(NUT, fit=FASTENER_FIT, counter_sunk=False)
     # keyholes cut into the bottom face; slot angles are in the flipped frame (as seen from below)
@@ -165,9 +165,9 @@ def make_bottom() -> Part:
 
 
 def make_top() -> Part:
-  KNOB_HOLE_DIAMETER = 6.0  # mm, nominal (shaft) diameter
+  KNOB_HOLE_DIAMETER = 6.0
   SCREW = CounterSunkScrew(size=FASTENER_SIZE, length=16, fastener_type="iso7046")  # length doesn't affect holes
-  OPTICAL_HOLE_DIAMETER = 2.0  # mm
+  OPTICAL_HOLE_DIAMETER = 2.0
 
   interior_top = ENCLOSURE_HEIGHT - WALL_THICKNESS  # underside of the top face
 
