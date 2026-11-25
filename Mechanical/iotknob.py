@@ -8,17 +8,17 @@ Tolerance convention: TOLERANCE is the clearance gap between mating surfaces, pe
 receiving (hole / cavity) features, which are enlarged, while the part features (PCB, shaft) are nominal.
 Screw holes use the bd_warehouse clearance-hole fits.
 """
-from math import degrees
+from math import atan2, degrees
 from pathlib import Path
 
-from build123d import (Align, BuildPart, Color, Compound, Cylinder, Edge, Hole, Location, Locations, Part, Plane,
+from build123d import (Align, Box, BuildPart, Color, Compound, Cylinder, Edge, Hole, Location, Locations, Part, Plane,
                        PolarLocations, Pos, Rectangle, RectangleRounded, Rot, Shape, SlotArc, SlotOverall, export_step,
                        export_stl, extrude, insert)
 from bd_warehouse.fastener import ClearanceHole, CounterSunkScrew, HexNut, PanHeadScrew
 
 from bd_util.connector import MolexKK254Hole, UsbCReceptacleHole, JstShSideEntryHole
 from bd_util.fastener import KeyholeHole, PrintableCaptiveNutHole
-from bd_util.light_pipe import LightPipe, LightPipeHole
+from bd_util.light_pipe import CrushRibs, DiffusionCone, Flange, LightPipe, LightPipeHole
 
 
 # PCB definition
@@ -37,12 +37,13 @@ LED_RADIUS = 8.0  # mm, from the knob center
 LED_START_ANGLE = 0.0  # degrees from +X, first LED
 
 # Enclosure definition
-TOLERANCE = 0.2  # mm, clearance gap per side between mating surfaces
-WALL_THICKNESS = 1.0  # mm, side walls, floor, and top face
-BOTTOM_BOSS_POS = 3.0  # mm, z of the bottom boss top surface, where the PCB bottom rests; also the part split
-BOARD_TOP_POS = BOTTOM_BOSS_POS + 1.0  # mm, z of the PCB top surface (1mm board)
-TOP_BOSS_POS = BOTTOM_BOSS_POS + 8.0  # mm, z of the top boss bottom surface and top PCB top surface
-ENCLOSURE_HEIGHT = BOTTOM_BOSS_POS + 12 + WALL_THICKNESS  # mm, z of the top face outer surface
+WALL_THICKNESS = 1.5  # mm, side walls, floor, and top face
+
+# these heights in absolute Z coordinates
+BOTTOM_BOSS_POS = 3.0  # mm, bottom boss top surface / PCB bottom surface / part split
+BOARD_TOP_POS = BOTTOM_BOSS_POS + 1.0  # mm, PCB top surface
+TOP_BOSS_POS = BOTTOM_BOSS_POS + 8.0  # mm, top boss bottom surface / top PCB top surface
+ENCLOSURE_HEIGHT = BOTTOM_BOSS_POS + 12 + WALL_THICKNESS  # mm, top face outer surface
 
 # Mounting screws, top cover to captive nuts in the bottom
 FASTENER_SIZE = "M2.5-0.45"
@@ -50,9 +51,11 @@ FASTENER_FIT = "Normal"  # bd_warehouse clearance fit, for screw holes: Close, N
 BOSS_DIAMETER = 8.0  # mm, nut shelves (bottom) and screw bosses (top); >1mm wall around the nut pocket corners
                      # (5.5mm) and countersunk head (4.7mm), clipped to the enclosure outline
 
-OUTPUT_DIR = Path(__file__).parent / "generated"
-
+# Manufacturability constants
+TOLERANCE = 0.2  # mm, clearance gap per side between mating surfaces
+OVERHANG_ANGLE = 60.0
 _EPS = 0.01  # mm, overlap to avoid coplanar boolean faces
+
 
 OUTER_OFFSET = TOLERANCE + WALL_THICKNESS  # enclosure outer outline, relative to the PCB outline
 INNER_OFFSET = TOLERANCE  # enclosure cavity, relative to the PCB outline
@@ -71,11 +74,15 @@ def make_light_pipe() -> LightPipe:
   LIGHT_PIPE_BOARD_WIDTH = 3.0  # mm, pipe at the board, radial width
   LED_CAVITY = 2.0  # mm, square, LED clearance cut into the pipe from the board face
   LED_CAVITY_HEIGHT = 1.4  # mm, from the board top, including an air gap above the LED
+  FLANGE_EXTENSION = 1.0  # mm, per side beyond the pipe top profile, retaining the pipe below the top face
+  DIFFUSION_CONE_DIAMETER = 1.5  # mm, LED (SK6812-EC15) size; leaves ~0.4mm pipe wall beside the void
 
   # pipe top: a slot curved along the LED circle, which is centered on the knob at -LED_RADIUS along local X
   slot_arc_angle = degrees((LED_SLOT_LENGTH - LED_SLOT_WIDTH) / LED_RADIUS)  # centerline arc, excluding end rounds
   slot_arc = Edge.make_circle(LED_RADIUS, Plane((-LED_RADIUS, 0, 0)),
                               start_angle=-slot_arc_angle / 2, end_angle=slot_arc_angle / 2)
+  # crush ribs on the long sides of the slot (compressing across its width), on the radial line through the LED
+  radial_line = Edge.make_line((-LED_SLOT_WIDTH, 0), (LED_SLOT_WIDTH, 0))
   return LightPipe(
     top_profile=SlotArc(slot_arc, LED_SLOT_WIDTH),
     board_profile=Rot(0, 0, 90) * SlotOverall(LIGHT_PIPE_BOARD_LENGTH, LIGHT_PIPE_BOARD_WIDTH),
@@ -83,10 +90,28 @@ def make_light_pipe() -> LightPipe:
     wall_thickness=WALL_THICKNESS,
     led_profile=Rectangle(LED_CAVITY, LED_CAVITY),
     led_height=LED_CAVITY_HEIGHT,
+    flange=Flange(FLANGE_EXTENSION, draft_angle=OVERHANG_ANGLE),
+    crush_ribs=CrushRibs(along=[radial_line]),
+    diffusion_cone=DiffusionCone(DIFFUSION_CONE_DIAMETER),
   )
 
 
 LIGHT_PIPE = make_light_pipe()  # created outside any builder, like a bd_warehouse Screw
+
+
+def make_light_pipe_tree(light_pipe: LightPipe, locations: list[Location]) -> Part:
+  """Join light pipes into a single piece with bridging bars between them."""
+  BRIDGE_WIDTH = 1.0  # mm, narrow, to limit light crosstalk between pipes
+  BRIDGE_THICKNESS = 0.6  # mm, 3 layers at 0.2mm
+
+  pipes = [loc * light_pipe for loc in locations]
+  bars = []
+  for start, end in zip(locations, locations[1:] + locations[:1]):
+    a, b = start.position, end.position
+    mid = (a + b) / 2
+    bars.append(Pos(mid.X, mid.Y, a.Z + light_pipe.loft_height) * Rot(0, 0, degrees(atan2(b.Y - a.Y, b.X - a.X)))
+                * Box((b - a).length, BRIDGE_WIDTH, BRIDGE_THICKNESS, align=(Align.CENTER, Align.CENTER, Align.MAX)))
+  return pipes[0].fuse(*pipes[1:], *bars).clean()
 
 
 def cut_connectors() -> None:
@@ -178,16 +203,17 @@ def make_top() -> Part:
 
 
 if __name__ == "__main__":
+  OUTPUT_DIR = Path(__file__).parent / "generated"
   OUTPUT_DIR.mkdir(exist_ok=True)
   bottom = make_bottom()
   top = make_top()  # also records the global light pipe locations
-  light_pipes = [loc * LIGHT_PIPE for loc in LIGHT_PIPE.hole_locations]
+  light_pipes = make_light_pipe_tree(LIGHT_PIPE, LIGHT_PIPE.hole_locations)
 
   # (name, part in global coordinates, print rotation, assembly color)
   parts = [
     ("iotknob_bottom", bottom, Rot(0, 0, 0), Color(0.3, 0.3, 0.3)),  # dark grey
     ("iotknob_top", top, Rot(180, 0, 0), Color(0.7, 0.7, 0.7)),  # light grey
-    ("iotknob_lightpipes", Compound(light_pipes), Rot(180, 0, 0), Color(0.1, 0.4, 1.0, 0.5)),  # blue
+    ("iotknob_lightpipes", light_pipes, Rot(180, 0, 0), Color(0.1, 0.4, 1.0, 0.5)),  # blue
   ]
 
   # individual STLs, in printing orientation
@@ -198,7 +224,7 @@ if __name__ == "__main__":
     bbox = printable.bounding_box()
     print(f"{path}: {bbox.size.X:.2f} x {bbox.size.Y:.2f} x {bbox.size.Z:.2f} mm, volume {part.volume:.1f} mm^3")
 
-  # composite assembly, all parts in global coordinates, colored per part; light pipes stay individual solids
+  # composite assembly, all parts in global coordinates, colored per part
   assembly_children = []
   for name, part, _, color in parts:
     for i, solid in enumerate(part.solids()):
