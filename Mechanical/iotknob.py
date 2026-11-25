@@ -25,32 +25,33 @@ from bd_util.light_pipe import CrushRibs, DiffusionCone, Flange, LightPipe, Ligh
 # PCB definition
 PCB_WIDTH = 24.0  # X
 PCB_LENGTH = 70.0  # Y
-PCB_RADIUS = 5.0
+PCB_RADIUS = 4.0
 # (x, y, nut angle), angled so a nut hexagon flat faces the PCB corner
 MOUNT_HOLES = [(-9.0, -32.0, 15.0), (-9.0, 32.0, -15.0), (9.0, -32.0, -15.0), (9.0, 32.0, 15.0)]
 USB_X = 0.0  # on -Y edge
 FAN_HEADER_X = 0.0  # on +Y edge
 QWIIC_Y = -17  # on +/-X edge
 OPTICAL_SENSOR_HOLES = [(-8, -27), (8, -27)]  # (x, y)
-KNOB_Y = -11.0  # knob (encoder shaft) center, on centerline
+KNOB_Y = -7.0  # knob (encoder shaft) center, on centerline
 LED_COUNT = 6  # evenly spaced around the knob
 LED_RADIUS = 8.0  # from the knob center
 LED_START_ANGLE = 0.0  # rotational offset of first LED
 
 # Enclosure definition
 WALL_THICKNESS = 1.5  # side walls, floor, and top face
+BOSS_DIAMETER = 8.0  # clipped to the enclosure outline
 
 # these heights in absolute Z coordinates
 BOTTOM_BOSS_Z = 3.0  # bottom boss top surface / PCB bottom surface
 BOARD_TOP_Z = BOTTOM_BOSS_Z + 1.0  # bottom PCB top surface
 ENCLOSURE_SPLIT_Z = BOARD_TOP_Z  # seam between top and bottom parts
-TOP_BOSS_Z = BOTTOM_BOSS_Z + 8.0  # top boss bottom surface / top PCB top surface
+TOP_BOARD_TOP_Z = BOTTOM_BOSS_Z + 8.0  # bottom PCB top surface
+TOP_BOSS_Z = TOP_BOARD_TOP_Z + 2.0  # top boss bottom surface, floats above the board
 ENCLOSURE_TOP_Z = BOTTOM_BOSS_Z + 12 + WALL_THICKNESS  # top face outer surface
 
 # Mounting screws, top cover to captive nuts in the bottom
 FASTENER_SIZE = "M2.5-0.45"
 FASTENER_FIT = "Normal"
-BOSS_DIAMETER = 8.0  # clipped to the enclosure outline
 
 # Manufacturability constants
 TOLERANCE = 0.2  # clearance gap per side between mating surfaces
@@ -88,7 +89,7 @@ def make_light_pipe() -> LightPipe:
   return LightPipe(
     top_profile=SlotArc(slot_arc, LED_SLOT_WIDTH),
     board_profile=Rot(0, 0, 90) * SlotOverall(LIGHT_PIPE_BOARD_LENGTH, LIGHT_PIPE_BOARD_WIDTH),
-    height=ENCLOSURE_TOP_Z - TOP_BOSS_Z,  # pipe top flush with the top face
+    height=ENCLOSURE_TOP_Z - TOP_BOARD_TOP_Z,  # pipe top flush with the top face
     wall_thickness=WALL_THICKNESS,
     led_profile=Rectangle(LED_CAVITY, LED_CAVITY),
     led_height=LED_CAVITY_HEIGHT,
@@ -130,7 +131,7 @@ def cut_connectors() -> None:
 
   # +/-X walls, cutting toward +/-X
   for x, x_dir, z_dir in [(wall_x, (0, -1, 0), (-1, 0, 0)), (-wall_x, (0, 1, 0), (1, 0, 0))]:
-    with Locations(Plane((x, QWIIC_Y, TOP_BOSS_Z), x_dir=x_dir, z_dir=z_dir)):
+    with Locations(Plane((x, QWIIC_Y, TOP_BOARD_TOP_Z), x_dir=x_dir, z_dir=z_dir)):
       JstShSideEntryHole(4, clearance=TOLERANCE)
 
 
@@ -166,9 +167,9 @@ def make_bottom() -> Part:
 
 
 def make_top() -> Part:
-  KNOB_HOLE_DIAMETER = 6.0
+  KNOB_HOLE_DIAMETER = 10.0
   SCREW = CounterSunkScrew(size=FASTENER_SIZE, length=16, fastener_type="iso7046")  # length doesn't affect holes
-  OPTICAL_HOLE_DIAMETER = 2.0
+  OPTICAL_HOLE_DIAMETER = 4.0
 
   interior_top = ENCLOSURE_TOP_Z - WALL_THICKNESS  # underside of the top face
 
