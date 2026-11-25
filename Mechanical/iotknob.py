@@ -41,10 +41,11 @@ LED_START_ANGLE = 0.0  # rotational offset of first LED
 WALL_THICKNESS = 1.5  # side walls, floor, and top face
 
 # these heights in absolute Z coordinates
-BOTTOM_BOSS_POS = 3.0  # bottom boss top surface / PCB bottom surface / part split
-BOARD_TOP_POS = BOTTOM_BOSS_POS + 1.0  # PCB top surface
-TOP_BOSS_POS = BOTTOM_BOSS_POS + 8.0  # top boss bottom surface / top PCB top surface
-ENCLOSURE_HEIGHT = BOTTOM_BOSS_POS + 12 + WALL_THICKNESS  # top face outer surface
+BOTTOM_BOSS_Z = 3.0  # bottom boss top surface / PCB bottom surface
+BOARD_TOP_Z = BOTTOM_BOSS_Z + 1.0  # bottom PCB top surface
+ENCLOSURE_SPLIT_Z = BOARD_TOP_Z  # seam between top and bottom parts
+TOP_BOSS_Z = BOTTOM_BOSS_Z + 8.0  # top boss bottom surface / top PCB top surface
+ENCLOSURE_TOP_Z = BOTTOM_BOSS_Z + 12 + WALL_THICKNESS  # top face outer surface
 
 # Mounting screws, top cover to captive nuts in the bottom
 FASTENER_SIZE = "M2.5-0.45"
@@ -87,7 +88,7 @@ def make_light_pipe() -> LightPipe:
   return LightPipe(
     top_profile=SlotArc(slot_arc, LED_SLOT_WIDTH),
     board_profile=Rot(0, 0, 90) * SlotOverall(LIGHT_PIPE_BOARD_LENGTH, LIGHT_PIPE_BOARD_WIDTH),
-    height=ENCLOSURE_HEIGHT - TOP_BOSS_POS,  # pipe top flush with the top face
+    height=ENCLOSURE_TOP_Z - TOP_BOSS_Z,  # pipe top flush with the top face
     wall_thickness=WALL_THICKNESS,
     led_profile=Rectangle(LED_CAVITY, LED_CAVITY),
     led_height=LED_CAVITY_HEIGHT,
@@ -121,15 +122,15 @@ def cut_connectors() -> None:
   wall_x = PCB_WIDTH / 2  # approx inner wall surface
   wall_y = PCB_LENGTH / 2
   # -Y wall, cutting toward -Y
-  with Locations(Plane((USB_X, -wall_y, BOARD_TOP_POS), x_dir=(-1, 0, 0), z_dir=(0, 1, 0))):
+  with Locations(Plane((USB_X, -wall_y, BOARD_TOP_Z), x_dir=(-1, 0, 0), z_dir=(0, 1, 0))):
     UsbCReceptacleHole(clearance=TOLERANCE)
   # +Y wall, cutting toward +Y
-  with Locations(Plane((FAN_HEADER_X, wall_y, BOARD_TOP_POS), x_dir=(1, 0, 0), z_dir=(0, -1, 0))):
+  with Locations(Plane((FAN_HEADER_X, wall_y, BOARD_TOP_Z), x_dir=(1, 0, 0), z_dir=(0, -1, 0))):
     MolexKK254Hole(4, clearance=TOLERANCE)
 
   # +/-X walls, cutting toward +/-X
   for x, x_dir, z_dir in [(wall_x, (0, -1, 0), (-1, 0, 0)), (-wall_x, (0, 1, 0), (1, 0, 0))]:
-    with Locations(Plane((x, QWIIC_Y, TOP_BOSS_POS), x_dir=x_dir, z_dir=z_dir)):
+    with Locations(Plane((x, QWIIC_Y, TOP_BOSS_Z), x_dir=x_dir, z_dir=z_dir)):
       JstShSideEntryHole(4, clearance=TOLERANCE)
 
 
@@ -141,10 +142,10 @@ def make_bottom() -> Part:
   KEYHOLE_ANGLES = [-90, 90]  # degrees from +X as seen from below, slot directions from the head hole
   KEYHOLE_SCREW = PanHeadScrew(size="M2.5-0.45", length=10, fastener_type="iso1580")  # length doesn't affect holes
 
-  footprint = extrude(outline(OUTER_OFFSET), amount=BOTTOM_BOSS_POS)
-  tray = footprint - Pos(0, 0, WALL_THICKNESS) * extrude(outline(INNER_OFFSET), amount=BOTTOM_BOSS_POS)
+  footprint = extrude(outline(OUTER_OFFSET), amount=ENCLOSURE_SPLIT_Z)
+  tray = footprint - Pos(0, 0, WALL_THICKNESS) * extrude(outline(INNER_OFFSET), amount=ENCLOSURE_SPLIT_Z)
 
-  boss = Cylinder(BOSS_DIAMETER / 2, BOTTOM_BOSS_POS, align=(Align.CENTER, Align.CENTER, Align.MIN))
+  boss = Cylinder(BOSS_DIAMETER / 2, BOTTOM_BOSS_Z, align=(Align.CENTER, Align.CENTER, Align.MIN))
   for x, y, _ in MOUNT_HOLES:
     tray += (Pos(x, y, 0) * boss) & footprint
 
@@ -169,34 +170,34 @@ def make_top() -> Part:
   SCREW = CounterSunkScrew(size=FASTENER_SIZE, length=16, fastener_type="iso7046")  # length doesn't affect holes
   OPTICAL_HOLE_DIAMETER = 2.0
 
-  interior_top = ENCLOSURE_HEIGHT - WALL_THICKNESS  # underside of the top face
+  interior_top = ENCLOSURE_TOP_Z - WALL_THICKNESS  # underside of the top face
 
-  cover_height = ENCLOSURE_HEIGHT - BOTTOM_BOSS_POS
-  footprint = Pos(0, 0, BOTTOM_BOSS_POS) * extrude(outline(OUTER_OFFSET), amount=cover_height)
-  cover = footprint - Pos(0, 0, BOTTOM_BOSS_POS - _EPS) * extrude(outline(INNER_OFFSET),
-                                                                  amount=interior_top - BOTTOM_BOSS_POS + _EPS)
+  cover_height = ENCLOSURE_TOP_Z - ENCLOSURE_SPLIT_Z
+  footprint = Pos(0, 0, ENCLOSURE_SPLIT_Z) * extrude(outline(OUTER_OFFSET), amount=cover_height)
+  cover = footprint - Pos(0, 0, ENCLOSURE_SPLIT_Z - _EPS) * extrude(outline(INNER_OFFSET),
+                                                                    amount=interior_top - ENCLOSURE_SPLIT_Z + _EPS)
 
-  boss = Pos(0, 0, TOP_BOSS_POS) * Cylinder(BOSS_DIAMETER / 2, interior_top - TOP_BOSS_POS + _EPS,
-                                       align=(Align.CENTER, Align.CENTER, Align.MIN))
+  boss = Pos(0, 0, TOP_BOSS_Z) * Cylinder(BOSS_DIAMETER / 2, interior_top - TOP_BOSS_Z + _EPS,
+                                          align=(Align.CENTER, Align.CENTER, Align.MIN))
   for x, y, _ in MOUNT_HOLES:
     cover += (Pos(x, y, 0) * boss) & footprint
 
   with BuildPart() as builder:
     insert(cover)
 
-    with Locations(Pos(0, KNOB_Y, ENCLOSURE_HEIGHT + _EPS)):
+    with Locations(Pos(0, KNOB_Y, ENCLOSURE_TOP_Z + _EPS)):
       Hole(KNOB_HOLE_DIAMETER / 2 + TOLERANCE)
 
     # countersunk screw hole cut into the top face
-    with Locations(*[Pos(x, y, ENCLOSURE_HEIGHT) for x, y, _ in MOUNT_HOLES]):
+    with Locations(*[Pos(x, y, ENCLOSURE_TOP_Z) for x, y, _ in MOUNT_HOLES]):
       ClearanceHole(SCREW, fit=FASTENER_FIT, counter_sunk=True)
     # light pipe cutouts through the top face, local +X radially outward from the knob
-    with Locations(Pos(0, KNOB_Y, ENCLOSURE_HEIGHT)):
+    with Locations(Pos(0, KNOB_Y, ENCLOSURE_TOP_Z)):
       with PolarLocations(LED_RADIUS, LED_COUNT, start_angle=LED_START_ANGLE, rotate=True):
         LightPipeHole(LIGHT_PIPE, clearance=TOLERANCE)
     # optical sensor holes through the top face
     for x, y in OPTICAL_SENSOR_HOLES:
-      with Locations(Pos(x, y, ENCLOSURE_HEIGHT + _EPS)):
+      with Locations(Pos(x, y, ENCLOSURE_TOP_Z + _EPS)):
         Hole(OPTICAL_HOLE_DIAMETER / 2)
     cut_connectors()
   return builder.part
