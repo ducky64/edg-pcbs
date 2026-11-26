@@ -14,7 +14,7 @@ from bd_warehouse.fastener import ClearanceHole, CounterSunkScrew, HexNut, PanHe
 
 from bd_util.connector import MolexKK254Hole, UsbCReceptacleHole, JstShSideEntryHole
 from bd_util.fastener import KeyholeHole, PrintableCaptiveNutHole
-from bd_util.light_pipe import CrushRibs, DiffusionCone, Flange, LightPipe, LightPipeHole
+from bd_util.light_pipe import CrushRibs, DiffusionCone, Flange, LightPipe, LightPipeHole, fuse_light_pipes
 
 
 # PCB definition
@@ -189,7 +189,6 @@ def make_light_pipe_tree() -> Part:
   # local +Y is counterclockwise around the knob
   cw_tip, ccw_tip = sorted(LIGHT_PIPE.top_profile.outer_wire().intersect(led_circle).vertices(), key=lambda v: v.Y)
   locations = LIGHT_PIPE.hole_locations
-  pipes = [loc * LIGHT_PIPE for loc in locations]
   bars = []
   for start, end in zip(locations, locations[1:] + locations[:1]):
     a = (start * Pos(ccw_tip.center())).position
@@ -197,7 +196,7 @@ def make_light_pipe_tree() -> Part:
     z = start.position.Z + LIGHT_PIPE.loft_height  # bar top, at the wall inner surface
     centerline = Edge.make_line((a.X, a.Y, z), (b.X, b.Y, z))
     bars.append(Solid.extrude(Face(centerline.offset_2d(BRIDGE_WIDTH / 2)), (0, 0, -BRIDGE_THICKNESS)))
-  return pipes[0].fuse(*pipes[1:], *bars).clean()
+  return fuse_light_pipes(LIGHT_PIPE, locations, *bars)
 
 
 if __name__ == "__main__":

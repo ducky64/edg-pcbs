@@ -10,10 +10,11 @@ from build123d.build_enums import Align, Kind, Mode
 from build123d.build_part import BuildPart
 from build123d.geometry import Axis, Location, Plane, Pos, RotationLike, Vector
 from build123d.objects_part import BasePartObject
-from build123d.topology import Edge, Face, Sketch, Solid, Wire
+from build123d.topology import Edge, Face, Shape, Sketch, Solid, Wire
 
-_EPS = 0.01  # overshoot past the wall surfaces and tangencies, avoiding coplanar or tangent boolean faces
-_APEX_TIP_RADIUS = 0.01  # diffusion cone truncation, avoiding a point apex
+# overshoot past the wall surfaces and tangencies avoiding coplanar or tangent boolean faces, and cone apex radius,
+# since point apexes make OCC booleans and solid classification unreliable
+_EPS = 0.01
 
 
 def _extrude_chamfered(base: Face, length: float, chamfer_length: float = 0.0, chamfer_angle: float = 90.0) -> Solid:
@@ -108,8 +109,8 @@ class CrushRibs:
     for point in points:
       base = Plane((point.X, point.Y, -buried))
       rib_solids.append(Solid.make_cylinder(self.protrusion, straight, base))
-      if self.lead_in_height > 0:  # tapers to a point, which extrude_taper doesn't support
-        rib_solids.append(Solid.make_cone(self.protrusion, 0, self.lead_in_height, base.offset(straight)))
+      if self.lead_in_height > 0:  # truncated at the same slope, rather than an apex on the top profile outline
+        rib_solids.append(Solid.make_cone(self.protrusion, _EPS, self.lead_in_height, base.offset(straight)))
     return rib_solids
 
 
@@ -139,10 +140,8 @@ class DiffusionCone:
 
   def _make(self) -> Solid:
     """With the LED cavity ceiling at the local origin, extending toward +Z."""
-    # truncated, since OCC solid classification of several sealed voids with point apexes is unreliable
-    tip_height = _APEX_TIP_RADIUS / tan(radians(self.angle / 2))
-    return Solid.make_cone(_APEX_TIP_RADIUS, self.diameter / 2, self.depth - tip_height,
-                           Plane.XY.offset(self.gap + tip_height))
+    return Solid.make_cone(_EPS, self.diameter / 2, self.depth,
+                           Plane.XY.offset(self.gap))
 
 
 def _single_face(profile: Face | Sketch, name: str) -> Face:
@@ -233,11 +232,15 @@ class LightPipe(BasePartObject):
     if crush_ribs is not None:
       pipe = pipe.fuse(*[wall_inner * rib for rib in crush_ribs._make(top, wall_thickness - chamfer_length, flange)])
     pipe = pipe.cut(Solid.extrude(led, Vector(0, 0, led_height)))
+    self._voids: list[Solid] = []  # sealed, cut last; see fuse_light_pipes
     if diffusion_cone is not None:
       if not led_height + diffusion_cone.gap + diffusion_cone.depth < height:
         raise ValueError(f"diffusion cone top {led_height + diffusion_cone.gap + diffusion_cone.depth:.3f} above the "
                          f"board must be within the pipe height {height}")
-      pipe = pipe.cut(Pos(0, 0, led_height) * diffusion_cone._make())
+      self._voids.append(Pos(0, 0, led_height) * diffusion_cone._make())
+    self._body = copy.deepcopy(pipe)  # without voids
+    if self._voids:
+      pipe = pipe.cut(*self._voids)
     pipe = pipe.clean()
 
     super().__init__(part=pipe, rotation=rotation, align=align, mode=mode)
@@ -245,6 +248,24 @@ class LightPipe(BasePartObject):
   def cutout_profile(self, clearance: float = 0.0) -> Face:
     """Top profile grown by clearance per side, rounding convex corners."""
     return Face(self.top_profile.outer_wire().offset_2d(clearance))
+
+
+def fuse_light_pipes(light_pipe: LightPipe, locations: Iterable[Location], *others: Shape) -> Shape:
+  """Copies of light_pipe at each location, fused with others (e.g. bridging bars) into one part.
+
+  Use instead of fusing placed LightPipes directly: OCC can produce an invalid solid when fusing solids that already
+  contain sealed voids (e.g. diffusion cones), so this fuses the void-free bodies and cuts the voids last.
+  """
+  locations = list(locations)
+  if not locations:
+    raise ValueError("fuse_light_pipes requires at least one location")
+  body = copy.deepcopy(light_pipe._body)  # clean() can modify shared sub-shapes in place
+  bodies = [location * body for location in locations]
+  fused = bodies[0].fuse(*bodies[1:], *others)
+  voids = [location * void for location in locations for void in light_pipe._voids]
+  if voids:
+    fused = fused.cut(*voids)
+  return fused.clean()
 
 
 class LightPipeHole(BasePartObject):
