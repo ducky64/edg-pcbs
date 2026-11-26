@@ -7,7 +7,7 @@ Dimensions in mm, angles in degrees. Tolerance enlarges receiving features (hole
 from math import degrees
 from pathlib import Path
 
-from build123d import (Align, BuildPart, Color, Compound, Cylinder, Edge, Hole, Location, Locations, Part, Plane,
+from build123d import (Align, Box, BuildPart, Color, Compound, Cylinder, Edge, Hole, Location, Locations, Part, Plane,
                        PolarLocations, Pos, Rectangle, RectangleRounded, Rot, Shape, SlotArc, SlotCenterPoint,
                        SlotOverall, Solid, export_step, export_stl, extrude, insert)
 from bd_warehouse.fastener import ClearanceHole, CounterSunkScrew, HexNut, PanHeadScrew
@@ -41,7 +41,6 @@ BOTTOM_BOSS_Z = 3.0  # also the PCB bottom
 BOARD_TOP_Z = BOTTOM_BOSS_Z + 1.0  # bottom PCB
 ENCLOSURE_SPLIT_Z = BOARD_TOP_Z
 TOP_BOARD_TOP_Z = BOTTOM_BOSS_Z + 8.0  # top PCB
-TOP_BOSS_Z = TOP_BOARD_TOP_Z + 2.0  # floats above the board
 ENCLOSURE_TOP_Z = BOTTOM_BOSS_Z + 12 + WALL_THICKNESS  # outer surface
 
 # top cover screws into captive nuts in the bottom
@@ -156,10 +155,14 @@ def make_top() -> Part:
   cover = footprint - Pos(0, 0, ENCLOSURE_SPLIT_Z - _EPS) * extrude(outline(INNER_OFFSET),
                                                                     amount=interior_top - ENCLOSURE_SPLIT_Z + _EPS)
 
-  boss = Pos(0, 0, TOP_BOSS_Z) * Cylinder(BOSS_DIAMETER / 2, interior_top - TOP_BOSS_Z + _EPS,
-                                          align=(Align.CENTER, Align.CENTER, Align.MIN))
+  # shelf only spans the outer section, to avoid colliding with internal components
+  corner_x = PCB_WIDTH / 2 + OUTER_OFFSET
+  corner_y = PCB_LENGTH / 2 + OUTER_OFFSET
+  shelf_height = interior_top - TOP_BOARD_TOP_Z + _EPS
   for x, y, _ in MOUNT_HOLES:
-    cover += (Pos(x, y, 0) * boss) & footprint
+    cx, cy = (corner_x if x > 0 else -corner_x), (corner_y if y > 0 else -corner_y)
+    shelf = Pos(min(x, cx), min(y, cy), TOP_BOARD_TOP_Z) * Box(abs(cx - x), abs(cy - y), shelf_height, align=Align.MIN)
+    cover += shelf & footprint
 
   with BuildPart() as builder:
     insert(cover)

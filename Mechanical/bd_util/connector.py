@@ -77,15 +77,19 @@ class MolexKK254Hole(_ProfileHole):
 
 
 class JstShSideEntryHole(_ProfileHole):
-  """JST SH side-entry SMD connector, SMxxB-SRSS-TB. 4-pin is used for qwiic."""
+  """JST SH side-entry SMD connector, SMxxB-SRSS-TB. 4-pin is used for qwiic.
+
+  protrusions defines whether the cut includes protrusions on the side of the connectors."""
 
   _PITCH = 1.00
   _HOUSING_HEIGHT = 2.9
   _HOUSING_LENGTH_2PIN = 4.00
+  _HOUSING_PROTRUSION_LENGTH = 2.0  # both sides
 
   def __init__(
       self,
       pins: int,
+      protrusions: bool = True,
       clearance: float = 0.0,
       depth: float | None = None,
       rotation: RotationLike = (0, 0, 0),
@@ -93,6 +97,8 @@ class JstShSideEntryHole(_ProfileHole):
   ):
     assert pins >= 2
     housing_length = self._HOUSING_LENGTH_2PIN + (pins - 2) * self._PITCH
+    if protrusions:
+      housing_length += self._HOUSING_PROTRUSION_LENGTH
     profile = Pos(0, self._HOUSING_HEIGHT / 2) * Rectangle(housing_length + 2 * clearance,
                                                      self._HOUSING_HEIGHT + 2 * clearance).face()
     super().__init__(profile, depth, rotation, mode)
