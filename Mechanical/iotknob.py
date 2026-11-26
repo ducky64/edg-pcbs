@@ -14,7 +14,7 @@ from bd_warehouse.fastener import ClearanceHole, CounterSunkScrew, HexNut, PanHe
 
 from bd_util.connector import MolexKK254Hole, UsbCReceptacleHole, JstShSideEntryHole
 from bd_util.fastener import KeyholeHole, PrintableCaptiveNutHole
-from bd_util.light_pipe import CrushRibs, DiffusionCone, Flange, LightPipe, LightPipeHole, fuse_light_pipes
+from bd_util.light_pipe import CrushRibs, DiffusionCone, Flange, LightPipe, LightPipeHole
 
 
 # PCB definition
@@ -196,7 +196,7 @@ def make_light_pipe_tree() -> Part:
     z = start.position.Z + LIGHT_PIPE.loft_height  # bar top, at the wall inner surface
     centerline = Edge.make_line((a.X, a.Y, z), (b.X, b.Y, z))
     bars.append(Solid.extrude(Face(centerline.offset_2d(BRIDGE_WIDTH / 2)), (0, 0, -BRIDGE_THICKNESS)))
-  return fuse_light_pipes(LIGHT_PIPE, locations, *bars)
+  return LightPipe.fused([loc * LIGHT_PIPE for loc in locations], *bars)
 
 
 if __name__ == "__main__":

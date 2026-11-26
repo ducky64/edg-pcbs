@@ -232,40 +232,45 @@ class LightPipe(BasePartObject):
     if crush_ribs is not None:
       pipe = pipe.fuse(*[wall_inner * rib for rib in crush_ribs._make(top, wall_thickness - chamfer_length, flange)])
     pipe = pipe.cut(Solid.extrude(led, Vector(0, 0, led_height)))
-    self._voids: list[Solid] = []  # sealed, cut last; see fuse_light_pipes
+    voids: list[Solid] = []  # sealed, cut last; see fused()
     if diffusion_cone is not None:
       if not led_height + diffusion_cone.gap + diffusion_cone.depth < height:
         raise ValueError(f"diffusion cone top {led_height + diffusion_cone.gap + diffusion_cone.depth:.3f} above the "
                          f"board must be within the pipe height {height}")
-      self._voids.append(Pos(0, 0, led_height) * diffusion_cone._make())
-    self._body = copy.deepcopy(pipe)  # without voids
-    if self._voids:
-      pipe = pipe.cut(*self._voids)
+      voids.append(Pos(0, 0, led_height) * diffusion_cone._make())
+    body = copy.deepcopy(pipe)  # without voids
+    if voids:
+      pipe = pipe.cut(*voids)
     pipe = pipe.clean()
 
+    unaligned = pipe.location  # super() aligns and rotates pipe; apply the same to body and voids
     super().__init__(part=pipe, rotation=rotation, align=align, mode=mode)
+    transform = self.solids()[0].location * unaligned.inverse()
+    self._body = transform * body
+    self._voids = [transform * void for void in voids]
+
+  @staticmethod
+  def fused(pipes: Iterable[LightPipe], *others: Shape) -> Shape:
+    """Placed light pipes (e.g. location * light_pipe, possibly of different designs), fused with others (e.g.
+    bridging bars) into one part.
+
+    Use instead of fusing light pipes directly: OCC can produce an invalid solid when fusing solids that already
+    contain sealed voids (e.g. diffusion cones), so this fuses the void-free bodies and cuts the voids last.
+    """
+    pipes = list(pipes)
+    if not pipes:
+      raise ValueError("fused requires at least one light pipe")
+    # copies, since clean() can modify sub-shapes shared with boolean inputs in place
+    bodies = [pipe.location * copy.deepcopy(pipe._body) for pipe in pipes]
+    voids = [pipe.location * void for pipe in pipes for void in pipe._voids]
+    fused = bodies[0].fuse(*bodies[1:], *others)
+    if voids:
+      fused = fused.cut(*voids)
+    return fused.clean()
 
   def cutout_profile(self, clearance: float = 0.0) -> Face:
     """Top profile grown by clearance per side, rounding convex corners."""
     return Face(self.top_profile.outer_wire().offset_2d(clearance))
-
-
-def fuse_light_pipes(light_pipe: LightPipe, locations: Iterable[Location], *others: Shape) -> Shape:
-  """Copies of light_pipe at each location, fused with others (e.g. bridging bars) into one part.
-
-  Use instead of fusing placed LightPipes directly: OCC can produce an invalid solid when fusing solids that already
-  contain sealed voids (e.g. diffusion cones), so this fuses the void-free bodies and cuts the voids last.
-  """
-  locations = list(locations)
-  if not locations:
-    raise ValueError("fuse_light_pipes requires at least one location")
-  body = copy.deepcopy(light_pipe._body)  # clean() can modify shared sub-shapes in place
-  bodies = [location * body for location in locations]
-  fused = bodies[0].fuse(*bodies[1:], *others)
-  voids = [location * void for location in locations for void in light_pipe._voids]
-  if voids:
-    fused = fused.cut(*voids)
-  return fused.clean()
 
 
 class LightPipeHole(BasePartObject):
