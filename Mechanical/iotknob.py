@@ -35,7 +35,7 @@ OPTICAL_SENSOR_HOLES = [(-8, -27), (8, -27)]  # (x, y)
 KNOB_Y = -7.0  # knob (encoder shaft) center, on centerline
 LED_COUNT = 6  # evenly spaced around the knob
 LED_RADIUS = 8.0  # from the knob center
-LED_START_ANGLE = 0.0  # rotational offset of first LED
+LED_START_ANGLE = 30.0  # rotational offset of first LED
 
 # Enclosure definition
 WALL_THICKNESS = 1.5  # side walls, floor, and top face
@@ -73,8 +73,8 @@ def make_light_pipe() -> LightPipe:
   """A single light pipe, in its local frame (origin at the LED on the board top, +X radially outward)."""
   LED_SLOT_LENGTH = 4.0  # circumferential length, including rounds
   LED_SLOT_WIDTH = 2.0
-  LIGHT_PIPE_BOARD_LENGTH = 5.0
-  LIGHT_PIPE_BOARD_WIDTH = 3.0
+  LIGHT_PIPE_BOARD_LENGTH = 4.0
+  LIGHT_PIPE_BOARD_WIDTH = 2.0
   LED_CAVITY = 2.0
   LED_CAVITY_HEIGHT = 1.4
   FLANGE_EXTENSION = 1.0
@@ -90,7 +90,7 @@ def make_light_pipe() -> LightPipe:
     top_profile=SlotArc(slot_arc, LED_SLOT_WIDTH),
     board_profile=Rot(0, 0, 90) * SlotOverall(LIGHT_PIPE_BOARD_LENGTH, LIGHT_PIPE_BOARD_WIDTH),
     height=ENCLOSURE_TOP_Z - TOP_BOARD_TOP_Z,  # pipe top flush with the top face
-    wall_thickness=WALL_THICKNESS,
+    wall_thickness=2.0,
     led_profile=Rectangle(LED_CAVITY, LED_CAVITY),
     led_height=LED_CAVITY_HEIGHT,
     flange=Flange(FLANGE_EXTENSION, draft_angle=OVERHANG_ANGLE),
@@ -104,8 +104,8 @@ LIGHT_PIPE = make_light_pipe()
 
 def make_light_pipe_tree(light_pipe: LightPipe, locations: list[Location]) -> Part:
   """Join light pipes into a single piece with bridging bars between them."""
-  BRIDGE_WIDTH = 1.0  # narrow, to limit light crosstalk between pipes
-  BRIDGE_THICKNESS = 0.6
+  BRIDGE_WIDTH = 0.8  # narrow, to limit light crosstalk between pipes
+  BRIDGE_THICKNESS = 1.0
 
   pipes = [loc * light_pipe for loc in locations]
   bars = []
