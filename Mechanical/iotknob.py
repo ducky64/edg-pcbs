@@ -9,12 +9,12 @@ All dimensions in mm, angles in degrees.
 Tolerancing applied to receiving (hole / cavity) features, which are enlarged.
 Part features are nominal.
 """
-from math import atan2, degrees
+from math import degrees
 from pathlib import Path
 
-from build123d import (Align, Box, BuildPart, Color, Compound, Cylinder, Edge, Hole, Location, Locations, Part, Plane,
-                       PolarLocations, Pos, Rectangle, RectangleRounded, Rot, Shape, SlotArc, SlotOverall, export_step,
-                       export_stl, extrude, insert)
+from build123d import (Align, BuildPart, Color, Compound, Cylinder, Edge, Face, Hole, Location, Locations, Part, Plane,
+                       PolarLocations, Pos, Rectangle, RectangleRounded, Rot, Shape, SlotArc, SlotOverall, Solid,
+                       export_step, export_stl, extrude, insert)
 from bd_warehouse.fastener import ClearanceHole, CounterSunkScrew, HexNut, PanHeadScrew
 
 from bd_util.connector import MolexKK254Hole, UsbCReceptacleHole, JstShSideEntryHole
@@ -75,45 +75,52 @@ def make_light_pipe() -> LightPipe:
   LED_SLOT_WIDTH = 2.0
   LIGHT_PIPE_BOARD_LENGTH = 4.0
   LIGHT_PIPE_BOARD_WIDTH = 2.0
-  LED_CAVITY = 2.0
+  LED_CAVITY = 2.2
   LED_CAVITY_HEIGHT = 1.4
   FLANGE_EXTENSION = 1.0
   DIFFUSION_CONE_DIAMETER = 1.5
+  CHAMFER_LENGTH = 0.5  # viewing end chamfer
 
   # pipe top: a slot curved along the LED placement circle
   slot_arc_angle = degrees((LED_SLOT_LENGTH - LED_SLOT_WIDTH) / LED_RADIUS)  # centerline arc, excluding end rounds
   slot_arc = Edge.make_circle(LED_RADIUS, Plane((-LED_RADIUS, 0, 0)),
                               start_angle=-slot_arc_angle / 2, end_angle=slot_arc_angle / 2)
-  # crush ribs on the long sides of the slot (compressing across its width), on the radial line through the LED
-  radial_line = Edge.make_line((-LED_SLOT_WIDTH, 0), (LED_SLOT_WIDTH, 0))
+  # crush ribs at the slot ends along its length
+  led_circle = Edge.make_circle(LED_RADIUS, Plane((-LED_RADIUS, 0, 0)))
   return LightPipe(
     top_profile=SlotArc(slot_arc, LED_SLOT_WIDTH),
     board_profile=Rot(0, 0, 90) * SlotOverall(LIGHT_PIPE_BOARD_LENGTH, LIGHT_PIPE_BOARD_WIDTH),
     height=ENCLOSURE_TOP_Z - TOP_BOARD_TOP_Z,  # pipe top flush with the top face
-    wall_thickness=2.0,
+    wall_thickness=WALL_THICKNESS,
     led_profile=Rectangle(LED_CAVITY, LED_CAVITY),
     led_height=LED_CAVITY_HEIGHT,
     flange=Flange(FLANGE_EXTENSION, draft_angle=OVERHANG_ANGLE),
-    crush_ribs=CrushRibs(along=[radial_line]),
+    crush_ribs=CrushRibs(along=[led_circle]),
     diffusion_cone=DiffusionCone(DIFFUSION_CONE_DIAMETER),
+    chamfer_length=CHAMFER_LENGTH,
   )
 
 
 LIGHT_PIPE = make_light_pipe()
 
 
-def make_light_pipe_tree(light_pipe: LightPipe, locations: list[Location]) -> Part:
+def make_light_pipe_tree() -> Part:
   """Join light pipes into a single piece with bridging bars between them."""
   BRIDGE_WIDTH = 0.8  # narrow, to limit light crosstalk between pipes
   BRIDGE_THICKNESS = 1.0
 
-  pipes = [loc * light_pipe for loc in locations]
+  led_circle = Edge.make_circle(LED_RADIUS, Plane((-LED_RADIUS, 0, 0)))  # local frame
+  # local +Y is counterclockwise around the knob
+  cw_tip, ccw_tip = sorted(LIGHT_PIPE.top_profile.outer_wire().intersect(led_circle).vertices(), key=lambda v: v.Y)
+  locations = LIGHT_PIPE.hole_locations
+  pipes = [loc * LIGHT_PIPE for loc in locations]
   bars = []
   for start, end in zip(locations, locations[1:] + locations[:1]):
-    a, b = start.position, end.position
-    mid = (a + b) / 2
-    bars.append(Pos(mid.X, mid.Y, a.Z + light_pipe.loft_height) * Rot(0, 0, degrees(atan2(b.Y - a.Y, b.X - a.X)))
-                * Box((b - a).length, BRIDGE_WIDTH, BRIDGE_THICKNESS, align=(Align.CENTER, Align.CENTER, Align.MAX)))
+    a = (start * Pos(ccw_tip.center())).position
+    b = (end * Pos(cw_tip.center())).position
+    z = start.position.Z + LIGHT_PIPE.loft_height  # bar top
+    centerline = Edge.make_line((a.X, a.Y, z), (b.X, b.Y, z))
+    bars.append(Solid.extrude(Face(centerline.offset_2d(BRIDGE_WIDTH / 2)), (0, 0, -BRIDGE_THICKNESS)))
   return pipes[0].fuse(*pipes[1:], *bars).clean()
 
 
@@ -209,7 +216,7 @@ if __name__ == "__main__":
   OUTPUT_DIR.mkdir(exist_ok=True)
   bottom = make_bottom()
   top = make_top()  # also records the global light pipe locations
-  light_pipes = make_light_pipe_tree(LIGHT_PIPE, LIGHT_PIPE.hole_locations)
+  light_pipes = make_light_pipe_tree()
 
   # (name, part in global coordinates, print rotation, assembly color)
   parts = [
