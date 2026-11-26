@@ -1,16 +1,17 @@
 from __future__ import annotations
 
-from build123d.build_part import BuildPart
-from build123d.geometry import Plane
-
-BORE_PLANE = Plane((0, 0, 0), z_dir=(0, 0, -1))  # hole surface at the origin, cutting toward -Z
+from build123d import BasePartObject
 
 
-def hole_depth(context: BuildPart | None, depth: float | None) -> float:
-  """Defaults to through the part in BuildPart mode, as in bd_warehouse."""
+def hole_depth(depth: float | None) -> float:
+  """Defaults to through the part in BuildPart mode, as in bd_warehouse. Call from a custom object's __init__.
+
+  There is no public API for the enclosing builder, so this uses the protected BaseObject hook that build123d's own
+  Hole uses for its through depth.
+  """
   if depth is not None:
     return depth
-  elif context is not None:
-    return 2 * context.max_dimension
-  else:
-    raise ValueError("No depth provided")
+  context = BasePartObject._get_builder_context()
+  if context is None:
+    raise ValueError("depth is required outside of BuildPart")
+  return 2 * context.max_dimension

@@ -4,22 +4,16 @@ Fastener holes for 3D printed parts, complementing bd_warehouse.fastener and fol
   - the hole surface is at the local origin, extending into the material toward local -Z
   - depth=None is through the part, in BuildPart only
   - clearance is added to the fastener dimension, so negative is an interference fit
-  - in BuildPart, hole locations are appended to fastener.hole_locations
 """
 from __future__ import annotations
 
 from typing import Iterable, Literal
 
-from build123d.build_common import validate_inputs
-from build123d.build_enums import Kind, Mode
-from build123d.build_part import BuildPart
-from build123d.geometry import Pos, Rot, RotationLike, Vector
-from build123d.objects_part import BasePartObject
-from build123d.objects_sketch import Rectangle, SlotCenterToCenter
-from build123d.topology import Face, Solid
+from build123d import (Align, BasePartObject, Cylinder, Kind, Mode, Part, Pos, Rectangle, Rot, RotationLike, Sketch,
+                       SlotCenterToCenter, extrude, offset)
 from bd_warehouse.fastener import Nut, Screw
 
-from bd_util._common import BORE_PLANE, hole_depth
+from bd_util._common import hole_depth
 
 
 class CaptiveNutHole(BasePartObject):
@@ -28,8 +22,6 @@ class CaptiveNutHole(BasePartObject):
   Unlike the bd_warehouse ClearanceHole captive_nut option, this is only the pocket: combine with a ClearanceHole.
   """
 
-  _applies_to = [BuildPart._tag]
-
   def __init__(
       self,
       fastener: Nut,
@@ -37,30 +29,19 @@ class CaptiveNutHole(BasePartObject):
       rotation: RotationLike = (0, 0, 0),
       mode: Mode = Mode.SUBTRACT,
   ):
-    context: BuildPart | None = BuildPart._get_context(self)
-    validate_inputs(context, self)
-
     self.pocket_depth = fastener.nut_thickness
-    hole_part = self._make_hole(fastener, nut_clearance)
-
-    if context is not None:  # nut seated at the bottom of the pocket
-      fastener.hole_locations.extend(
-        [location * Pos(0, 0, -self.pocket_depth) for location in self._get_object_locations()])
-
     super().__init__(
-      part=hole_part.clean(),
+      part=self._make_hole(fastener, nut_clearance).clean(),
       align=None,
       rotation=rotation,
       mode=mode,
     )
 
-  def _nut_pocket_plan(self, nut: Nut, nut_clearance: float) -> Face:
-    with BuildPart(mode=Mode.PRIVATE):  # nut_plan() uses a builder; keep it out of any enclosing context
-      nut_plan = nut.nut_plan()
-    return Face(nut_plan.outer_wire().offset_2d(nut_clearance, kind=Kind.INTERSECTION))
+  def _nut_pocket_plan(self, nut: Nut, nut_clearance: float) -> Sketch:
+    return offset(nut.nut_plan(), nut_clearance, kind=Kind.INTERSECTION)
 
-  def _make_hole(self, fastener: Nut, nut_clearance: float) -> Solid:
-    return Solid.extrude(self._nut_pocket_plan(fastener, nut_clearance), Vector(0, 0, -self.pocket_depth))
+  def _make_hole(self, fastener: Nut, nut_clearance: float) -> Part:
+    return extrude(self._nut_pocket_plan(fastener, nut_clearance), self.pocket_depth, dir=(0, 0, -1))
 
 
 class PrintableCaptiveNutHole(CaptiveNutHole):
@@ -91,13 +72,12 @@ class PrintableCaptiveNutHole(CaptiveNutHole):
     self.bridge_angle = bridge_angle
     super().__init__(fastener, nut_clearance=nut_clearance, rotation=rotation, mode=mode)
 
-  def _make_hole(self, fastener: Nut, nut_clearance: float) -> Solid:
+  def _make_hole(self, fastener: Nut, nut_clearance: float) -> Part:
     pocket_plan = self._nut_pocket_plan(fastener, nut_clearance)
     strip_length = 2 * max(pocket_plan.bounding_box().size.X, pocket_plan.bounding_box().size.Y)
-    strip = Rot(0, 0, self.bridge_angle) * Rectangle(strip_length, fastener.clearance_hole_diameters[self.fit]).face()
-    bridge_plan = strip.intersect(pocket_plan).faces()[0]
-    bridge = Pos(0, 0, -self.pocket_depth) * Solid.extrude(bridge_plan, Vector(0, 0, -self.bridge_depth))
-    return super()._make_hole(fastener, nut_clearance).fuse(bridge)
+    strip = Rot(0, 0, self.bridge_angle) * Rectangle(strip_length, fastener.clearance_hole_diameters[self.fit])
+    bridge = Pos(0, 0, -self.pocket_depth) * extrude(strip & pocket_plan, self.bridge_depth, dir=(0, 0, -1))
+    return super()._make_hole(fastener, nut_clearance) + bridge
 
 
 class KeyholeHole(BasePartObject):
@@ -108,8 +88,6 @@ class KeyholeHole(BasePartObject):
       angles: slot directions from local +X, counterclockwise
   """
 
-  _applies_to = [BuildPart._tag]
-
   def __init__(
       self,
       fastener: Screw,
@@ -119,23 +97,16 @@ class KeyholeHole(BasePartObject):
       rotation: RotationLike = (0, 0, 0),
       mode: Mode = Mode.SUBTRACT,
   ):
-    context: BuildPart | None = BuildPart._get_context(self)
-    validate_inputs(context, self)
-
-    self.hole_depth = hole_depth(context, depth)
+    self.hole_depth = hole_depth(depth)
     # nominal, since Screw.head_diameter is measured from the model and can be smaller (e.g. countersunk)
     head_diameter = fastener.screw_data.get("dk", fastener.head_diameter)
     slot_width = fastener.clearance_hole_diameters[fit]
     self.slot_length = head_diameter / 2 + slot_width / 2  # origin to slot end center
 
-    hole_part = Solid.make_cylinder(head_diameter / 2, self.hole_depth, plane=BORE_PLANE)
-    slot_plan = Pos(self.slot_length / 2, 0) * SlotCenterToCenter(self.slot_length, slot_width).face()
-    slot = Solid.extrude(slot_plan, Vector(0, 0, -self.hole_depth))
-    for angle in angles:
-      hole_part = hole_part.fuse(Rot(0, 0, angle) * slot)
-
-    if context is not None:
-      fastener.hole_locations.extend(self._get_object_locations())
+    head_hole = Cylinder(head_diameter / 2, self.hole_depth, align=(Align.CENTER, Align.CENTER, Align.MAX))
+    slot_plan = Pos(self.slot_length / 2, 0) * SlotCenterToCenter(self.slot_length, slot_width)
+    slot = extrude(slot_plan, self.hole_depth, dir=(0, 0, -1))
+    hole_part = head_hole + [Rot(0, 0, angle) * slot for angle in angles]
 
     super().__init__(
       part=hole_part.clean(),

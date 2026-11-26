@@ -5,33 +5,31 @@ from dataclasses import dataclass
 from math import atan, degrees, radians, tan
 from typing import Iterable, Union
 
-from build123d.build_common import validate_inputs
-from build123d.build_enums import Align, Kind, Mode
-from build123d.build_part import BuildPart
-from build123d.geometry import Axis, Location, Plane, Pos, RotationLike, Vector
-from build123d.objects_part import BasePartObject
-from build123d.topology import Edge, Face, Shape, Sketch, Solid, Wire
+from build123d import (Align, Axis, BasePartObject, Cone, Cylinder, Edge, Face, Kind, Location, Mode, Part, Pos,
+                       RotationLike, Sketch, Wire, extrude, loft, offset)
 
 # overshoot past the wall surfaces and tangencies avoiding coplanar or tangent boolean faces, and cone apex radius,
 # since point apexes make OCC booleans and solid classification unreliable
 _EPS = 0.01
 
 
-def _extrude_chamfered(base: Face, length: float, chamfer_length: float = 0.0, chamfer_angle: float = 90.0) -> Solid:
+_BASE_ALIGN = (Align.CENTER, Align.CENTER, Align.MIN)
+
+
+def _extrude_chamfered(base: Face | Sketch, length: float, chamfer_length: float = 0.0,
+                       chamfer_angle: float = 90.0) -> Part:
   """Extrudes base (in an XY plane) toward +Z by the total length, the top chamfer_length tapering inward by
   chamfer_angle from the Z axis; 0 is no chamfer."""
   if not 0 <= chamfer_length < length:
     raise ValueError(f"chamfer length {chamfer_length:.3f} must be within [0, length {length:.3f})")
   base_length = length - chamfer_length
-  solid = Solid.extrude(base, Vector(0, 0, base_length))
+  part = extrude(base, base_length)
   if chamfer_length > 0:
     inset = chamfer_length * tan(radians(chamfer_angle))
-    chamfer_top = Face(base.outer_wire().offset_2d(-inset, kind=Kind.INTERSECTION))
-    if not chamfer_top.area > 0:
+    if not offset(base, -inset, kind=Kind.INTERSECTION).area > 0:
       raise ValueError(f"chamfer inset {inset:.3f} is too large for the profile")
-    chamfer = Solid.extrude_taper(Pos(0, 0, base_length) * base, Vector(0, 0, chamfer_length), chamfer_angle)
-    solid = solid.fuse(chamfer)
-  return solid
+    part += extrude(Pos(0, 0, base_length) * base, chamfer_length, taper=chamfer_angle)
+  return part
 
 
 @dataclass(frozen=True)
@@ -58,9 +56,9 @@ class Flange:
     """Height of the draft section, to full extension."""
     return 0.0 if self.draft_angle == 90 else self.extension / tan(radians(self.draft_angle))
 
-  def _make(self, top: Face) -> Solid:
+  def _make(self, top: Face) -> Part:
     """With the wall inner surface at the local origin, extending toward -Z."""
-    plate = Face(top.outer_wire().offset_2d(self.extension, kind=Kind.INTERSECTION))
+    plate = offset(top, self.extension, kind=Kind.INTERSECTION)
     return Pos(0, 0, -self.thickness) * _extrude_chamfered(plate, self.thickness, self.draft_height, self.draft_angle)
 
 
@@ -91,7 +89,7 @@ class CrushRibs:
   def lead_in_height(self) -> float:
     return 0.0 if self.lead_in_angle == 90 else self.protrusion / tan(radians(self.lead_in_angle))
 
-  def _make(self, top: Face, engagement: float, flange: Flange | None) -> list[Solid]:
+  def _make(self, top: Face, engagement: float, flange: Flange | None) -> list[Part]:
     """With the wall inner surface at the local origin, extending engagement toward +Z, and into the flange below."""
     if self.lead_in_height > engagement:
       raise ValueError(f"crush rib lead-in {self.lead_in_height:.3f} exceeds the engagement {engagement:.3f}; "
@@ -104,14 +102,15 @@ class CrushRibs:
     # if there is a flange draft, extend the ribs into it
     buried = (0.0 if flange is None else flange.draft_height) + _EPS
     straight = buried + engagement - self.lead_in_height
-    assert straight > 0, f"rib straight length {straight} must be positive"
-    rib_solids = []
+    if not straight > 0:
+      raise ValueError(f"crush rib straight length {straight:.3f} must be positive")
+    ribs = []
     for point in points:
-      base = Plane((point.X, point.Y, -buried))
-      rib_solids.append(Solid.make_cylinder(self.protrusion, straight, base))
+      base = Pos(point.X, point.Y, -buried)
+      ribs.append(base * Cylinder(self.protrusion, straight, align=_BASE_ALIGN))
       if self.lead_in_height > 0:  # truncated at the same slope, rather than an apex on the top profile outline
-        rib_solids.append(Solid.make_cone(self.protrusion, _EPS, self.lead_in_height, base.offset(straight)))
-    return rib_solids
+        ribs.append(base * Pos(0, 0, straight) * Cone(self.protrusion, _EPS, self.lead_in_height, align=_BASE_ALIGN))
+    return ribs
 
 
 @dataclass(frozen=True)
@@ -138,10 +137,9 @@ class DiffusionCone:
     """Apex to base height."""
     return self.diameter / 2 / tan(radians(self.angle / 2))
 
-  def _make(self) -> Solid:
+  def _make(self) -> Part:
     """With the LED cavity ceiling at the local origin, extending toward +Z."""
-    return Solid.make_cone(_EPS, self.diameter / 2, self.depth,
-                           Plane.XY.offset(self.gap))
+    return Pos(0, 0, self.gap) * Cone(_EPS, self.diameter / 2, self.depth, align=_BASE_ALIGN)
 
 
 def _single_face(profile: Face | Sketch, name: str) -> Face:
@@ -174,8 +172,6 @@ class LightPipe(BasePartObject):
       chamfer_length: along the pipe axis; 0 is no chamfer
   """
 
-  _applies_to = [BuildPart._tag]
-
   def __init__(
       self,
       top_profile: Face | Sketch,
@@ -193,10 +189,6 @@ class LightPipe(BasePartObject):
       align: Union[None, Align, tuple[Align, Align, Align]] = None,
       mode: Mode = Mode.ADD,
   ):
-    context: BuildPart | None = BuildPart._get_context(self)
-    validate_inputs(context, self)
-
-    self.hole_locations: list[Location] = []  #: global, appended by LightPipeHole
     self.top_profile = _single_face(top_profile, "top_profile")
     self.board_profile = _single_face(board_profile, "board_profile")
     self.led_profile = _single_face(led_profile, "led_profile")
@@ -224,15 +216,14 @@ class LightPipe(BasePartObject):
     # copies, since clean() (UnifySameDomain) can modify sub-shapes shared with boolean inputs in place
     top, board, led = (copy.deepcopy(profile) for profile in (self.top_profile, self.board_profile, self.led_profile))
     wall_inner = Pos(0, 0, loft_height)
-    loft = Solid.make_loft([board.outer_wire(), (wall_inner * top).outer_wire()], ruled=True)
-    through_wall = _extrude_chamfered(top, wall_thickness, chamfer_length, chamfer_angle)
-    pipe = loft.fuse(wall_inner * through_wall)
+    pipe = loft([board, wall_inner * top], ruled=True)
+    pipe += wall_inner * _extrude_chamfered(top, wall_thickness, chamfer_length, chamfer_angle)
     if flange is not None:
-      pipe = pipe.fuse(wall_inner * flange._make(top))
+      pipe += wall_inner * flange._make(top)
     if crush_ribs is not None:
-      pipe = pipe.fuse(*[wall_inner * rib for rib in crush_ribs._make(top, wall_thickness - chamfer_length, flange)])
-    pipe = pipe.cut(Solid.extrude(led, Vector(0, 0, led_height)))
-    voids: list[Solid] = []  # sealed, cut last; see fused()
+      pipe += [wall_inner * rib for rib in crush_ribs._make(top, wall_thickness - chamfer_length, flange)]
+    pipe -= extrude(led, led_height)
+    voids: list[Part] = []  # sealed, cut last; see fused()
     if diffusion_cone is not None:
       if not led_height + diffusion_cone.gap + diffusion_cone.depth < height:
         raise ValueError(f"diffusion cone top {led_height + diffusion_cone.gap + diffusion_cone.depth:.3f} above the "
@@ -240,17 +231,21 @@ class LightPipe(BasePartObject):
       voids.append(Pos(0, 0, led_height) * diffusion_cone._make())
     body = copy.deepcopy(pipe)  # without voids
     if voids:
-      pipe = pipe.cut(*voids)
+      pipe -= voids
     pipe = pipe.clean()
 
-    unaligned = pipe.location  # super() aligns and rotates pipe; apply the same to body and voids
+    unaligned = pipe.solids()[0].location  # super() aligns and rotates pipe; apply the same to body and voids
     super().__init__(part=pipe, rotation=rotation, align=align, mode=mode)
     transform = self.solids()[0].location * unaligned.inverse()
     self._body = transform * body
     self._voids = [transform * void for void in voids]
+    self._origin = self.location  # placed copies (location * light_pipe) move by location relative to this
+
+  def _placement(self) -> Location:
+    return self.location * self._origin.inverse()
 
   @staticmethod
-  def fused(pipes: Iterable[LightPipe], *others: Shape) -> Shape:
+  def fused(pipes: Iterable[LightPipe], *others: Part) -> Part:
     """Placed light pipes (e.g. location * light_pipe, possibly of different designs), fused with others (e.g.
     bridging bars) into one part.
 
@@ -261,16 +256,16 @@ class LightPipe(BasePartObject):
     if not pipes:
       raise ValueError("fused requires at least one light pipe")
     # copies, since clean() can modify sub-shapes shared with boolean inputs in place
-    bodies = [pipe.location * copy.deepcopy(pipe._body) for pipe in pipes]
-    voids = [pipe.location * void for pipe in pipes for void in pipe._voids]
-    fused = bodies[0].fuse(*bodies[1:], *others)
+    bodies = [pipe._placement() * copy.deepcopy(pipe._body) for pipe in pipes]
+    voids = [pipe._placement() * void for pipe in pipes for void in pipe._voids]
+    fused = bodies[0] + [*bodies[1:], *others]
     if voids:
-      fused = fused.cut(*voids)
+      fused -= voids
     return fused.clean()
 
-  def cutout_profile(self, clearance: float = 0.0) -> Face:
+  def cutout_profile(self, clearance: float = 0.0) -> Sketch:
     """Top profile grown by clearance per side, rounding convex corners."""
-    return Face(self.top_profile.outer_wire().offset_2d(clearance))
+    return offset(self.top_profile, clearance)
 
 
 class LightPipeHole(BasePartObject):
@@ -279,8 +274,6 @@ class LightPipeHole(BasePartObject):
   This adds a _EPS to the cut height on both sides to allow a cut even when coplanar with the wall faces.
   """
 
-  _applies_to = [BuildPart._tag]
-
   def __init__(
       self,
       light_pipe: LightPipe,
@@ -288,14 +281,8 @@ class LightPipeHole(BasePartObject):
       rotation: RotationLike = (0, 0, 0),
       mode: Mode = Mode.SUBTRACT,
   ):
-    context: BuildPart | None = BuildPart._get_context(self)
-    validate_inputs(context, self)
-
     profile = Pos(0, 0, light_pipe.loft_height - _EPS) * light_pipe.cutout_profile(clearance)
-    hole_part = Solid.extrude(profile, Vector(0, 0, light_pipe.wall_thickness + 2 * _EPS))
-
-    if context is not None:  # pipe and hole share the board origin
-      light_pipe.hole_locations.extend(self._get_object_locations())
+    hole_part = extrude(profile, light_pipe.wall_thickness + 2 * _EPS)
 
     super().__init__(
       part=hole_part,

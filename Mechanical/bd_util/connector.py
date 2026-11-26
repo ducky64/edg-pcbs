@@ -7,31 +7,21 @@ enclosure, e.g. Rot(90, 0, 0) for a -Y wall.
 """
 from __future__ import annotations
 
-from build123d.build_common import validate_inputs
-from build123d.build_enums import Mode
-from build123d.build_part import BuildPart
-from build123d.geometry import Pos, RotationLike, Vector
-from build123d.objects_part import BasePartObject
-from build123d.objects_sketch import Rectangle, RectangleRounded
-from build123d.topology import Face, Solid
+from build123d import BasePartObject, Mode, Pos, Rectangle, RectangleRounded, RotationLike, Sketch, extrude
 
 from bd_util._common import hole_depth
 
 
 class _ProfileHole(BasePartObject):
-  _applies_to = [BuildPart._tag]
-
-  def __init__(self, profile: Face, depth: float | None, rotation: RotationLike, mode: Mode):
-    context: BuildPart | None = BuildPart._get_context(self)
-    validate_inputs(context, self)
-
-    self.hole_depth = hole_depth(context, depth)
+  def __init__(self, profile: Sketch, depth: float | None, rotation: RotationLike, mode: Mode):
+    self.hole_depth = hole_depth(depth)
     super().__init__(
-      part=Solid.extrude(profile, Vector(0, 0, -self.hole_depth)),
+      part=extrude(profile, self.hole_depth, dir=(0, 0, -1)),
       align=None,
       rotation=rotation,
       mode=mode,
     )
+
 
 
 class UsbCReceptacleHole(_ProfileHole):
@@ -49,7 +39,7 @@ class UsbCReceptacleHole(_ProfileHole):
       mode: Mode = Mode.SUBTRACT,
   ):
     profile = Pos(0, self._HEIGHT / 2) * RectangleRounded(self._WIDTH + 2 * clearance, self._HEIGHT + 2 * clearance,
-                                                         self._RADIUS + clearance).face()
+                                                         self._RADIUS + clearance)
     super().__init__(profile, depth, rotation, mode)
 
 
@@ -69,10 +59,11 @@ class MolexKK254Hole(_ProfileHole):
       rotation: RotationLike = (0, 0, 0),
       mode: Mode = Mode.SUBTRACT,
   ):
-    assert pins >= 2
+    if pins < 2:
+      raise ValueError(f"pins {pins} must be at least 2")
     housing_length = self._HOUSING_LENGTH_2PIN + (pins - 2) * self._PITCH
     profile = Pos(0, self._PIN_SIZE / 2) * Rectangle(housing_length + 2 * clearance,
-                                                     self._HOUSING_WIDTH + 2 * clearance).face()
+                                                     self._HOUSING_WIDTH + 2 * clearance)
     super().__init__(profile, depth, rotation, mode)
 
 
@@ -95,10 +86,11 @@ class JstShSideEntryHole(_ProfileHole):
       rotation: RotationLike = (0, 0, 0),
       mode: Mode = Mode.SUBTRACT,
   ):
-    assert pins >= 2
+    if pins < 2:
+      raise ValueError(f"pins {pins} must be at least 2")
     housing_length = self._HOUSING_LENGTH_2PIN + (pins - 2) * self._PITCH
     if protrusions:
       housing_length += self._HOUSING_PROTRUSION_LENGTH
     profile = Pos(0, self._HOUSING_HEIGHT / 2) * Rectangle(housing_length + 2 * clearance,
-                                                     self._HOUSING_HEIGHT + 2 * clearance).face()
+                                                           self._HOUSING_HEIGHT + 2 * clearance)
     super().__init__(profile, depth, rotation, mode)
