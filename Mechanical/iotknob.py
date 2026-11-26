@@ -7,9 +7,9 @@ Dimensions in mm, angles in degrees. Tolerance enlarges receiving features (hole
 from math import degrees
 from pathlib import Path
 
-from build123d import (Align, BuildPart, Color, Compound, Cylinder, Edge, Face, Hole, Location, Locations, Part, Plane,
-                       PolarLocations, Pos, Rectangle, RectangleRounded, Rot, Shape, SlotArc, SlotOverall, Solid,
-                       export_step, export_stl, extrude, insert)
+from build123d import (Align, BuildPart, Color, Compound, Cylinder, Edge, Hole, Location, Locations, Part, Plane,
+                       PolarLocations, Pos, Rectangle, RectangleRounded, Rot, Shape, SlotArc, SlotCenterPoint,
+                       SlotOverall, Solid, export_step, export_stl, extrude, insert)
 from bd_warehouse.fastener import ClearanceHole, CounterSunkScrew, HexNut, PanHeadScrew
 
 from bd_util.connector import MolexKK254Hole, UsbCReceptacleHole, JstShSideEntryHole
@@ -194,8 +194,8 @@ def make_light_pipe_tree() -> Part:
     a = (start * Pos(ccw_tip.center())).position
     b = (end * Pos(cw_tip.center())).position
     z = start.position.Z + LIGHT_PIPE.loft_height  # bar top, at the wall inner surface
-    centerline = Edge.make_line((a.X, a.Y, z), (b.X, b.Y, z))
-    bars.append(Solid.extrude(Face(centerline.offset_2d(BRIDGE_WIDTH / 2)), (0, 0, -BRIDGE_THICKNESS)))
+    plan = SlotCenterPoint(((a.X + b.X) / 2, (a.Y + b.Y) / 2), (b.X, b.Y), BRIDGE_WIDTH)
+    bars.append(Solid.extrude(Pos(0, 0, z) * plan.face(), (0, 0, -BRIDGE_THICKNESS)))
   return LightPipe.fused([loc * LIGHT_PIPE for loc in locations], *bars)
 
 
