@@ -1,3 +1,1 @@
-"""
-bd_util: reusable build123d geometry helpers, complementing bd_warehouse.
-"""
+"""build123d geometry helpers, complementing bd_warehouse. Dimensions in mm, angles in degrees."""

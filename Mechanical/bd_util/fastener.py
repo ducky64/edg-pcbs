@@ -1,16 +1,10 @@
 """
-Fastener holes for 3D printed parts, complementing bd_warehouse.fastener.
-
-These follow the bd_warehouse.fastener hole conventions:
-  - holes are Part objects, usable in BuildPart (placed at each active location, Mode.SUBTRACT by default)
-    or in algebra mode (returned as a cutter at the origin, to be positioned and subtracted)
-  - the hole surface is at the local origin, and the hole extends into the material toward local -Z
-  - depth=None implies through the part (in BuildPart only), for holes that take a depth
-  - clearances follow the bd_warehouse sign convention: added to the fastener dimension, so positive is a
-    clearance fit and negative is an interference fit
-  - hole locations are appended to fastener.hole_locations in BuildPart mode, for placing fasteners later
-
-Holes are built from topology-level operations only, so they don't interact with an enclosing builder.
+Fastener holes for 3D printed parts, complementing bd_warehouse.fastener and following its hole conventions:
+  - Part objects, usable in BuildPart (at each active location) or algebra mode (as a cutter at the origin)
+  - the hole surface is at the local origin, extending into the material toward local -Z
+  - depth=None is through the part, in BuildPart only
+  - clearance is added to the fastener dimension, so negative is an interference fit
+  - in BuildPart, hole locations are appended to fastener.hole_locations
 """
 from __future__ import annotations
 
@@ -29,20 +23,9 @@ from bd_util._common import BORE_PLANE, hole_depth
 
 
 class CaptiveNutHole(BasePartObject):
-  """Part Object: CaptiveNutHole
+  """Pocket shaped to the nut plan with sharp corners and as deep as the nut, retaining it flush and unrotating.
 
-  A captive nut hole is a pocket shaped to the nut plan (e.g. a hexagon with sharp corners) and exactly as
-  deep as the nut, so the nut is retained without rotating and sits flush with the surface. A negative
-  nut_clearance gives an interference fit, so the nut is pressed in and held. Unlike the bd_warehouse
-  ClearanceHole captive_nut option (a rounded rectangle, combined with the clearance hole), this is only the
-  pocket - combine with a ClearanceHole for the screw.
-
-  Args:
-      fastener (Nut): A nut instance with a polygonal nut plan, e.g. HexNut or SquareNut
-      nut_clearance (float, optional): clearance added to each side of the nut plan, negative for an
-          interference fit. Defaults to 0.0.
-      rotation (RotationLike, optional): object rotation. Defaults to (0, 0, 0).
-      mode (Mode, optional): combination mode. Defaults to Mode.SUBTRACT.
+  Unlike the bd_warehouse ClearanceHole captive_nut option, this is only the pocket: combine with a ClearanceHole.
   """
 
   _applies_to = [BuildPart._tag]
@@ -72,38 +55,25 @@ class CaptiveNutHole(BasePartObject):
     )
 
   def _nut_pocket_plan(self, nut: Nut, nut_clearance: float) -> Face:
-    """Nut plan grown by nut_clearance per side, keeping sharp corners."""
     with BuildPart(mode=Mode.PRIVATE):  # nut_plan() uses a builder; keep it out of any enclosing context
       nut_plan = nut.nut_plan()
     return Face(nut_plan.outer_wire().offset_2d(nut_clearance, kind=Kind.INTERSECTION))
 
   def _make_hole(self, fastener: Nut, nut_clearance: float) -> Solid:
-    """The hole cutter, in the hole convention."""
     return Solid.extrude(self._nut_pocket_plan(fastener, nut_clearance), Vector(0, 0, -self.pocket_depth))
 
 
 class PrintableCaptiveNutHole(CaptiveNutHole):
-  """Part Object: PrintableCaptiveNutHole
+  """CaptiveNutHole printable without support when the pocket opens downward.
 
-  A CaptiveNutHole that prints without support when the pocket opens downward (pocket roof printed as a
-  bridge). A strip as wide as the clearance hole is cut across the entire nut plan, bridge_depth past the
-  pocket bottom, so the first roof layers bridge across the pocket on either side of the strip, uninterrupted
-  by the clearance hole. The layer above the strip then bridges perpendicularly across the strip, leaving the
-  clearance hole. Combine with a ClearanceHole of the same fit for the screw.
+  A strip the width of the clearance hole is cut across the nut plan, bridge_depth past the pocket bottom. The first
+  roof layers bridge across the pocket on either side of the strip, then the next layer bridges across the strip.
+  Combine with a ClearanceHole of the same fit.
 
   Args:
-      fastener (Nut): A nut instance with a polygonal nut plan, e.g. HexNut or SquareNut
-      fit (Literal["Close", "Normal", "Loose"], optional): Control strip (clearance hole) width.
-          Defaults to "Normal".
-      nut_clearance (float, optional): clearance added to each side of the nut plan, negative for an
-          interference fit. Defaults to 0.0.
-      bridge_depth (float, optional): depth of the strip past the pocket bottom, typically two layer heights.
-          Defaults to 0.4.
-      bridge_angle (float, optional): strip direction from the nut plan local +X axis, counterclockwise, in
-          degrees. The default runs the strip flat-to-flat on bd_warehouse hex nuts, which have corners on +X.
-          Defaults to 90.0.
-      rotation (RotationLike, optional): object rotation. Defaults to (0, 0, 0).
-      mode (Mode, optional): combination mode. Defaults to Mode.SUBTRACT.
+      bridge_depth: typically two layer heights
+      bridge_angle: strip direction from local +X, counterclockwise. The default runs flat-to-flat on bd_warehouse
+          hex nuts, which have corners on +X.
   """
 
   def __init__(
@@ -131,25 +101,11 @@ class PrintableCaptiveNutHole(CaptiveNutHole):
 
 
 class KeyholeHole(BasePartObject):
-  """Part Object: KeyholeHole
-
-  A keyhole hole hangs a part on screws protruding from a surface: the screw head passes through a hole
-  at the origin the size of the screw head, then the part slides so the shank moves along a slot narrower
-  than the head, capturing it. The slot ends with the shank just clear of the head hole, so the head bears
-  on the slot edges. Multiple slot angles allow hanging the part in different orientations.
+  """Hangs a part on protruding screws: the head passes through a hole at the origin, then the shank slides along a
+  narrower slot, ending just clear of the head hole so the head bears on the slot edges.
 
   Args:
-      fastener (Screw): A screw instance, for the head and clearance hole diameters
-      fit (Literal["Close", "Normal", "Loose"], optional): Control slot (clearance hole) width.
-          Defaults to "Normal".
-      depth (float, optional): hole depth - None implies through part. Defaults to None.
-      angles (Iterable[float], optional): slot directions from the local +X axis, counterclockwise,
-          in degrees. Defaults to (0,).
-      rotation (RotationLike, optional): object rotation. Defaults to (0, 0, 0).
-      mode (Mode, optional): combination mode. Defaults to Mode.SUBTRACT.
-
-  Raises:
-      ValueError: No depth provided
+      angles: slot directions from local +X, counterclockwise
   """
 
   _applies_to = [BuildPart._tag]
@@ -167,7 +123,7 @@ class KeyholeHole(BasePartObject):
     validate_inputs(context, self)
 
     self.hole_depth = hole_depth(context, depth)
-    # nominal head diameter; Screw.head_diameter is measured from the model and can be smaller (e.g. countersunk)
+    # nominal, since Screw.head_diameter is measured from the model and can be smaller (e.g. countersunk)
     head_diameter = fastener.screw_data.get("dk", fastener.head_diameter)
     slot_width = fastener.clearance_hole_diameters[fit]
     self.slot_length = head_diameter / 2 + slot_width / 2  # origin to slot end center
