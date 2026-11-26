@@ -7,77 +7,91 @@ Fastener holes for 3D printed parts, complementing bd_warehouse.fastener and fol
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Iterable, Literal
 
 from build123d import (Align, BasePartObject, Cylinder, Kind, Mode, Part, Pos, Rectangle, Rot, RotationLike, Sketch,
                        SlotCenterToCenter, extrude, offset)
-from bd_warehouse.fastener import Nut, Screw
+from bd_warehouse.fastener import ClearanceHole, Nut, Screw
 
 from bd_util._common import hole_depth
 
 
-class CaptiveNutHole(BasePartObject):
-  """Pocket shaped to the nut plan with sharp corners and as deep as the nut, retaining it flush and unrotating.
+@dataclass(frozen=True)
+class PrintabilityBridge:
+  """Makes a pocket printable without support when it opens downward, toward the build plate.
 
-  Unlike the bd_warehouse ClearanceHole captive_nut option, this is only the pocket: combine with a ClearanceHole.
-  """
-
-  def __init__(
-      self,
-      fastener: Nut,
-      nut_clearance: float = 0.0,
-      rotation: RotationLike = (0, 0, 0),
-      mode: Mode = Mode.SUBTRACT,
-  ):
-    self.pocket_depth = fastener.nut_thickness
-    super().__init__(
-      part=self._make_hole(fastener, nut_clearance).clean(),
-      align=None,
-      rotation=rotation,
-      mode=mode,
-    )
-
-  def _nut_pocket_plan(self, nut: Nut, nut_clearance: float) -> Sketch:
-    return offset(nut.nut_plan(), nut_clearance, kind=Kind.INTERSECTION)
-
-  def _make_hole(self, fastener: Nut, nut_clearance: float) -> Part:
-    return extrude(self._nut_pocket_plan(fastener, nut_clearance), self.pocket_depth, dir=(0, 0, -1))
-
-
-class PrintableCaptiveNutHole(CaptiveNutHole):
-  """CaptiveNutHole printable without support when the pocket opens downward.
-
-  A strip the width of the clearance hole is cut across the nut plan, bridge_depth past the pocket bottom. The first
-  roof layers bridge across the pocket on either side of the strip, then the next layer bridges across the strip.
-  Combine with a ClearanceHole of the same fit.
+  A strip the width of the clearance hole is cut across the pocket plan, depth past the pocket bottom. The first roof
+  layers bridge across the pocket on either side of the strip, then the next layer bridges across the strip.
 
   Args:
-      bridge_depth: typically two layer heights
-      bridge_angle: strip direction from local +X, counterclockwise. The default runs flat-to-flat on bd_warehouse
-          hex nuts, which have corners on +X.
+      depth: past the pocket bottom, typically two layer heights
+      angle: strip direction from local +X, counterclockwise. The default runs flat-to-flat on bd_warehouse hex nuts,
+          which have corners on +X.
+  """
+  depth: float = 0.4
+  angle: float = 90.0
+
+  def __post_init__(self):
+    if self.depth <= 0:
+      raise ValueError(f"sacrificial bridge depth {self.depth} must be positive")
+
+  def _make(self, pocket_plan: Sketch, width: float) -> Part:
+    """With the pocket bottom at the local origin, extending toward -Z."""
+    size = pocket_plan.bounding_box().size
+    strip = Rot(0, 0, self.angle) * Rectangle(2 * max(size.X, size.Y), width)
+    return extrude(strip & pocket_plan, self.depth, dir=(0, 0, -1))
+
+
+class CaptiveNutHole(BasePartObject):
+  """Clearance hole with a nut pocket at its surface, like the bd_warehouse ClearanceHole captive_nut option.
+
+  Unlike that option, the pocket is the nut plan (rather than a filleted rectangle) and as deep as the nut,
+  retaining it flush.
+
+  Args:
+      fit: of the shank clearance hole and any sacrificial bridge strip
+      depth: of the whole hole including the pocket, None is through the part
+      nut_clearance: per side, added to the nut plan. None follows bd_warehouse captive_nut, half the difference
+          between the clearance hole and thread diameters.
+      bridge: for printing with the pocket opening downward
   """
 
   def __init__(
       self,
       fastener: Nut,
       fit: Literal["Close", "Normal", "Loose"] = "Normal",
-      nut_clearance: float = 0.0,
-      bridge_depth: float = 0.4,
-      bridge_angle: float = 90.0,
+      depth: float | None = None,
+      nut_clearance: float | None = None,
+      bridge: PrintabilityBridge | None = None,
       rotation: RotationLike = (0, 0, 0),
       mode: Mode = Mode.SUBTRACT,
   ):
     self.fit = fit
-    self.bridge_depth = bridge_depth
-    self.bridge_angle = bridge_angle
-    super().__init__(fastener, nut_clearance=nut_clearance, rotation=rotation, mode=mode)
+    self.bridge = bridge
+    self.hole_depth = hole_depth(depth)
+    self.pocket_depth = fastener.nut_thickness
+    clearance_diameter = fastener.clearance_hole_diameters[fit]
+    if nut_clearance is None:
+      nut_clearance = (clearance_diameter - fastener.thread_diameter) / 2
+    self.nut_clearance = nut_clearance
+    roof_depth = self.pocket_depth + (0.0 if bridge is None else bridge.depth)
+    if not self.hole_depth > roof_depth:
+      raise ValueError(f"depth {self.hole_depth:.3f} must exceed the pocket and bridge depth {roof_depth:.3f}")
 
-  def _make_hole(self, fastener: Nut, nut_clearance: float) -> Part:
-    pocket_plan = self._nut_pocket_plan(fastener, nut_clearance)
-    strip_length = 2 * max(pocket_plan.bounding_box().size.X, pocket_plan.bounding_box().size.Y)
-    strip = Rot(0, 0, self.bridge_angle) * Rectangle(strip_length, fastener.clearance_hole_diameters[self.fit])
-    bridge = Pos(0, 0, -self.pocket_depth) * extrude(strip & pocket_plan, self.bridge_depth, dir=(0, 0, -1))
-    return super()._make_hole(fastener, nut_clearance) + bridge
+    pocket_plan = offset(fastener.nut_plan(), nut_clearance, kind=Kind.INTERSECTION)
+    hole_part = extrude(pocket_plan, self.pocket_depth, dir=(0, 0, -1))
+    if bridge is not None:
+      hole_part += Pos(0, 0, -self.pocket_depth) * bridge._make(pocket_plan, clearance_diameter)
+    # explicit depth, since a nested object doesn't see the caller's builder
+    hole_part += ClearanceHole(fastener, fit=fit, depth=self.hole_depth, counter_sunk=False, mode=Mode.PRIVATE)
+
+    super().__init__(
+      part=hole_part.clean(),
+      align=None,
+      rotation=rotation,
+      mode=mode,
+    )
 
 
 class KeyholeHole(BasePartObject):

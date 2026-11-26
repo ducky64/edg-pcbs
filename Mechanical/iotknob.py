@@ -13,7 +13,7 @@ from build123d import (Align, Box, BuildPart, CenterArc, Color, Compound, Cylind
 from bd_warehouse.fastener import ClearanceHole, CounterSunkScrew, HexNut, PanHeadScrew
 
 from bd_util.connector import MolexKK254Hole, UsbCReceptacleHole, JstShSideEntryHole
-from bd_util.fastener import KeyholeHole, PrintableCaptiveNutHole
+from bd_util.fastener import CaptiveNutHole, KeyholeHole, PrintabilityBridge
 from bd_util.light_pipe import CrushRibs, DiffusionCone, Flange, LightPipe, LightPipeHole
 
 
@@ -137,9 +137,8 @@ def make_bottom() -> Part:
     # the bottom face plane is flipped, so negate the rotation to give the nut angle as seen from above
     for x, y, angle in MOUNT_HOLES:
       with Locations(Plane((x, y, 0), x_dir=(1, 0, 0), z_dir=(0, 0, -1))):
-        PrintableCaptiveNutHole(NUT, fit=FASTENER_FIT, nut_clearance=NUT_HOLDER_INTERFERENCE, bridge_depth=NUT_BRIDGE_DEPTH,
-                                rotation=(0, 0, -angle))
-        ClearanceHole(NUT, fit=FASTENER_FIT, counter_sunk=False)
+        CaptiveNutHole(NUT, fit=FASTENER_FIT, nut_clearance=NUT_HOLDER_INTERFERENCE,
+                       bridge=PrintabilityBridge(depth=NUT_BRIDGE_DEPTH), rotation=(0, 0, -angle))
     with Locations(*[Plane((x, y, 0), x_dir=(1, 0, 0), z_dir=(0, 0, -1)) for x, y in KEYHOLES]):
       KeyholeHole(KEYHOLE_SCREW, fit=FASTENER_FIT, angles=KEYHOLE_ANGLES)
     cut_connectors()
