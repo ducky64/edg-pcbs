@@ -49,13 +49,9 @@ class CrushRibs:
   clearance. Defaults are for FDM (0.4mm nozzle, 0.2mm layers).
 
   Args:
-      protrusion: beyond the top profile, also the rib radius
-      lead_in_angle: taper toward the pipe top, which is inserted first; 90 is no lead-in
-      along: curves in local XY, defaulting to the local X axis
   """
   protrusion: float = 0.3
   lead_in_angle: float = 30.0
-  along: Iterable[Edge | Wire] | None = None
 
   def __post_init__(self):
     if self.protrusion <= 0:
