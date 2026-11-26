@@ -169,8 +169,8 @@ def make_top() -> Part:
 
     with Locations(*[Pos(x, y, ENCLOSURE_TOP_Z) for x, y, _ in MOUNT_HOLES]):
       ClearanceHole(SCREW, fit=FASTENER_FIT, counter_sunk=True)
-    # local +X radially outward
-    with Locations(Pos(0, KNOB_Y, ENCLOSURE_TOP_Z)):
+    # at the LEDs on the board, local +X radially outward
+    with Locations(Pos(0, KNOB_Y, TOP_BOARD_TOP_Z)):
       with PolarLocations(LED_RADIUS, LED_COUNT, start_angle=LED_START_ANGLE, rotate=True):
         LightPipeHole(LIGHT_PIPE, clearance=TOLERANCE)
     for x, y in OPTICAL_SENSOR_HOLES:
@@ -194,7 +194,7 @@ def make_light_pipe_tree() -> Part:
   for start, end in zip(locations, locations[1:] + locations[:1]):
     a = (start * Pos(ccw_tip.center())).position
     b = (end * Pos(cw_tip.center())).position
-    z = start.position.Z + LIGHT_PIPE.loft_height  # bar top
+    z = start.position.Z + LIGHT_PIPE.loft_height  # bar top, at the wall inner surface
     centerline = Edge.make_line((a.X, a.Y, z), (b.X, b.Y, z))
     bars.append(Solid.extrude(Face(centerline.offset_2d(BRIDGE_WIDTH / 2)), (0, 0, -BRIDGE_THICKNESS)))
   return pipes[0].fuse(*pipes[1:], *bars).clean()
