@@ -51,6 +51,7 @@ FASTENER_FIT = "Normal"
 TOLERANCE = 0.2  # per side, between mating surfaces
 NUT_HOLDER_INTERFERENCE = -0.1
 OVERHANG_ANGLE = 60.0
+LAYER_HEIGHT = 0.2
 _EPS = 0.01  # avoids coplanar boolean faces
 
 
@@ -119,7 +120,6 @@ def cut_connectors() -> None:
 
 def make_bottom() -> Part:
   NUT = HexNut(size=FASTENER_SIZE, fastener_type="iso4032")
-  NUT_BRIDGE_DEPTH = 0.4
 
   KEYHOLES = [(0.0, -12.0), (0.0, 12.0)]
   KEYHOLE_ANGLES = [-90, 90]  # as seen from below
@@ -138,7 +138,7 @@ def make_bottom() -> Part:
     for x, y, angle in MOUNT_HOLES:
       with Locations(Plane((x, y, 0), x_dir=(1, 0, 0), z_dir=(0, 0, -1))):
         CaptiveNutHole(NUT, fit=FASTENER_FIT, nut_clearance=NUT_HOLDER_INTERFERENCE,
-                       bridge=PrintabilityBridge(depth=NUT_BRIDGE_DEPTH), rotation=(0, 0, -angle))
+                       bridge=PrintabilityBridge(LAYER_HEIGHT, overhang_angle=OVERHANG_ANGLE), rotation=(0, 0, -angle))
     with Locations(*[Plane((x, y, 0), x_dir=(1, 0, 0), z_dir=(0, 0, -1)) for x, y in KEYHOLES]):
       KeyholeHole(KEYHOLE_SCREW, fit=FASTENER_FIT, angles=KEYHOLE_ANGLES)
     cut_connectors()

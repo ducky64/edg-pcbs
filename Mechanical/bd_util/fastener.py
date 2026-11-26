@@ -8,10 +8,11 @@ Fastener holes for 3D printed parts, complementing bd_warehouse.fastener and fol
 from __future__ import annotations
 
 from dataclasses import dataclass
+from math import radians, sqrt, tan
 from typing import Iterable, Literal
 
-from build123d import (Align, BasePartObject, Cylinder, Kind, Mode, Part, Pos, Rectangle, Rot, RotationLike, Sketch,
-                       SlotCenterToCenter, extrude, offset)
+from build123d import (Align, BasePartObject, Circle, Cylinder, Kind, Mode, Part, Pos, Rectangle, Rot, RotationLike,
+                       Sketch, SlotCenterToCenter, extrude, loft, offset)
 from bd_warehouse.fastener import ClearanceHole, Nut, Screw
 
 from bd_util._common import hole_depth
@@ -19,28 +20,48 @@ from bd_util._common import hole_depth
 
 @dataclass(frozen=True)
 class PrintabilityBridge:
-  """Makes a pocket printable without support when it opens downward, toward the build plate.
-
-  A strip the width of the clearance hole is cut across the pocket plan, depth past the pocket bottom. The first roof
-  layers bridge across the pocket on either side of the strip, then the next layer bridges across the strip.
+  """Makes a pocket printable without support when it opens downward, toward the build plate, by stepping from the
+  pocket to the clearance hole so that every bridge is straight and anchored at both ends:
+    1. a strip the width of the clearance hole across the pocket plan, one layer: the first roof layer bridges across
+       the pocket on either side of the strip
+    2. a square of the clearance hole width, one layer: this layer bridges across the strip on either side
+    3. a ruled loft from the square to the clearance hole: the corners overhang at overhang_angle, without bridging
 
   Args:
-      depth: past the pocket bottom, typically two layer heights
+      layer_height: of steps 1 and 2, which should match the print layers
       angle: strip direction from local +X, counterclockwise. The default runs flat-to-flat on bd_warehouse hex nuts,
           which have corners on +X.
+      overhang_angle: of the loft corners, from the hole axis
   """
-  depth: float = 0.4
+  layer_height: float = 0.2
   angle: float = 90.0
+  overhang_angle: float = 45.0
 
   def __post_init__(self):
-    if self.depth <= 0:
-      raise ValueError(f"sacrificial bridge depth {self.depth} must be positive")
+    if self.layer_height <= 0:
+      raise ValueError(f"bridge layer_height {self.layer_height} must be positive")
+    if not 0 < self.overhang_angle < 90:
+      raise ValueError(f"bridge overhang_angle {self.overhang_angle} must be within (0, 90)")
+
+  def taper_height(self, width: float) -> float:
+    """Of the loft, from the square corners in to the clearance hole of diameter width."""
+    return (sqrt(2) - 1) * width / 2 / tan(radians(self.overhang_angle))
+
+  def depth(self, width: float) -> float:
+    """Past the pocket bottom, for a clearance hole of diameter width."""
+    return 2 * self.layer_height + self.taper_height(width)
 
   def _make(self, pocket_plan: Sketch, width: float) -> Part:
     """With the pocket bottom at the local origin, extending toward -Z."""
     size = pocket_plan.bounding_box().size
     strip = Rot(0, 0, self.angle) * Rectangle(2 * max(size.X, size.Y), width)
-    return extrude(strip & pocket_plan, self.depth, dir=(0, 0, -1))
+    square = Rot(0, 0, self.angle) * Rectangle(width, width)
+    bridge = extrude(strip & pocket_plan, self.layer_height, dir=(0, 0, -1))
+    bridge += Pos(0, 0, -self.layer_height) * extrude(square, self.layer_height, dir=(0, 0, -1))
+    taper_top = Pos(0, 0, -2 * self.layer_height)
+    bridge += loft([taper_top * square, taper_top * Pos(0, 0, -self.taper_height(width)) * Circle(width / 2)],
+                   ruled=True)
+    return bridge
 
 
 class CaptiveNutHole(BasePartObject):
@@ -75,7 +96,7 @@ class CaptiveNutHole(BasePartObject):
     if nut_clearance is None:
       nut_clearance = (clearance_diameter - fastener.thread_diameter) / 2
     self.nut_clearance = nut_clearance
-    roof_depth = self.pocket_depth + (0.0 if bridge is None else bridge.depth)
+    roof_depth = self.pocket_depth + (0.0 if bridge is None else bridge.depth(clearance_diameter))
     if not self.hole_depth > roof_depth:
       raise ValueError(f"depth {self.hole_depth:.3f} must exceed the pocket and bridge depth {roof_depth:.3f}")
 
