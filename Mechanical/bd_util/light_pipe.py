@@ -239,29 +239,31 @@ class LightPipe(BasePartObject):
     transform = self.solids()[0].location * unaligned.inverse()
     self._body = transform * body
     self._voids = [transform * void for void in voids]
-    self._origin = self.location  # placed copies (location * light_pipe) move by location relative to this
 
-  def _placement(self) -> Location:
-    return self.location * self._origin.inverse()
+  def array(self, locations: Iterable[Location], *others: Part) -> Part:
+    """This light pipe at each location, fused with others (e.g. bridging bars) into one part. See fused()."""
+    return LightPipe.fused([(self, location) for location in locations], *others)
 
   @staticmethod
-  def fused(pipes: Iterable[LightPipe], *others: Part) -> Part:
-    """Placed light pipes (e.g. location * light_pipe, possibly of different designs), fused with others (e.g.
-    bridging bars) into one part.
+  def fused(placements: Iterable[tuple[LightPipe, Location]], *others: Part) -> Part:
+    """Light pipes (possibly of different designs) at locations, fused with others (e.g. bridging bars) into one part.
 
     Use instead of fusing light pipes directly: OCC can produce an invalid solid when fusing solids that already
     contain sealed voids (e.g. diffusion cones), so this fuses the void-free bodies and cuts the voids last.
+
+    Locations are relative to each light pipe's own origin, as constructed: any placement of the light pipe object
+    itself (location * light_pipe, or by a builder) is ignored.
     """
-    pipes = list(pipes)
-    if not pipes:
+    placements = list(placements)
+    if not placements:
       raise ValueError("fused requires at least one light pipe")
     # copies, since clean() can modify sub-shapes shared with boolean inputs in place
-    bodies = [pipe._placement() * copy.deepcopy(pipe._body) for pipe in pipes]
-    voids = [pipe._placement() * void for pipe in pipes for void in pipe._voids]
+    bodies = [location * copy.deepcopy(pipe._body) for pipe, location in placements]
+    voids = [location * void for pipe, location in placements for void in pipe._voids]
     fused = bodies[0] + [*bodies[1:], *others]
     if voids:
       fused -= voids
-    return fused.clean()
+    return Part(fused.clean().wrapped)  # disjoint fuses return a Compound
 
   def cutout_profile(self, clearance: float = 0.0) -> Sketch:
     """Top profile grown by clearance per side, rounding convex corners."""

@@ -198,7 +198,7 @@ def make_light_pipe_tree() -> Part:
     z = start.position.Z + LIGHT_PIPE.loft_height  # bar top, at the wall inner surface
     bar_plan = SlotCenterPoint(((a.X + b.X) / 2, (a.Y + b.Y) / 2), (b.X, b.Y), BRIDGE_WIDTH)
     bars.append(extrude(Pos(0, 0, z) * bar_plan, BRIDGE_THICKNESS, dir=(0, 0, -1)))
-  return LightPipe.fused([location * LIGHT_PIPE for location in LED_LOCATIONS], *bars)
+  return LIGHT_PIPE.array(LED_LOCATIONS, *bars)
 
 
 if __name__ == "__main__":
