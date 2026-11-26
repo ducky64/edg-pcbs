@@ -104,26 +104,6 @@ def make_light_pipe() -> LightPipe:
 LIGHT_PIPE = make_light_pipe()
 
 
-def make_light_pipe_tree() -> Part:
-  """Join light pipes into a single piece with bridging bars between them."""
-  BRIDGE_WIDTH = 0.8  # narrow, to limit light crosstalk between pipes
-  BRIDGE_THICKNESS = 1.0
-
-  led_circle = Edge.make_circle(LED_RADIUS, Plane((-LED_RADIUS, 0, 0)))  # local frame
-  # local +Y is counterclockwise around the knob
-  cw_tip, ccw_tip = sorted(LIGHT_PIPE.top_profile.outer_wire().intersect(led_circle).vertices(), key=lambda v: v.Y)
-  locations = LIGHT_PIPE.hole_locations
-  pipes = [loc * LIGHT_PIPE for loc in locations]
-  bars = []
-  for start, end in zip(locations, locations[1:] + locations[:1]):
-    a = (start * Pos(ccw_tip.center())).position
-    b = (end * Pos(cw_tip.center())).position
-    z = start.position.Z + LIGHT_PIPE.loft_height  # bar top
-    centerline = Edge.make_line((a.X, a.Y, z), (b.X, b.Y, z))
-    bars.append(Solid.extrude(Face(centerline.offset_2d(BRIDGE_WIDTH / 2)), (0, 0, -BRIDGE_THICKNESS)))
-  return pipes[0].fuse(*pipes[1:], *bars).clean()
-
-
 def cut_connectors() -> None:
   """Cut the connector openings through the end walls, in the active BuildPart. Shared by both parts, since
   openings may span the part split."""
@@ -209,6 +189,26 @@ def make_top() -> Part:
         Hole(OPTICAL_HOLE_DIAMETER / 2)
     cut_connectors()
   return builder.part
+
+
+def make_light_pipe_tree() -> Part:
+  """Join light pipes into a single piece with bridging bars between them."""
+  BRIDGE_WIDTH = 0.8  # narrow, to limit light crosstalk between pipes
+  BRIDGE_THICKNESS = 1.0
+
+  led_circle = Edge.make_circle(LED_RADIUS, Plane((-LED_RADIUS, 0, 0)))  # local frame
+  # local +Y is counterclockwise around the knob
+  cw_tip, ccw_tip = sorted(LIGHT_PIPE.top_profile.outer_wire().intersect(led_circle).vertices(), key=lambda v: v.Y)
+  locations = LIGHT_PIPE.hole_locations
+  pipes = [loc * LIGHT_PIPE for loc in locations]
+  bars = []
+  for start, end in zip(locations, locations[1:] + locations[:1]):
+    a = (start * Pos(ccw_tip.center())).position
+    b = (end * Pos(cw_tip.center())).position
+    z = start.position.Z + LIGHT_PIPE.loft_height  # bar top
+    centerline = Edge.make_line((a.X, a.Y, z), (b.X, b.Y, z))
+    bars.append(Solid.extrude(Face(centerline.offset_2d(BRIDGE_WIDTH / 2)), (0, 0, -BRIDGE_THICKNESS)))
+  return pipes[0].fuse(*pipes[1:], *bars).clean()
 
 
 if __name__ == "__main__":
