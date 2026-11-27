@@ -5,7 +5,8 @@ Origin at the PCB center, X across the width, Y along the length (+Y is "top"), 
 Dimensions in mm, angles in degrees. Tolerance enlarges receiving features (holes, cavities); parts are nominal.
 """
 
-from math import degrees
+import warnings
+from math import degrees, radians, tan
 from pathlib import Path
 
 from build123d import (
@@ -13,6 +14,7 @@ from build123d import (
     Box,
     BuildPart,
     CenterArc,
+    Circle,
     Color,
     Compound,
     Cylinder,
@@ -32,6 +34,7 @@ from build123d import (
     export_stl,
     extrude,
     insert,
+    loft,
 )
 from bd_warehouse.fastener import ClearanceHole, CounterSunkScrew, HexNut, PanHeadScrew
 
@@ -64,6 +67,7 @@ KNOB_Y = -7.0  # encoder shaft
 LED_COUNT = 6  # around the knob
 LED_RADIUS = 8.0  # placement around knob center
 LED_START_ANGLE = 30.0
+KNOB_HOLE_DIAMETER = 10.0  # also the knob cover diameter inside the hole
 
 # Enclosure definition
 WALL_THICKNESS = 1.5
@@ -189,7 +193,6 @@ def make_bottom() -> Part:
 
 
 def make_top() -> Part:
-    KNOB_HOLE_DIAMETER = 10.0
     SCREW = CounterSunkScrew(size=FASTENER_SIZE, length=16, fastener_type="iso7046")  # length doesn't affect holes
     OPTICAL_HOLE_DIAMETER = 4.0
 
@@ -249,9 +252,48 @@ def make_light_pipe_tree() -> Part:
     return LIGHT_PIPE.array(LED_LOCATIONS, *bars)
 
 
-def make_knob() -> Part:
-    """"""
-    pass
+def make_knob_cover() -> Part:
+    """Knob cover that lightly press fits onto the encoder shafe, in global coordinates.
+    """
+    ENCODER_GRIP_DIAMETER = 6.0
+    ENCODER_SWITCH_TRAVEL = 1.5
+
+    KNOB_PRESSFIT_CLEARANCE = 0.0  # per side, grip section
+    KNOB_OFFSET = 4.0  # top PCB top to the knob cover bottom
+    KNOB_HEIGHT = 10.0  # cover top, past the enclosure top
+    KNOB_DIAMETER = 12.0  # cone base
+    KNOB_DRAFT = 5.0  # degrees, cone taper, from the Z axis
+    KNOB_GAP = ENCODER_SWITCH_TRAVEL + TOLERANCE * 2  # enclosure top to the cone base, so pushing doesn't bottom out
+    KNOB_BORE_HEIGHT = 2.0  # depth of the bore, past the enclosure top
+    KNOB_GRIP_LENGTH = 3.0  # top part of the inner bore that grips the encoder shaft
+    # semicircular flutes along the cone, scaled with the local diameter (constant angular pitch); 0 count disables
+    KNOB_FLUTE_COUNT = 12
+    KNOB_FLUTE_DIAMETER = 2.5  # at the cone base
+
+    bottom_z = TOP_BOARD_TOP_Z + KNOB_OFFSET
+    cone_z = ENCLOSURE_TOP_Z + KNOB_GAP
+    bore_z = ENCLOSURE_TOP_Z + KNOB_BORE_HEIGHT
+    grip_z = bore_z - KNOB_GRIP_LENGTH
+    top_z = ENCLOSURE_TOP_Z + KNOB_HEIGHT
+    top_diameter = KNOB_DIAMETER - 2 * (top_z - cone_z) * tan(radians(KNOB_DRAFT))
+
+    def cone_profile(diameter: float):
+        profile = Circle(diameter / 2)
+        if KNOB_FLUTE_COUNT > 0:
+            flute = Circle(KNOB_FLUTE_DIAMETER / 2 * diameter / KNOB_DIAMETER)
+            profile -= PolarLocations(diameter / 2, KNOB_FLUTE_COUNT) * flute
+        return profile
+
+    cover = Pos(0, 0, bottom_z) * extrude(Circle(KNOB_HOLE_DIAMETER / 2), cone_z - bottom_z + _EPS)
+    cover += loft([Pos(0, 0, cone_z) * cone_profile(KNOB_DIAMETER), Pos(0, 0, top_z) * cone_profile(top_diameter)])
+
+    # bore from the bottom
+    round_profile = Circle(ENCODER_GRIP_DIAMETER / 2 + TOLERANCE)
+    cover -= Pos(0, 0, bottom_z - _EPS) * extrude(round_profile, grip_z - bottom_z + _EPS)
+    grip_profile = Circle(ENCODER_GRIP_DIAMETER / 2 + KNOB_PRESSFIT_CLEARANCE)
+    cover -= Pos(0, 0, bottom_z) * extrude(grip_profile, bore_z - bottom_z)
+
+    return Pos(0, KNOB_Y, 0) * cover
 
 
 if __name__ == "__main__":
@@ -260,12 +302,14 @@ if __name__ == "__main__":
     bottom = make_bottom()
     top = make_top()
     light_pipes = make_light_pipe_tree()
+    knob_cover = make_knob_cover()
 
     # (name, part in global coordinates, print rotation, assembly color)
     parts = [
         ("iotknob_bottom", bottom, Rot(0, 0, 0), Color(0.3, 0.3, 0.3)),
         ("iotknob_top", top, Rot(180, 0, 0), Color(0.7, 0.7, 0.7)),
         ("iotknob_lightpipes", light_pipes, Rot(180, 0, 0), Color(0.1, 0.4, 1.0, 0.5)),
+        ("iotknob_knob_cover", knob_cover, Rot(180, 0, 0), Color(0.9, 0.5, 0.1)),  # cap on the bed
     ]
 
     # STLs in printing orientation
