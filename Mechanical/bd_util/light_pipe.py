@@ -100,7 +100,7 @@ class CrushRibs:
         along: ribs are positioned at where these lines intersect the top profile
     """
 
-    protrusion: float = 0.3
+    protrusion: float
     lead_in_angle: float = 30.0
     along: Iterable[Edge | Wire | Axis] = (Axis.X,)
 

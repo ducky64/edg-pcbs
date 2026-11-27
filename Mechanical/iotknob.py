@@ -115,11 +115,11 @@ def make_light_pipe() -> LightPipe:
     LED_SLOT_WIDTH = 2.0
     LIGHT_PIPE_BOARD_LENGTH = 4.0
     LIGHT_PIPE_BOARD_WIDTH = 2.0
-    LED_CAVITY = 2.2
+    LED_CAVITY = 2.5
     LED_CAVITY_HEIGHT = 1.4
     FLANGE_EXTENSION = 1.0
     DIFFUSION_CONE_DIAMETER = 1.5
-    LIGHT_PIPE_NUB_LENGTH = 0.5  # extension past the enclosure top
+    LIGHT_PIPE_NUB_LENGTH = 0.4  # extension past the enclosure top
 
     # pipe top profile curved along the LED circle
     slot_arc_angle = degrees((LED_SLOT_LENGTH - LED_SLOT_WIDTH) / LED_RADIUS)  # centerline arc, excluding end rounds
@@ -132,7 +132,7 @@ def make_light_pipe() -> LightPipe:
         led_profile=Rectangle(LED_CAVITY, LED_CAVITY),
         led_height=LED_CAVITY_HEIGHT,
         flange=Flange(FLANGE_EXTENSION, draft_angle=OVERHANG_ANGLE),
-        crush_ribs=CrushRibs(along=[LED_CIRCLE]),  # at the slot ends
+        crush_ribs=CrushRibs(protrusion=0.20, along=[LED_CIRCLE]),  # at the slot ends
         diffusion_cone=DiffusionCone(DIFFUSION_CONE_DIAMETER),
         chamfer_length=LIGHT_PIPE_NUB_LENGTH,
     )

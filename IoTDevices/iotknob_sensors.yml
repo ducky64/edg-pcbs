@@ -1,0 +1,181 @@
+substitutions:
+  name: "KnobSensors"
+
+esphome:
+  name: ducky-knobsensors
+  name_add_mac_suffix: true
+
+esp32:
+  board: esp32-c6-devkitc-1
+  framework:
+    type: esp-idf
+
+wifi:
+  <<: !include ../wifi_config.yaml
+
+<<: !include ../common_config.yaml
+
+# NOTE ESP32-S3 GPIOs
+# Subtract 12 from right side pinning to account for removed bottom row
+# [i2c=I2CEXT0, 
+# i2c.scl=GPIO18, 11, 
+# i2c.sda=GPIO8, 12, 
+# i2c2=I2CEXT1, 
+# i2c2.scl=GPIO7, 7, 
+# i2c2.sda=GPIO6, 6, 
+# pd_int=GPIO17, 10, 
+# spk=XTAL_32K_N, 9, 
+# drv=GPIO2, 38, 
+# tach=GPIO1, 39, 
+# pwm=XTAL_32K_P, 8, 
+# npx_en=GPIO5, 5, 
+# enc_a=MTDO, 33, 
+# enc_b=MTCK, 32, 
+# enc_sw=GPIO38, 31, 
+# extra1=MTMS, 35, 
+# npx=GPIO4, 4]
+
+light:
+  - platform: esp32_rmt_led_strip
+    id: ring
+    rgb_order: GRB
+    chipset: sk6812
+    pin: GPIO4
+    num_leds: 6
+    name: "${name} Ring"
+    initial_state:
+      state: ON
+    restore_mode: RESTORE_AND_ON  # persistent brightness settings
+    effects:
+      - addressable_lambda:
+          name: "Control"
+          update_interval: 100ms
+          lambda: |-
+              it.all() = Color(0, 0, 0, 0);
+              it[1] = Color(0, 255, 0, 255);
+
+              uint8_t ringIndices[] = {2, 3, 4, 5, 0};
+              for (int i = 0; i < 5; i++) {
+                it[ringIndices[i]] = Color(0, 0, 0, 0);
+              }
+      - addressable_rainbow:
+          name: Rainbow
+    on_turn_on:
+      - light.turn_on:
+          id: ring
+          effect: "Control"
+  - platform: status_led
+    name: "${name} Dbg"
+    id: debug_led
+    internal: true
+    pin:
+      number: GPIO9
+      inverted: true
+
+output:
+  - platform: gpio
+    id: output_fan_pwr
+    pin: GPIO3
+    inverted: false
+  - platform: ledc
+    id: output_fan_ctl
+    pin: GPIO0
+    inverted: true
+    frequency: 25 kHz
+
+i2c:
+  scl: GPIO10
+  sda: GPIO11
+  frequency: 400kHz
+  scan: false
+
+bme68x_bsec2_i2c:
+  address: 0x77
+  model: bme680
+  operating_age: 28d
+  sample_rate: LP
+  supply_voltage: 3.3V
+
+binary_sensor:
+  - platform: gpio
+    name: "${name} Encoder Sw"
+    internal: true
+    pin: 
+      number: GPIO21
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    filters:
+      - delayed_on: 10ms
+    # on_click:
+    # - then:
+    #     - lambda: |-
+    #         ;
+sensor:
+  - platform: rotary_encoder
+    name: "${name} Encoder"
+    internal: true
+    resolution: 2  # so each detent generates one action
+    pin_a:
+      number: GPIO23
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    pin_b:
+      number: GPIO22
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    # on_clockwise:
+    # - then:
+    #     - lambda: |-
+    #         ;
+    # on_anticlockwise:
+    # - then:
+    #     - lambda: |-
+    #         ;
+
+  - platform: ina219
+    shunt_resistance: 0.01 ohm
+    bus_voltage:
+      name: "${name} Voltage"
+      id: ina219_voltage
+    current:
+      name: "${name} Current"
+    max_voltage: 24.0V
+    max_current: 3.2A
+    update_interval: 5s
+  # - platform: vl53l0x
+  #   name: "${name} VL53L0x"
+  #   update_interval: 1s
+  #   long_range: false
+  - platform: bh1750
+    name: "${name} Illuminance"
+    update_interval: 60s
+
+  # I2C sensors
+  - platform: sht4x
+    update_interval: 60s
+    temperature:
+      name: "${name} Temp"
+    humidity:
+      name: "${name} RH"
+  - platform: scd4x
+    co2:
+      name: "${name} CO2"
+  - platform: bme68x_bsec2
+    pressure:
+      name: "${name} Pressure"
+    iaq:
+      name: "${name} IAQ"
+    iaq_accuracy:
+      name: "${name} IAQ Accuracy"
+    breath_voc_equivalent:
+      name: "${name} Breath VOC"
+
+  - platform: wifi_signal
+    name: "${name} WiFi Signal"
+    update_interval: 60s
