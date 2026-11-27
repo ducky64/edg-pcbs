@@ -6,7 +6,7 @@ Dimensions in mm, angles in degrees. Tolerance enlarges receiving features (hole
 """
 
 import warnings
-from math import degrees, radians, tan
+from math import cos, degrees, radians, sin, sqrt, tan
 from pathlib import Path
 
 from build123d import (
@@ -70,11 +70,11 @@ LED_START_ANGLE = 30.0
 KNOB_HOLE_DIAMETER = 10.0  # also the knob cover diameter inside the hole
 
 # Enclosure definition
-WALL_THICKNESS = 1.5
+WALL_THICKNESS = 1.4
 BOSS_DIAMETER = 8.0  # clipped to the enclosure outline
 
 # absolute Z
-BOTTOM_BOSS_Z = 3.0  # also the PCB bottom
+BOTTOM_BOSS_Z = 4.0  # also the PCB bottom
 BOARD_TOP_Z = BOTTOM_BOSS_Z + 1.0  # bottom PCB
 ENCLOSURE_SPLIT_Z = BOARD_TOP_Z
 TOP_BOARD_TOP_Z = BOTTOM_BOSS_Z + 8.0  # top PCB
@@ -163,7 +163,7 @@ def cut_connectors() -> None:
 def make_bottom() -> Part:
     NUT = HexNut(size=FASTENER_SIZE, fastener_type="iso4032")
 
-    KEYHOLES = [(0.0, -12.0), (0.0, 12.0)]
+    KEYHOLES = [(0.0, -12.7), (0.0, 12.7)]
     KEYHOLE_ANGLES = [-90, 90]  # as seen from below
     KEYHOLE_SCREW = PanHeadScrew(size="M3-0.5", length=10, fastener_type="iso1580")  # length doesn't affect holes
 
@@ -171,7 +171,7 @@ def make_bottom() -> Part:
     tray = footprint - Pos(0, 0, WALL_THICKNESS) * extrude(outline(INNER_OFFSET), amount=ENCLOSURE_SPLIT_Z)
 
     boss = Cylinder(BOSS_DIAMETER / 2, BOTTOM_BOSS_Z, align=(Align.CENTER, Align.CENTER, Align.MIN))
-    for x, y, _ in MOUNT_HOLES:
+    for x, y, _ in MOUNT_HOLES + [(0.0, 0.0, 0.0)]:
         tray += (Pos(x, y, 0) * boss) & footprint
 
     with BuildPart() as builder:
@@ -253,22 +253,23 @@ def make_light_pipe_tree() -> Part:
 
 
 def make_knob_cover() -> Part:
-    """Knob cover that lightly press fits onto the encoder shafe, in global coordinates.
+    """Knob cover that lightly press fits onto the encoder shaft, in global coordinates.
     """
     ENCODER_GRIP_DIAMETER = 6.0
     ENCODER_SWITCH_TRAVEL = 1.5
 
     KNOB_PRESSFIT_CLEARANCE = 0.0  # per side, grip section
     KNOB_OFFSET = 4.0  # top PCB top to the knob cover bottom
-    KNOB_HEIGHT = 10.0  # cover top, past the enclosure top
+    KNOB_HEIGHT = 8.0  # cover top, past the enclosure top
     KNOB_DIAMETER = 12.0  # cone base
-    KNOB_DRAFT = 5.0  # degrees, cone taper, from the Z axis
+    KNOB_DRAFT = 10.0  # degrees, cone taper, from the Z axis
     KNOB_GAP = ENCODER_SWITCH_TRAVEL + TOLERANCE * 2  # enclosure top to the cone base, so pushing doesn't bottom out
     KNOB_BORE_HEIGHT = 2.0  # depth of the bore, past the enclosure top
     KNOB_GRIP_LENGTH = 3.0  # top part of the inner bore that grips the encoder shaft
-    # semicircular flutes along the cone, scaled with the local diameter (constant angular pitch); 0 count disables
+    # circular-arc flutes along the cone, scaled with the local diameter (constant angular pitch); 0 count disables
     KNOB_FLUTE_COUNT = 12
-    KNOB_FLUTE_DIAMETER = 2.5  # at the cone base
+    KNOB_FLUTE_WIDTH = 2.5  # opening chord between the flute lips, at the cone base
+    KNOB_FLUTE_ANGLE = 60.0  # degrees, flute wall to the chord at the lips: 90 is a semicircle, smaller is shallower
 
     bottom_z = TOP_BOARD_TOP_Z + KNOB_OFFSET
     cone_z = ENCLOSURE_TOP_Z + KNOB_GAP
@@ -277,11 +278,21 @@ def make_knob_cover() -> Part:
     top_z = ENCLOSURE_TOP_Z + KNOB_HEIGHT
     top_diameter = KNOB_DIAMETER - 2 * (top_z - cone_z) * tan(radians(KNOB_DRAFT))
 
+    if KNOB_FLUTE_COUNT > 0:
+        if not 0 < KNOB_FLUTE_ANGLE <= 90:
+            raise ValueError(f"flute angle {KNOB_FLUTE_ANGLE} must be within (0, 90]")
+        flute_pitch = KNOB_DIAMETER * sin(radians(180 / KNOB_FLUTE_COUNT))  # chord between adjacent flute centers
+        if not KNOB_FLUTE_WIDTH < flute_pitch:
+            raise ValueError(f"flute width {KNOB_FLUTE_WIDTH} must be less than the flute pitch {flute_pitch:.3f}")
+
     def cone_profile(diameter: float):
         profile = Circle(diameter / 2)
         if KNOB_FLUTE_COUNT > 0:
-            flute = Circle(KNOB_FLUTE_DIAMETER / 2 * diameter / KNOB_DIAMETER)
-            profile -= PolarLocations(diameter / 2, KNOB_FLUTE_COUNT) * flute
+            half_width = KNOB_FLUTE_WIDTH / 2 * diameter / KNOB_DIAMETER
+            flute_radius = half_width / sin(radians(KNOB_FLUTE_ANGLE))
+            # flute circle through both lips on the knob circle, center outward of the chord
+            center_radius = sqrt((diameter / 2) ** 2 - half_width**2) + flute_radius * cos(radians(KNOB_FLUTE_ANGLE))
+            profile -= PolarLocations(center_radius, KNOB_FLUTE_COUNT) * Circle(flute_radius)
         return profile
 
     cover = Pos(0, 0, bottom_z) * extrude(Circle(KNOB_HOLE_DIAMETER / 2), cone_z - bottom_z + _EPS)
