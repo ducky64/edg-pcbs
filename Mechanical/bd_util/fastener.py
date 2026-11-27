@@ -161,19 +161,20 @@ class KeyholeHole(BasePartObject):
         rotation: RotationLike = (0, 0, 0),
         mode: Mode = Mode.SUBTRACT,
     ):
-        self.hole_depth = hole_depth(depth)
+        cut_depth = hole_depth(depth)
         # nominal, since Screw.head_diameter is measured from the model and can be smaller (e.g. countersunk)
         head_diameter = fastener.screw_data.get("dk", fastener.head_diameter)
         slot_width = fastener.clearance_hole_diameters[fit]
-        self.slot_length = head_diameter / 2 + slot_width / 2  # origin to slot end center
+        slot_length = head_diameter / 2 + slot_width / 2  # origin to slot end center
 
+        head_clearance = (slot_width - fastener.thread_diameter) / 2
         head_hole = Cylinder(
-            head_diameter / 2,
-            self.hole_depth,
+            head_diameter / 2 + head_clearance,
+          cut_depth,
             align=(Align.CENTER, Align.CENTER, Align.MAX),
         )
-        slot_plan = Pos(self.slot_length / 2, 0) * SlotCenterToCenter(self.slot_length, slot_width)
-        slot = extrude(slot_plan, self.hole_depth, dir=(0, 0, -1))
+        slot_plan = Pos(slot_length / 2, 0) * SlotCenterToCenter(slot_length, slot_width)
+        slot = extrude(slot_plan, cut_depth, dir=(0, 0, -1))
         hole_part = head_hole + [Rot(0, 0, angle) * slot for angle in angles]
 
         super().__init__(

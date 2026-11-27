@@ -86,7 +86,7 @@ FASTENER_FIT = "Normal"
 
 # Manufacturability constants
 TOLERANCE = 0.2  # per side, between mating surfaces
-NUT_HOLDER_INTERFERENCE = -0.1
+NUT_HOLDER_INTERFERENCE = 0
 OVERHANG_ANGLE = 60.0
 LAYER_HEIGHT = 0.2
 _EPS = 0.01  # avoids coplanar boolean faces
