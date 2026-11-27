@@ -43,18 +43,14 @@ def _extrude_chamfered(
     """Extrudes base (in an XY plane) toward +Z by the total length, the top chamfer_length tapering inward by
     chamfer_angle from the Z axis; 0 is no chamfer."""
     if not 0 <= chamfer_length < length:
-        raise ValueError(
-            f"chamfer length {chamfer_length:.3f} must be within [0, length {length:.3f})"
-        )
+        raise ValueError(f"chamfer length {chamfer_length:.3f} must be within [0, length {length:.3f})")
     base_length = length - chamfer_length
     part = extrude(base, base_length)
     if chamfer_length > 0:
         inset = chamfer_length * tan(radians(chamfer_angle))
         if not offset(base, -inset, kind=Kind.INTERSECTION).area > 0:
             raise ValueError(f"chamfer inset {inset:.3f} is too large for the profile")
-        part += extrude(
-            Pos(0, 0, base_length) * base, chamfer_length, taper=chamfer_angle
-        )
+        part += extrude(Pos(0, 0, base_length) * base, chamfer_length, taper=chamfer_angle)
     return part
 
 
@@ -76,18 +72,12 @@ class Flange:
         if self.extension <= 0 or self.thickness <= 0:
             raise ValueError("flange extension and thickness must be positive")
         if not 0 < self.draft_angle <= 90:
-            raise ValueError(
-                f"flange draft_angle {self.draft_angle} must be within (0, 90]"
-            )
+            raise ValueError(f"flange draft_angle {self.draft_angle} must be within (0, 90]")
 
     @property
     def draft_height(self) -> float:
         """Height of the draft section, to full extension."""
-        return (
-            0.0
-            if self.draft_angle == 90
-            else self.extension / tan(radians(self.draft_angle))
-        )
+        return 0.0 if self.draft_angle == 90 else self.extension / tan(radians(self.draft_angle))
 
     def _make(self, top: Face, wall_inner_z: float) -> Part:
         """In the light pipe frame, extending down from the wall inner surface at wall_inner_z."""
@@ -118,22 +108,14 @@ class CrushRibs:
         if self.protrusion <= 0:
             raise ValueError("crush rib protrusion must be positive")
         if not 0 < self.lead_in_angle <= 90:
-            raise ValueError(
-                f"crush rib lead_in_angle {self.lead_in_angle} must be within (0, 90]"
-            )
+            raise ValueError(f"crush rib lead_in_angle {self.lead_in_angle} must be within (0, 90]")
         object.__setattr__(self, "along", tuple(self.along))
 
     @property
     def lead_in_height(self) -> float:
-        return (
-            0.0
-            if self.lead_in_angle == 90
-            else self.protrusion / tan(radians(self.lead_in_angle))
-        )
+        return 0.0 if self.lead_in_angle == 90 else self.protrusion / tan(radians(self.lead_in_angle))
 
-    def _make(
-        self, top: Face, wall_inner_z: float, engagement: float, flange: Flange | None
-    ) -> list[Part]:
+    def _make(self, top: Face, wall_inner_z: float, engagement: float, flange: Flange | None) -> list[Part]:
         """In the light pipe frame, extending engagement up from the wall inner surface at wall_inner_z, and into the
         flange below."""
         if self.lead_in_height > engagement:
@@ -142,34 +124,22 @@ class CrushRibs:
                 f"lead_in_angle must be at least {degrees(atan(self.protrusion / engagement)):.1f}"
             )
         outline = top.outer_wire()
-        points = [
-            vertex for curve in self.along for vertex in outline.intersect(curve) or []
-        ]
+        points = [vertex for curve in self.along for vertex in outline.intersect(curve) or []]
         if not points:
-            raise ValueError(
-                "crush rib along curves don't cross the top profile outline"
-            )
+            raise ValueError("crush rib along curves don't cross the top profile outline")
 
         # if there is a flange draft, extend the ribs into it
         buried = (0.0 if flange is None else flange.draft_height) + _EPS
         straight = buried + engagement - self.lead_in_height
         if not straight > 0:
-            raise ValueError(
-                f"crush rib straight length {straight:.3f} must be positive"
-            )
+            raise ValueError(f"crush rib straight length {straight:.3f} must be positive")
         ribs = []
         for point in points:
             base = Pos(point.X, point.Y, wall_inner_z - buried)
             ribs.append(base * Cylinder(self.protrusion, straight, align=_BASE_ALIGN))
-            if (
-                self.lead_in_height > 0
-            ):  # truncated at the same slope, rather than an apex on the top profile outline
+            if self.lead_in_height > 0:  # truncated at the same slope, rather than an apex on the top profile outline
                 ribs.append(
-                    base
-                    * Pos(0, 0, straight)
-                    * Cone(
-                        self.protrusion, _EPS, self.lead_in_height, align=_BASE_ALIGN
-                    )
+                    base * Pos(0, 0, straight) * Cone(self.protrusion, _EPS, self.lead_in_height, align=_BASE_ALIGN)
                 )
         return ribs
 
@@ -192,9 +162,7 @@ class DiffusionCone:
         if self.diameter <= 0 or self.gap <= 0:
             raise ValueError("diffusion cone diameter and gap must be positive")
         if not 0 < self.angle < 180:
-            raise ValueError(
-                f"diffusion cone angle {self.angle} must be within (0, 180)"
-            )
+            raise ValueError(f"diffusion cone angle {self.angle} must be within (0, 180)")
 
     @property
     def depth(self) -> float:
@@ -203,9 +171,7 @@ class DiffusionCone:
 
     def _make(self, led_height: float) -> Part:
         """In the light pipe frame, above the LED cavity ceiling at led_height."""
-        return Pos(0, 0, led_height + self.gap) * Cone(
-            _EPS, self.diameter / 2, self.depth, align=_BASE_ALIGN
-        )
+        return Pos(0, 0, led_height + self.gap) * Cone(_EPS, self.diameter / 2, self.depth, align=_BASE_ALIGN)
 
 
 def _single_face(profile: Face | Sketch, name: str) -> Face:
@@ -268,16 +234,10 @@ class LightPipe(BasePartObject):
         self.chamfer_length = chamfer_length
 
         if not 0 < wall_thickness < height:
-            raise ValueError(
-                f"wall_thickness {wall_thickness} must be within the height {height}"
-            )
-        self.loft_height = loft_height = (
-            height - wall_thickness
-        )  #: board to the wall inner surface
+            raise ValueError(f"wall_thickness {wall_thickness} must be within the height {height}")
+        self.loft_height = loft_height = height - wall_thickness  #: board to the wall inner surface
         if not 0 < led_height < loft_height:
-            raise ValueError(
-                f"led_height {led_height} must be within the loft height {loft_height}"
-            )
+            raise ValueError(f"led_height {led_height} must be within the loft height {loft_height}")
         if not 0 < chamfer_angle < 90:
             raise ValueError(f"chamfer_angle {chamfer_angle} must be within (0, 90)")
         flange_thickness = 0.0 if flange is None else flange.thickness
@@ -289,20 +249,15 @@ class LightPipe(BasePartObject):
 
         # copies, since clean() (UnifySameDomain) can modify sub-shapes shared with boolean inputs in place
         top, board, led = (
-            copy.deepcopy(profile)
-            for profile in (self.top_profile, self.board_profile, self.led_profile)
+            copy.deepcopy(profile) for profile in (self.top_profile, self.board_profile, self.led_profile)
         )
         wall_inner = Pos(0, 0, loft_height)
         pipe = loft([board, wall_inner * top], ruled=True)
-        pipe += wall_inner * _extrude_chamfered(
-            top, wall_thickness, chamfer_length, chamfer_angle
-        )
+        pipe += wall_inner * _extrude_chamfered(top, wall_thickness, chamfer_length, chamfer_angle)
         if flange is not None:
             pipe += flange._make(top, loft_height)
         if crush_ribs is not None:
-            pipe += crush_ribs._make(
-                top, loft_height, wall_thickness - chamfer_length, flange
-            )
+            pipe += crush_ribs._make(top, loft_height, wall_thickness - chamfer_length, flange)
         pipe -= extrude(led, led_height)
         voids: list[Part] = []  # sealed, cut last; see fused()
         if diffusion_cone is not None:
@@ -317,9 +272,7 @@ class LightPipe(BasePartObject):
             pipe -= voids
         pipe = pipe.clean()
 
-        unaligned = pipe.solids()[
-            0
-        ].location  # super() aligns and rotates pipe; apply the same to body and voids
+        unaligned = pipe.solids()[0].location  # super() aligns and rotates pipe; apply the same to body and voids
         super().__init__(part=pipe, rotation=rotation, align=align, mode=mode)
         transform = self.solids()[0].location * unaligned.inverse()
         self._body = transform * body
@@ -344,9 +297,7 @@ class LightPipe(BasePartObject):
             raise ValueError("fused requires at least one light pipe")
         # copies, since clean() can modify sub-shapes shared with boolean inputs in place
         bodies = [location * copy.deepcopy(pipe._body) for pipe, location in placements]
-        voids = [
-            location * void for pipe, location in placements for void in pipe._voids
-        ]
+        voids = [location * void for pipe, location in placements for void in pipe._voids]
         fused = bodies[0] + [*bodies[1:], *others]
         if voids:
             fused -= voids
@@ -370,9 +321,7 @@ class LightPipeHole(BasePartObject):
         rotation: RotationLike = (0, 0, 0),
         mode: Mode = Mode.SUBTRACT,
     ):
-        profile = Pos(0, 0, light_pipe.loft_height - _EPS) * light_pipe.cutout_profile(
-            clearance
-        )
+        profile = Pos(0, 0, light_pipe.loft_height - _EPS) * light_pipe.cutout_profile(clearance)
         hole_part = extrude(profile, light_pipe.wall_thickness + 2 * _EPS)
 
         super().__init__(

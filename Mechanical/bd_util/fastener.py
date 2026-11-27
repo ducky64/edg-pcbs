@@ -57,13 +57,9 @@ class PrintabilityBridge:
 
     def __post_init__(self):
         if self.layer_height <= 0:
-            raise ValueError(
-                f"bridge layer_height {self.layer_height} must be positive"
-            )
+            raise ValueError(f"bridge layer_height {self.layer_height} must be positive")
         if not 0 < self.overhang_angle < 90:
-            raise ValueError(
-                f"bridge overhang_angle {self.overhang_angle} must be within (0, 90)"
-            )
+            raise ValueError(f"bridge overhang_angle {self.overhang_angle} must be within (0, 90)")
 
     def taper_height(self, width: float) -> float:
         """Of the loft, from the square corners in to the clearance hole of diameter width."""
@@ -78,12 +74,8 @@ class PrintabilityBridge:
         size = pocket_plan.bounding_box().size
         strip = Rot(0, 0, self.angle) * Rectangle(2 * max(size.X, size.Y), width)
         square = Rot(0, 0, self.angle) * Rectangle(width, width)
-        bridge = Pos(0, 0, -pocket_depth) * extrude(
-            strip & pocket_plan, self.layer_height, dir=(0, 0, -1)
-        )
-        bridge += Pos(0, 0, -pocket_depth - self.layer_height) * extrude(
-            square, self.layer_height, dir=(0, 0, -1)
-        )
+        bridge = Pos(0, 0, -pocket_depth) * extrude(strip & pocket_plan, self.layer_height, dir=(0, 0, -1))
+        bridge += Pos(0, 0, -pocket_depth - self.layer_height) * extrude(square, self.layer_height, dir=(0, 0, -1))
         taper_top = Pos(0, 0, -pocket_depth - 2 * self.layer_height)
         bridge += loft(
             [
@@ -127,20 +119,14 @@ class CaptiveNutHole(BasePartObject):
         if nut_clearance is None:
             nut_clearance = (clearance_diameter - fastener.thread_diameter) / 2
         self.nut_clearance = nut_clearance
-        roof_depth = self.pocket_depth + (
-            0.0 if bridge is None else bridge.depth(clearance_diameter)
-        )
+        roof_depth = self.pocket_depth + (0.0 if bridge is None else bridge.depth(clearance_diameter))
         if not self.hole_depth > roof_depth:
-            raise ValueError(
-                f"depth {self.hole_depth:.3f} must exceed the pocket and bridge depth {roof_depth:.3f}"
-            )
+            raise ValueError(f"depth {self.hole_depth:.3f} must exceed the pocket and bridge depth {roof_depth:.3f}")
 
         pocket_plan = offset(fastener.nut_plan(), nut_clearance, kind=Kind.INTERSECTION)
         hole_part = extrude(pocket_plan, self.pocket_depth, dir=(0, 0, -1))
         if bridge is not None:
-            hole_part += bridge._make(
-                pocket_plan, self.pocket_depth, clearance_diameter
-            )
+            hole_part += bridge._make(pocket_plan, self.pocket_depth, clearance_diameter)
         # explicit depth, since a nested object doesn't see the caller's builder
         hole_part += ClearanceHole(
             fastener,
@@ -179,18 +165,14 @@ class KeyholeHole(BasePartObject):
         # nominal, since Screw.head_diameter is measured from the model and can be smaller (e.g. countersunk)
         head_diameter = fastener.screw_data.get("dk", fastener.head_diameter)
         slot_width = fastener.clearance_hole_diameters[fit]
-        self.slot_length = (
-            head_diameter / 2 + slot_width / 2
-        )  # origin to slot end center
+        self.slot_length = head_diameter / 2 + slot_width / 2  # origin to slot end center
 
         head_hole = Cylinder(
             head_diameter / 2,
             self.hole_depth,
             align=(Align.CENTER, Align.CENTER, Align.MAX),
         )
-        slot_plan = Pos(self.slot_length / 2, 0) * SlotCenterToCenter(
-            self.slot_length, slot_width
-        )
+        slot_plan = Pos(self.slot_length / 2, 0) * SlotCenterToCenter(self.slot_length, slot_width)
         slot = extrude(slot_plan, self.hole_depth, dir=(0, 0, -1))
         hole_part = head_hole + [Rot(0, 0, angle) * slot for angle in angles]
 

@@ -94,17 +94,13 @@ INNER_OFFSET = TOLERANCE
 
 def outline(offset: float) -> RectangleRounded:
     """PCB outline grown outward by offset."""
-    return RectangleRounded(
-        PCB_WIDTH + 2 * offset, PCB_LENGTH + 2 * offset, PCB_RADIUS + offset
-    )
+    return RectangleRounded(PCB_WIDTH + 2 * offset, PCB_LENGTH + 2 * offset, PCB_RADIUS + offset)
 
 
 # at each LED on the top board, local +X radially outward from the knob
 LED_LOCATIONS = [
     Pos(0, KNOB_Y, TOP_BOARD_TOP_Z) * location
-    for location in PolarLocations(
-        LED_RADIUS, LED_COUNT, start_angle=LED_START_ANGLE, rotate=True
-    )
+    for location in PolarLocations(LED_RADIUS, LED_COUNT, start_angle=LED_START_ANGLE, rotate=True)
 ]
 LED_CIRCLE = CenterArc((-LED_RADIUS, 0), LED_RADIUS, 0, 360)  # in the LED-local frame
 
@@ -122,16 +118,11 @@ def make_light_pipe() -> LightPipe:
     LIGHT_PIPE_NUB_LENGTH = 0.5  # extension past the enclosure top
 
     # pipe top profile curved along the LED circle
-    slot_arc_angle = degrees(
-        (LED_SLOT_LENGTH - LED_SLOT_WIDTH) / LED_RADIUS
-    )  # centerline arc, excluding end rounds
-    slot_arc = CenterArc(
-        (-LED_RADIUS, 0), LED_RADIUS, -slot_arc_angle / 2, slot_arc_angle
-    )
+    slot_arc_angle = degrees((LED_SLOT_LENGTH - LED_SLOT_WIDTH) / LED_RADIUS)  # centerline arc, excluding end rounds
+    slot_arc = CenterArc((-LED_RADIUS, 0), LED_RADIUS, -slot_arc_angle / 2, slot_arc_angle)
     return LightPipe(
         top_profile=SlotArc(slot_arc, LED_SLOT_WIDTH),
-        board_profile=Rot(0, 0, 90)
-        * SlotOverall(LIGHT_PIPE_BOARD_LENGTH, LIGHT_PIPE_BOARD_WIDTH),
+        board_profile=Rot(0, 0, 90) * SlotOverall(LIGHT_PIPE_BOARD_LENGTH, LIGHT_PIPE_BOARD_WIDTH),
         height=ENCLOSURE_TOP_Z - TOP_BOARD_TOP_Z + LIGHT_PIPE_NUB_LENGTH,
         wall_thickness=WALL_THICKNESS + LIGHT_PIPE_NUB_LENGTH,
         led_profile=Rectangle(LED_CAVITY, LED_CAVITY),
@@ -151,14 +142,10 @@ def cut_connectors() -> None:
     wall_x = PCB_WIDTH / 2  # approx inner wall surface
     wall_y = PCB_LENGTH / 2
     # -Y wall
-    with Locations(
-        Plane((USB_X, -wall_y, BOARD_TOP_Z), x_dir=(-1, 0, 0), z_dir=(0, 1, 0))
-    ):
+    with Locations(Plane((USB_X, -wall_y, BOARD_TOP_Z), x_dir=(-1, 0, 0), z_dir=(0, 1, 0))):
         UsbCReceptacleHole(clearance=TOLERANCE)
     # +Y wall
-    with Locations(
-        Plane((FAN_HEADER_X, wall_y, BOARD_TOP_Z), x_dir=(1, 0, 0), z_dir=(0, -1, 0))
-    ):
+    with Locations(Plane((FAN_HEADER_X, wall_y, BOARD_TOP_Z), x_dir=(1, 0, 0), z_dir=(0, -1, 0))):
         MolexKK254Hole(4, clearance=TOLERANCE)
     # +/-X walls
     for x, x_dir, z_dir in [
@@ -174,18 +161,12 @@ def make_bottom() -> Part:
 
     KEYHOLES = [(0.0, -12.0), (0.0, 12.0)]
     KEYHOLE_ANGLES = [-90, 90]  # as seen from below
-    KEYHOLE_SCREW = PanHeadScrew(
-        size="M3-0.5", length=10, fastener_type="iso1580"
-    )  # length doesn't affect holes
+    KEYHOLE_SCREW = PanHeadScrew(size="M3-0.5", length=10, fastener_type="iso1580")  # length doesn't affect holes
 
     footprint = extrude(outline(OUTER_OFFSET), amount=ENCLOSURE_SPLIT_Z)
-    tray = footprint - Pos(0, 0, WALL_THICKNESS) * extrude(
-        outline(INNER_OFFSET), amount=ENCLOSURE_SPLIT_Z
-    )
+    tray = footprint - Pos(0, 0, WALL_THICKNESS) * extrude(outline(INNER_OFFSET), amount=ENCLOSURE_SPLIT_Z)
 
-    boss = Cylinder(
-        BOSS_DIAMETER / 2, BOTTOM_BOSS_Z, align=(Align.CENTER, Align.CENTER, Align.MIN)
-    )
+    boss = Cylinder(BOSS_DIAMETER / 2, BOTTOM_BOSS_Z, align=(Align.CENTER, Align.CENTER, Align.MIN))
     for x, y, _ in MOUNT_HOLES:
         tray += (Pos(x, y, 0) * boss) & footprint
 
@@ -198,14 +179,10 @@ def make_bottom() -> Part:
                     NUT,
                     fit=FASTENER_FIT,
                     nut_clearance=NUT_HOLDER_INTERFERENCE,
-                    bridge=PrintabilityBridge(
-                        LAYER_HEIGHT, overhang_angle=OVERHANG_ANGLE
-                    ),
+                    bridge=PrintabilityBridge(LAYER_HEIGHT, overhang_angle=OVERHANG_ANGLE),
                     rotation=(0, 0, -angle),
                 )
-        with Locations(
-            *[Plane((x, y, 0), x_dir=(1, 0, 0), z_dir=(0, 0, -1)) for x, y in KEYHOLES]
-        ):
+        with Locations(*[Plane((x, y, 0), x_dir=(1, 0, 0), z_dir=(0, 0, -1)) for x, y in KEYHOLES]):
             KeyholeHole(KEYHOLE_SCREW, fit=FASTENER_FIT, angles=KEYHOLE_ANGLES)
         cut_connectors()
     return builder.part
@@ -213,17 +190,13 @@ def make_bottom() -> Part:
 
 def make_top() -> Part:
     KNOB_HOLE_DIAMETER = 10.0
-    SCREW = CounterSunkScrew(
-        size=FASTENER_SIZE, length=16, fastener_type="iso7046"
-    )  # length doesn't affect holes
+    SCREW = CounterSunkScrew(size=FASTENER_SIZE, length=16, fastener_type="iso7046")  # length doesn't affect holes
     OPTICAL_HOLE_DIAMETER = 4.0
 
     interior_top = ENCLOSURE_TOP_Z - WALL_THICKNESS
 
     cover_height = ENCLOSURE_TOP_Z - ENCLOSURE_SPLIT_Z
-    footprint = Pos(0, 0, ENCLOSURE_SPLIT_Z) * extrude(
-        outline(OUTER_OFFSET), amount=cover_height
-    )
+    footprint = Pos(0, 0, ENCLOSURE_SPLIT_Z) * extrude(outline(OUTER_OFFSET), amount=cover_height)
     cover = footprint - Pos(0, 0, ENCLOSURE_SPLIT_Z - _EPS) * extrude(
         outline(INNER_OFFSET), amount=interior_top - ENCLOSURE_SPLIT_Z + _EPS
     )
@@ -270,12 +243,8 @@ def make_light_pipe_tree() -> Part:
     for start, end in zip(LED_LOCATIONS, LED_LOCATIONS[1:] + LED_LOCATIONS[:1]):
         a = (start * Pos(ccw_tip.center())).position
         b = (end * Pos(cw_tip.center())).position
-        z = (
-            start.position.Z + LIGHT_PIPE.loft_height
-        )  # bar top, at the wall inner surface
-        bar_plan = SlotCenterPoint(
-            ((a.X + b.X) / 2, (a.Y + b.Y) / 2), (b.X, b.Y), BRIDGE_WIDTH
-        )
+        z = start.position.Z + LIGHT_PIPE.loft_height  # bar top, at the wall inner surface
+        bar_plan = SlotCenterPoint(((a.X + b.X) / 2, (a.Y + b.Y) / 2), (b.X, b.Y), BRIDGE_WIDTH)
         bars.append(extrude(Pos(0, 0, z) * bar_plan, BRIDGE_THICKNESS, dir=(0, 0, -1)))
     return LIGHT_PIPE.array(LED_LOCATIONS, *bars)
 
@@ -305,9 +274,7 @@ if __name__ == "__main__":
         printable = rotation * part
         export_stl(printable, path)
         bbox = printable.bounding_box()
-        print(
-            f"{path}: {bbox.size.X:.2f} x {bbox.size.Y:.2f} x {bbox.size.Z:.2f} mm, volume {part.volume:.1f} mm^3"
-        )
+        print(f"{path}: {bbox.size.X:.2f} x {bbox.size.Y:.2f} x {bbox.size.Z:.2f} mm, volume {part.volume:.1f} mm^3")
 
     # assembly in global coordinates
     assembly_children = []

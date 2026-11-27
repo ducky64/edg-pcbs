@@ -23,9 +23,7 @@ from bd_util._common import hole_depth
 
 
 class _ProfileHole(BasePartObject):
-    def __init__(
-        self, profile: Sketch, depth: float | None, rotation: RotationLike, mode: Mode
-    ):
+    def __init__(self, profile: Sketch, depth: float | None, rotation: RotationLike, mode: Mode):
         self.hole_depth = hole_depth(depth)
         super().__init__(
             part=extrude(profile, self.hole_depth, dir=(0, 0, -1)),
