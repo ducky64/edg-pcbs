@@ -89,7 +89,7 @@ def make_light_pipe() -> LightPipe:
     top_profile=SlotArc(slot_arc, LED_SLOT_WIDTH),
     board_profile=Rot(0, 0, 90) * SlotOverall(LIGHT_PIPE_BOARD_LENGTH, LIGHT_PIPE_BOARD_WIDTH),
     height=ENCLOSURE_TOP_Z - TOP_BOARD_TOP_Z + LIGHT_PIPE_NUB_LENGTH,
-    wall_thickness=WALL_THICKNESS,
+    wall_thickness=WALL_THICKNESS + LIGHT_PIPE_NUB_LENGTH,
     led_profile=Rectangle(LED_CAVITY, LED_CAVITY),
     led_height=LED_CAVITY_HEIGHT,
     flange=Flange(FLANGE_EXTENSION, draft_angle=OVERHANG_ANGLE),
