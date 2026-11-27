@@ -8,8 +8,6 @@ Parametric enclosures in `build123d`, plus `bd_util`, a library of reusable feat
   - build geometry with objects: `Box`, `Cylinder`, `Rectangle`, ...)
   - use operations: (`extrude`, `loft`, `offset`, ...) and operators (`+`, `-`, `&`, `Pos(...) *`).
   - direct topology API (`Solid.extrude`, `.fuse`, `.cut`, `Face(wire.offset_2d(...))`) is not used
-- Builder mode used to compose parts / library generators only.
-  - No operators inside a builder block, these can do the wrong thing
 - Library generators return `Part` (solids) or `Sketch` (2d profiles).
 - Conventions
   - `extrude(profile, amount)` extruding along the face normal (+Z for sketches in XY)
@@ -25,7 +23,7 @@ Parametric enclosures in `build123d`, plus `bd_util`, a library of reusable feat
 
 - Shared parameters are at the top of the file.
   - Part-specific parameters are in their generator functions.
-- Generators do not define magic constants, though may provide sensible defaults where widely applicable.
+- Library generators do not define magic constants, though may provide sensible defaults where widely applicable.
 - Optional sub-features with their own parameters are dataclasses passed as `feature: Feature | None = None`
   - Examples: `Flange`, `CrushRibs`, `PrintabilityBridge`
   - These build geometry in a private `_make(...)` relative to its parents' local origin.

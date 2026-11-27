@@ -56,10 +56,11 @@ class Flange:
     """Height of the draft section, to full extension."""
     return 0.0 if self.draft_angle == 90 else self.extension / tan(radians(self.draft_angle))
 
-  def _make(self, top: Face) -> Part:
-    """With the wall inner surface at the local origin, extending toward -Z."""
+  def _make(self, top: Face, wall_inner_z: float) -> Part:
+    """In the light pipe frame, extending down from the wall inner surface at wall_inner_z."""
     plate = offset(top, self.extension, kind=Kind.INTERSECTION)
-    return Pos(0, 0, -self.thickness) * _extrude_chamfered(plate, self.thickness, self.draft_height, self.draft_angle)
+    return Pos(0, 0, wall_inner_z - self.thickness) * _extrude_chamfered(plate, self.thickness, self.draft_height,
+                                                                         self.draft_angle)
 
 
 @dataclass(frozen=True)
@@ -89,8 +90,9 @@ class CrushRibs:
   def lead_in_height(self) -> float:
     return 0.0 if self.lead_in_angle == 90 else self.protrusion / tan(radians(self.lead_in_angle))
 
-  def _make(self, top: Face, engagement: float, flange: Flange | None) -> list[Part]:
-    """With the wall inner surface at the local origin, extending engagement toward +Z, and into the flange below."""
+  def _make(self, top: Face, wall_inner_z: float, engagement: float, flange: Flange | None) -> list[Part]:
+    """In the light pipe frame, extending engagement up from the wall inner surface at wall_inner_z, and into the
+    flange below."""
     if self.lead_in_height > engagement:
       raise ValueError(f"crush rib lead-in {self.lead_in_height:.3f} exceeds the engagement {engagement:.3f}; "
                        f"lead_in_angle must be at least {degrees(atan(self.protrusion / engagement)):.1f}")
@@ -106,7 +108,7 @@ class CrushRibs:
       raise ValueError(f"crush rib straight length {straight:.3f} must be positive")
     ribs = []
     for point in points:
-      base = Pos(point.X, point.Y, -buried)
+      base = Pos(point.X, point.Y, wall_inner_z - buried)
       ribs.append(base * Cylinder(self.protrusion, straight, align=_BASE_ALIGN))
       if self.lead_in_height > 0:  # truncated at the same slope, rather than an apex on the top profile outline
         ribs.append(base * Pos(0, 0, straight) * Cone(self.protrusion, _EPS, self.lead_in_height, align=_BASE_ALIGN))
@@ -137,9 +139,9 @@ class DiffusionCone:
     """Apex to base height."""
     return self.diameter / 2 / tan(radians(self.angle / 2))
 
-  def _make(self) -> Part:
-    """With the LED cavity ceiling at the local origin, extending toward +Z."""
-    return Pos(0, 0, self.gap) * Cone(_EPS, self.diameter / 2, self.depth, align=_BASE_ALIGN)
+  def _make(self, led_height: float) -> Part:
+    """In the light pipe frame, above the LED cavity ceiling at led_height."""
+    return Pos(0, 0, led_height + self.gap) * Cone(_EPS, self.diameter / 2, self.depth, align=_BASE_ALIGN)
 
 
 def _single_face(profile: Face | Sketch, name: str) -> Face:
@@ -219,16 +221,16 @@ class LightPipe(BasePartObject):
     pipe = loft([board, wall_inner * top], ruled=True)
     pipe += wall_inner * _extrude_chamfered(top, wall_thickness, chamfer_length, chamfer_angle)
     if flange is not None:
-      pipe += wall_inner * flange._make(top)
+      pipe += flange._make(top, loft_height)
     if crush_ribs is not None:
-      pipe += [wall_inner * rib for rib in crush_ribs._make(top, wall_thickness - chamfer_length, flange)]
+      pipe += crush_ribs._make(top, loft_height, wall_thickness - chamfer_length, flange)
     pipe -= extrude(led, led_height)
     voids: list[Part] = []  # sealed, cut last; see fused()
     if diffusion_cone is not None:
       if not led_height + diffusion_cone.gap + diffusion_cone.depth < height:
         raise ValueError(f"diffusion cone top {led_height + diffusion_cone.gap + diffusion_cone.depth:.3f} above the "
                          f"board must be within the pipe height {height}")
-      voids.append(Pos(0, 0, led_height) * diffusion_cone._make())
+      voids.append(diffusion_cone._make(led_height))
     body = copy.deepcopy(pipe)  # without voids
     if voids:
       pipe -= voids

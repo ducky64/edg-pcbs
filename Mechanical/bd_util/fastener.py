@@ -51,14 +51,14 @@ class PrintabilityBridge:
     """Past the pocket bottom, for a clearance hole of diameter width."""
     return 2 * self.layer_height + self.taper_height(width)
 
-  def _make(self, pocket_plan: Sketch, width: float) -> Part:
-    """With the pocket bottom at the local origin, extending toward -Z."""
+  def _make(self, pocket_plan: Sketch, pocket_depth: float, width: float) -> Part:
+    """In the hole frame, extending down (toward -Z) from the pocket bottom at -pocket_depth."""
     size = pocket_plan.bounding_box().size
     strip = Rot(0, 0, self.angle) * Rectangle(2 * max(size.X, size.Y), width)
     square = Rot(0, 0, self.angle) * Rectangle(width, width)
-    bridge = extrude(strip & pocket_plan, self.layer_height, dir=(0, 0, -1))
-    bridge += Pos(0, 0, -self.layer_height) * extrude(square, self.layer_height, dir=(0, 0, -1))
-    taper_top = Pos(0, 0, -2 * self.layer_height)
+    bridge = Pos(0, 0, -pocket_depth) * extrude(strip & pocket_plan, self.layer_height, dir=(0, 0, -1))
+    bridge += Pos(0, 0, -pocket_depth - self.layer_height) * extrude(square, self.layer_height, dir=(0, 0, -1))
+    taper_top = Pos(0, 0, -pocket_depth - 2 * self.layer_height)
     bridge += loft([taper_top * square, taper_top * Pos(0, 0, -self.taper_height(width)) * Circle(width / 2)],
                    ruled=True)
     return bridge
@@ -103,7 +103,7 @@ class CaptiveNutHole(BasePartObject):
     pocket_plan = offset(fastener.nut_plan(), nut_clearance, kind=Kind.INTERSECTION)
     hole_part = extrude(pocket_plan, self.pocket_depth, dir=(0, 0, -1))
     if bridge is not None:
-      hole_part += Pos(0, 0, -self.pocket_depth) * bridge._make(pocket_plan, clearance_diameter)
+      hole_part += bridge._make(pocket_plan, self.pocket_depth, clearance_diameter)
     # explicit depth, since a nested object doesn't see the caller's builder
     hole_part += ClearanceHole(fastener, fit=fit, depth=self.hole_depth, counter_sunk=False, mode=Mode.PRIVATE)
 
