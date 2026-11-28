@@ -4,6 +4,8 @@ substitutions:
 esphome:
   name: ducky-knobsensors
   name_add_mac_suffix: true
+  on_boot:
+  - output.turn_on: output_pwr  # turn on output to 5v particle sensor
 
 esp32:
   board: esp32-c6-devkitc-1
@@ -38,11 +40,11 @@ wifi:
 light:
   - platform: esp32_rmt_led_strip
     id: ring
-    rgb_order: GRB
+    channel_colors: GRB
     chipset: sk6812
     pin: GPIO4
     num_leds: 6
-    name: "${name} Ring"
+    name: "Ring"
     initial_state:
       state: ON
     restore_mode: RESTORE_AND_ON  # persistent brightness settings
@@ -65,7 +67,7 @@ light:
           id: ring
           effect: "Control"
   - platform: status_led
-    name: "${name} Dbg"
+    name: "Dbg"
     id: debug_led
     internal: true
     pin:
@@ -74,14 +76,9 @@ light:
 
 output:
   - platform: gpio
-    id: output_fan_pwr
+    id: output_pwr
     pin: GPIO3
     inverted: false
-  - platform: ledc
-    id: output_fan_ctl
-    pin: GPIO0
-    inverted: true
-    frequency: 25 kHz
 
 i2c:
   scl: GPIO10
@@ -96,9 +93,15 @@ bme68x_bsec2_i2c:
   sample_rate: LP
   supply_voltage: 3.3V
 
+uart:
+  - id: uart_pms
+    rx_pin: GPIO2  # tach pin
+    tx_pin: GPIO0  # fan ctl pin, with npx driver disconnected and GPIO tied to pin
+    baud_rate: 9600
+
 binary_sensor:
   - platform: gpio
-    name: "${name} Encoder Sw"
+    name: "Encoder Sw"
     internal: true
     pin: 
       number: GPIO21
@@ -114,7 +117,7 @@ binary_sensor:
     #         ;
 sensor:
   - platform: rotary_encoder
-    name: "${name} Encoder"
+    name: "Encoder"
     internal: true
     resolution: 2  # so each detent generates one action
     pin_a:
@@ -141,41 +144,52 @@ sensor:
   - platform: ina219
     shunt_resistance: 0.01 ohm
     bus_voltage:
-      name: "${name} Voltage"
+      name: "Voltage"
       id: ina219_voltage
     current:
-      name: "${name} Current"
+      name: "Current"
     max_voltage: 24.0V
     max_current: 3.2A
     update_interval: 5s
   # - platform: vl53l0x
-  #   name: "${name} VL53L0x"
+  #   name: "VL53L0x"
   #   update_interval: 1s
   #   long_range: false
   - platform: bh1750
-    name: "${name} Illuminance"
+    name: "Illuminance"
     update_interval: 60s
 
   # I2C sensors
   - platform: sht4x
     update_interval: 60s
     temperature:
-      name: "${name} Temp"
+      name: "Temp"
     humidity:
-      name: "${name} RH"
+      name: "RH"
   - platform: scd4x
     co2:
-      name: "${name} CO2"
+      name: "CO2"
   - platform: bme68x_bsec2
     pressure:
-      name: "${name} Pressure"
+      name: "Pressure"
     iaq:
-      name: "${name} IAQ"
+      name: "IAQ"
     iaq_accuracy:
-      name: "${name} IAQ Accuracy"
+      name: "IAQ Accuracy"
     breath_voc_equivalent:
-      name: "${name} Breath VOC"
+      name: "Breath VOC"
+
+  - platform: pmsx003
+    type: PMSX003
+    uart_id: uart_pms
+    pm_1_0:
+      name: "PM <1.0µm"
+    pm_2_5:
+      name: "PM <2.5µm"
+    pm_10_0:
+      name: "PM <10.0µm"
+    update_interval: 10 min  # lower sample rate to reduce fan wear
 
   - platform: wifi_signal
-    name: "${name} WiFi Signal"
+    name: "WiFi Signal"
     update_interval: 60s

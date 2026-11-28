@@ -77,8 +77,8 @@ BOSS_DIAMETER = 8.0  # clipped to the enclosure outline
 BOTTOM_BOSS_Z = 4.0  # also the PCB bottom
 BOARD_TOP_Z = BOTTOM_BOSS_Z + 1.0  # bottom PCB
 ENCLOSURE_SPLIT_Z = BOARD_TOP_Z
-TOP_BOARD_TOP_Z = BOTTOM_BOSS_Z + 8.0  # top PCB
-ENCLOSURE_TOP_Z = BOTTOM_BOSS_Z + 12 + WALL_THICKNESS  # outer surface
+TOP_BOARD_TOP_Z = BOARD_TOP_Z + 5.0 + 1.0  # top PCB
+ENCLOSURE_TOP_Z = TOP_BOARD_TOP_Z + 3.0 + WALL_THICKNESS  # outer surface
 
 # top cover screws into captive nuts in the bottom
 FASTENER_SIZE = "M2.5-0.45"
@@ -103,7 +103,7 @@ def outline(offset: float) -> RectangleRounded:
 
 # at each LED on the top board, local +X radially outward from the knob
 LED_LOCATIONS = [
-    Pos(0, KNOB_Y, TOP_BOARD_TOP_Z) * location
+    Pos(0, KNOB_Y, TOP_BOARD_TOP_Z + TOLERANCE) * location
     for location in PolarLocations(LED_RADIUS, LED_COUNT, start_angle=LED_START_ANGLE, rotate=True)
 ]
 LED_CIRCLE = CenterArc((-LED_RADIUS, 0), LED_RADIUS, 0, 360)  # in the LED-local frame
@@ -115,7 +115,7 @@ def make_light_pipe() -> LightPipe:
     LED_SLOT_WIDTH = 2.0
     LIGHT_PIPE_BOARD_LENGTH = 4.0
     LIGHT_PIPE_BOARD_WIDTH = 2.0
-    LED_CAVITY = 2.5
+    LED_CAVITY = 2.2
     LED_CAVITY_HEIGHT = 1.4
     FLANGE_EXTENSION = 1.0
     DIFFUSION_CONE_DIAMETER = 1.5
@@ -127,10 +127,10 @@ def make_light_pipe() -> LightPipe:
     return LightPipe(
         top_profile=SlotArc(slot_arc, LED_SLOT_WIDTH),
         board_profile=Rot(0, 0, 90) * SlotOverall(LIGHT_PIPE_BOARD_LENGTH, LIGHT_PIPE_BOARD_WIDTH),
-        height=ENCLOSURE_TOP_Z - TOP_BOARD_TOP_Z + LIGHT_PIPE_NUB_LENGTH,
+        height=ENCLOSURE_TOP_Z - TOP_BOARD_TOP_Z + LIGHT_PIPE_NUB_LENGTH - TOLERANCE,
         wall_thickness=WALL_THICKNESS + LIGHT_PIPE_NUB_LENGTH,
         led_profile=Rectangle(LED_CAVITY, LED_CAVITY),
-        led_height=LED_CAVITY_HEIGHT,
+        led_height=LED_CAVITY_HEIGHT - TOLERANCE,
         flange=Flange(FLANGE_EXTENSION, draft_angle=OVERHANG_ANGLE),
         crush_ribs=CrushRibs(protrusion=0.20, along=[LED_CIRCLE]),  # at the slot ends
         diffusion_cone=DiffusionCone(DIFFUSION_CONE_DIAMETER),
@@ -264,7 +264,7 @@ def make_knob_cover() -> Part:
     KNOB_DIAMETER = 12.0  # cone base
     KNOB_DRAFT = 10.0  # degrees, cone taper, from the Z axis
     KNOB_GAP = ENCODER_SWITCH_TRAVEL + TOLERANCE * 2  # enclosure top to the cone base, so pushing doesn't bottom out
-    KNOB_BORE_HEIGHT = 2.0  # depth of the bore, past the enclosure top
+    KNOB_BORE_HEIGHT = 4.0  # depth of the bore, past the enclosure top
     KNOB_GRIP_LENGTH = 3.0  # top part of the inner bore that grips the encoder shaft
     # circular-arc flutes along the cone, scaled with the local diameter (constant angular pitch); 0 count disables
     KNOB_FLUTE_COUNT = 12
